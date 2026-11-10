@@ -1,11 +1,13 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.8 — itérations 0 à 6 livrées, itération 7 à venir
+- **Version** : 1.0 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; recette sur postes de test en attente
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
 
-> Ce document est une **vue d'ensemble** : fichiers, responsabilités, noms des fonctions et ce qu'elles font. Il ne contient volontairement **aucun code**. Il décrit une **cible** : l'outil actuel tient dans un seul script de 1017 lignes écrit d'un trait, il doit devenir un ensemble de modules PowerShell à responsabilité unique, testables, et où l'ajout d'une étape, d'une marque ou d'un logiciel se fait sans toucher au reste. Les §2 et §3 décrivent l'existant et ses écarts ; les §4 à §8 la cible ; le §9 l'ordre de livraison ; le §10 les recettes d'extension ; le §11 les décisions.
+> **État au 2026-11-10** : toutes les itérations sont livrées ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence.
+
+> Ce document est une **vue d'ensemble** : fichiers, responsabilités, noms des fonctions et ce qu'elles font. Il ne contient volontairement **aucun code**. Il décrivait au départ une **cible** : l'outil actuel tient dans un seul script de 1017 lignes écrit d'un trait, il doit devenir un ensemble de modules PowerShell à responsabilité unique, testables, et où l'ajout d'une étape, d'une marque ou d'un logiciel se fait sans toucher au reste. Les §2 et §3 décrivent l'existant et ses écarts ; les §4 à §8 la cible ; le §9 l'ordre de livraison ; le §10 les recettes d'extension ; le §11 les décisions.
 
 ---
 
@@ -377,7 +379,7 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 **`Logging/RunLog.ps1`** 🆕 — Journal d'une exécution, utilisable depuis n'importe quel fil.
 - `New-RunLog -Folder -FallbackFolder -HostName -Stamp` — choisit le dossier (sonde d'écriture sur la clé, repli sur `%TEMP%\FastPrepare` comme aujourd'hui), crée le fichier `Journal_<hôte>_<horodatage>.log` en UTF-8 avec BOM et une `ConcurrentQueue` ; renvoie `{ FilePath, Queue, IsFallback }`.
 - `Write-RunLog -Log -Message -Level -StepId` — niveaux `INFO`, `OK`, `ERREUR`, `ATTN`, `SIMU`, `DEBUG` (fichier seulement) ; écrit la ligne (§8), la publie dans la file. Un échec d'écriture fichier est publié **une fois** en `ATTN` dans la file, puis l'écriture fichier est suspendue (plus d'échec silencieux).
-- `Copy-RunLogToMedia -Log -Destination` — copie finale vers la clé si le journal était en repli (E7).
+- `Copy-RunLogToDrive -Log -Destination` — copie finale vers la clé si le journal était en repli (E7).
 
 ### 5.4 `FastPrepare.Infrastructure/Runtime`
 
@@ -473,7 +475,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Start-ExecutionPlan -Plan -Context` — lance `Invoke-ExecutionPlan` dans le runspace (`Start-BackgroundWork`) ; appelée par l'interface.
 
 **`FinalReport.ps1`** 🆕 — Étape 14 du cahier.
-- `Write-FinalReport -Results -Context` — compte réussites, échecs (rappelés un par un), actions simulées ; signale « redémarrage requis » si une action l'a indiqué ; rappelle `config.ManualReminders` ; donne l'emplacement du journal et de l'inventaire ; appelle `Copy-RunLogToMedia` si le journal était en repli.
+- `Write-FinalReport -Results -Context` — compte réussites, échecs (rappelés un par un), actions simulées ; signale « redémarrage requis » si une action l'a indiqué ; rappelle `config.ManualReminders` ; donne l'emplacement du journal et de l'inventaire ; appelle `Copy-RunLogToDrive` si le journal était en repli.
 
 **`Prefetch.ps1`** 🆕 — Téléchargement anticipé dès le clic sur une card (E3).
 - `Start-Prefetch -UtilityKey -Context` — en arrière-plan : version proposée par winget, runtime .NET correspondant, puis `Save-WingetPackage` / `Save-RemoteFile` de chaque élément `Install` dans `Cache\<clé>` ; un nouveau clic annule le précédent.
@@ -804,6 +806,16 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - `Build-Usb.ps1` finalisé ; `docs/recette.md` déroulée intégralement.
 - **Sortie** : toutes les exigences du cahier couvertes ; `Execution.DefaultMode` peut passer à `Real` (DEC6).
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-7`). Écarts et précisions :
+
+- **Windows Update** (`System/WindowsUpdate.ps1`, `Invoke-WindowsUpdatePass`) : une passe par l'API Windows Update Agent (recherche `IsInstalled=0 and IsHidden=0`, contrats acceptés, téléchargement, installation, résultat par mise à jour). La session COM est injectable : la logique est testée avec une fausse session. **Constat sur poste réel** (recherche seule, en runspace MTA comme le moteur) : les 5 mises à jour trouvées, des pilotes, se déclaraient toutes « peut demander une saisie » ; les écarter, comme prévu au départ, aurait vidé l'étape. Aucune mise à jour n'est donc écartée : l'installeur est en mode silencieux forcé (`ForceQuiet`, `AllowSourcePrompts = $false`, propriétés vérifiées sur le vrai objet COM) et une mise à jour qui exigerait vraiment une saisie échoue et est signalée. **QO3** : une seule passe ; les mises à jour encore disponibles après la passe sont comptées et signalées (`ATTN`), sans relance. Mises à jour en échec : l'action est en échec avec leurs titres, le redémarrage nécessaire reste signalé.
+- **Copie du journal sur la clé** (E7) : le journal retient le dossier demandé (`RequestedFolder`) ; en fin de rapport, s'il a fallu se replier sur `%TEMP%`, `Copy-RunLogToDrive` recopie journal et inventaire sur la clé si elle est redevenue accessible, sinon consigne de copie manuelle.
+- **Avancement** (E10) : le moteur publie `Publish-RunProgress` (entrées `PROGRESS`, jamais écrites dans le fichier) ; la fenêtre affiche une barre et « Action n / N : … » sous Lancer.
+- **`Build-Usb.ps1`** finalisé : refuse une destination dans le dépôt, valide `config.json` avant de copier et affiche ses avertissements, signale l'absence du paquet winget hors ligne, remplace `src\` en entier, conserve les journaux présents sur la clé (testé dans `tests/Tools.Tests.ps1`).
+- **Toutes les étapes ont un `Invoke`** (test dédié) : plus aucune action « ignorée » en mode réel.
+- **DEC6 appliquée telle quelle** : `Execution.DefaultMode` reste `Simulation` tant que la recette complète (`docs/recette.md`) n'a pas été déroulée sur postes de test ; le passage à `Real` est un changement d'une ligne dans `config.json`, à faire après la recette.
+- **Vérifié** : 898 tests Pester verts, PSScriptAnalyzer sans avertissement ; recherche Windows Update réelle en lecture seule ; aucune installation sur le poste de développement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -883,5 +895,5 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 |---|---|---|
 | QO1 | « Outlook classique » coché **sans** « Office Click-to-Run » : faut-il retirer Outlook seul (ODT suppression ciblée) ? Aujourd'hui la case est purement informative (« retiré avec la suite Office »). | 4 |
 | QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? **Provisoirement : profil connecté seulement** (itération 4). | 4 |
-| QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. | 7 |
+| QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. **Appliqué ainsi** (itération 7). | 7 |
 | QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`) ou comme redémarrage nécessaire (`Update.RebootExitCodes`). **Valeurs provisoires dans `config.json`** (itération 5), à confirmer en recette. | 5 |

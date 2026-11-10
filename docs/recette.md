@@ -122,3 +122,23 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Cases « Inclure » décochées : application absente (nouvel Outlook, Outlook classique, OneDrive).
 - [ ] Suppression (section 3) et installation (section 6) dans la même exécution : suppression d'abord, puis installation, aucune erreur.
 - [ ] Le XML de l'installation figure dans le journal et dans `C:\ODT\configuration-installation-*.xml`.
+
+## Itération 7 — Windows Update, journal, avancement, clé
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Windows Update : mises à jour (dont pilotes) téléchargées et installées sans fenêtre ; chaque titre et son résultat dans le journal ; « redémarrage nécessaire » dans le rapport ; aucun redémarrage automatique.
+- [ ] Mises à jour restantes après la passe : ligne `[ATTN] … encore disponible(s)`.
+- [ ] Pendant l'exécution : barre d'avancement et « Action n / N : … » sous le bouton Lancer.
+- [ ] Clé protégée en écriture au démarrage, déprotégée avant la fin : journal et inventaire recopiés sur la clé (ligne « copiés sur la clé ») ; restée protégée : consigne de copie manuelle.
+- [ ] `tools\Build-Usb.ps1 -Destination E:\FastPrepare` : avertissements de `config.json` affichés ; la clé ne contient que `Lancer.cmd`, `Preparation.ps1`, `config.json`, `src\`, `logos\`, `packages\`, `logs\`, `VERSION.txt` ; les anciens journaux de la clé sont conservés.
+
+## Recette complète avant passage en mode réel par défaut (DEC6)
+
+Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :
+
+- [ ] Rapport final sans échec inattendu ; échecs attendus compris et documentés.
+- [ ] Après redémarrage manuel : nom d'hôte appliqué, Office installé et non activé, utilitaire constructeur présent, aucune application Microsoft retirée ne revient pour un nouveau profil.
+- [ ] Deuxième exécution sur le même poste : tout est « déjà fait / déjà absent », aucune erreur.
+- [ ] Valeurs provisoires confirmées ou corrigées dans `config.json` : codes de sortie winget et outils constructeurs (QO4), chemins `HPImageAssistant.exe` / `ducmd.exe`, lien et empreinte de Thin Installer.
+- [ ] Alors seulement : `Execution.DefaultMode` = `"Real"` dans `config.json`.
