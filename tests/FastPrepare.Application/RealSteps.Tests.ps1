@@ -17,7 +17,6 @@ Describe 'Mode réel — étapes de l''itération 3' {
         Mock @m Rename-LocalComputer { [pscustomobject]@{ Changed = $true; RebootRequired = $true } }
         Mock @m Export-MachineInventory { [pscustomobject]@{ Path = 'C:\x.txt'; Error = $null } }
         $context = New-TestContext -Folder $TestDrive -Mode Real
-        $context.Paths | Add-Member -NotePropertyName WingetBundle -NotePropertyValue 'C:\Cle\packages\winget.msixbundle'
     }
 
     It 'alimentation, IPv6, logiciel, nom d''hôte : exécutés avec les bons paramètres' {

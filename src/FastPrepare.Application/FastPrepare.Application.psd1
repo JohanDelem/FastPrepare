@@ -17,7 +17,14 @@
         'Format-ExecutionPlanSummary',
         'Invoke-ExecutionPlan',
         'Start-ExecutionPlan',
-        'Write-FinalReport'
+        'Write-FinalReport',
+        'Get-ConfigPathVariable',
+        'Get-PrefetchCachePath',
+        'Get-PrefetchedItem',
+        'Test-PrefetchUseful',
+        'Invoke-Prefetch',
+        'Start-Prefetch',
+        'Resolve-UtilityDotNetRequirement'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

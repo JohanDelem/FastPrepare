@@ -49,5 +49,13 @@ function New-TestContext {
     param([Parameter(Mandatory)][string]$Folder, [string]$Mode = 'Simulation', $Config)
     if (-not $Config) { $Config = Get-TestConfig }
     $log = New-RunLog -Folder (Join-Path $Folder 'logs') -FallbackFolder (Join-Path $Folder 'repli') -HostName 'PC-TEST' -Stamp ([guid]::NewGuid().ToString('N'))
-    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = [pscustomobject]@{ Logs = $log.Folder }; ModulePaths = @() }
+    $cache = Join-Path $Folder 'cache'
+    $paths = [pscustomobject]@{
+        Logs         = $log.Folder
+        OdtFolder    = 'C:\ODT'
+        WingetBundle = 'C:\Cle\packages\winget.msixbundle'
+        Cache        = $cache
+        Variables    = @{ 'ProgramFiles' = 'C:\Program Files'; 'ProgramFiles(x86)' = 'C:\Program Files (x86)'; 'ProgramData' = 'C:\ProgramData'; 'OdtFolder' = 'C:\ODT'; 'CacheFolder' = $cache }
+    }
+    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @() }
 }

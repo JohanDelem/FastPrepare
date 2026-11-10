@@ -30,6 +30,7 @@ function New-AppContext {
     $logFolder = [string]$Config.Logging.Folder
     if (-not [System.IO.Path]::IsPathRooted($logFolder)) { $logFolder = Join-Path $Root $logFolder }
 
+    $variables = Get-ConfigPathVariable -Config $Config
     $log = New-RunLog -Folder $logFolder -FallbackFolder (Join-Path $env:TEMP 'FastPrepare') -HostName $env:COMPUTERNAME -Stamp $stamp
 
     $context = [pscustomobject]@{
@@ -48,6 +49,10 @@ function New-AppContext {
             OdtFolder = [string]$Config.Office.OdtFolder
             # Paquet winget hors ligne, relatif à la racine de la clé.
             WingetBundle = Join-Path $Root ([string]$Config.Winget.OfflineBundle)
+            # Cache des téléchargements (préchargement des utilitaires constructeurs).
+            Cache        = $variables['CacheFolder']
+            # Variables acceptées dans les chemins de config.json (%ProgramFiles%…).
+            Variables    = $variables
         }
     }
 
@@ -67,4 +72,22 @@ function Get-BackgroundModulePath {
     foreach ($module in 'FastPrepare.Core', 'FastPrepare.Infrastructure', 'FastPrepare.Application') {
         Join-Path $Root "src\$module\$module.psd1"
     }
+}
+
+function Get-ConfigPathVariable {
+    <#
+        Table des variables autorisées dans les chemins de config.json (Expand-ConfigPath) :
+        ProgramFiles, ProgramFiles(x86), ProgramData, OdtFolder, CacheFolder.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)]$Config)
+    $variables = @{
+        'ProgramFiles'      = [Environment]::GetFolderPath('ProgramFiles')
+        'ProgramFiles(x86)' = [Environment]::GetFolderPath('ProgramFilesX86')
+        'ProgramData'       = [Environment]::GetFolderPath('CommonApplicationData')
+        'OdtFolder'         = [string]$Config.Office.OdtFolder
+    }
+    $variables['CacheFolder'] = Expand-ConfigPath -Path ([string]$Config.Execution.CacheFolder) -Variables $variables
+    return $variables
 }

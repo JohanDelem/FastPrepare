@@ -2,6 +2,8 @@
     Section 5 — Installation d'utilitaire constructeur.
     Cards générées depuis config.Utilities ; une seule sélectionnable ; présélection selon le
     constructeur détecté. Ajouter une marque = un bloc dans config.json (+ un logo facultatif).
+    En mode réel, le choix d'une card (clic ou présélection) lance le téléchargement anticipé
+    (FastPrepare.Application, Start-Prefetch) ; en simulation, rien n'est téléchargé.
 #>
 
 Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Sections\VendorUtility.xaml' -Initialize {
@@ -10,6 +12,7 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
     $keys = @($utilities.PSObject.Properties | ForEach-Object { $_.Name })
     $cards = New-Object System.Collections.Generic.List[object]
     $Section.State.UserChose = $false
+    $Section.State.PrefetchStatus = @{}
 
     for ($i = 0; $i -lt $keys.Count; $i++) {
         $utility = $utilities.($keys[$i])
@@ -23,9 +26,7 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
                     Set-ExclusiveSelection -Card $section.State.Cards -Source $source
                     Update-VendorUtilityStatus
                     $key = Get-CheckedCardKey -Card $section.State.Cards
-                    if ($key) {
-                        Write-RunLog -Log $script:Context.Log -Level SIMU -Message ('Utilitaire sélectionné : {0} (téléchargement anticipé simulé)' -f $script:Context.Config.Utilities.$key.Tool)
-                    }
+                    if ($key) { Start-VendorPrefetch -Key $key }
                     Update-UiState
                 }
             })
@@ -39,6 +40,7 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
     # Présélection selon le constructeur, sauf si le technicien a déjà cliqué une card pendant la détection.
     if ($Snapshot.SuggestedUtilityKey -and -not $Section.State.UserChose) {
         foreach ($card in $Section.State.Cards) { $card.IsChecked = ([string]$card.Tag -eq $Snapshot.SuggestedUtilityKey) }
+        Start-VendorPrefetch -Key $Snapshot.SuggestedUtilityKey
     }
     Update-VendorUtilityStatus
 } -GetSelection {
@@ -58,5 +60,43 @@ function Update-VendorUtilityStatus {
         if ($item.Type -eq 'winget') { 'winget {0} (source {1})' -f $item.Id, $item.Source }
         else { 'lien direct {0}' -f $item.FileName }
     }
-    $section.Controls.TxtUtilStatus.Text = '{0} · {1}' -f $utility.Tool, ($sources -join ' + ')
+    $status = $section.State.PrefetchStatus[$key]
+    $suffix = if ($status) { ' · ' + $status } else { '' }
+    $section.Controls.TxtUtilStatus.Text = '{0} · {1}{2}' -f $utility.Tool, ($sources -join ' + '), $suffix
+}
+
+function Start-VendorPrefetch {
+    <# Téléchargement anticipé de l'utilitaire choisi (mode réel seulement), une fois par marque. #>
+    param([string]$Key)
+    $section = Get-UiSection -Id 'vendor-utility'
+    $context = $script:Context
+    $tool = $context.Config.Utilities.$Key.Tool
+    if ($context.Mode -eq 'Simulation') {
+        Write-RunLog -Log $context.Log -Level SIMU -Message ('Utilitaire sélectionné : {0} (téléchargement anticipé simulé)' -f $tool)
+        return
+    }
+    if ($section.State.PrefetchStatus.ContainsKey($Key)) { return }
+    if (-not (Test-PrefetchUseful -UtilityKey $Key -Context $context)) {
+        $section.State.PrefetchStatus[$Key] = 'installation par winget à l''exécution'
+        Update-VendorUtilityStatus
+        return
+    }
+    $section.State.PrefetchStatus[$Key] = 'préchargement en cours…'
+    Update-VendorUtilityStatus
+    Write-RunLog -Log $context.Log -Message ('Préchargement de {0} lancé' -f $tool)
+    $work = Start-Prefetch -UtilityKey $Key -Context $context
+    $section.State.PendingPrefetchKey = $Key
+    Register-UiBackgroundWork -Work $work -OnCompleted {
+        param($result)
+        $prefetch = @($result) | Select-Object -Last 1
+        $state = (Get-UiSection -Id 'vendor-utility').State
+        $state.PrefetchStatus[$prefetch.UtilityKey] = if (@($prefetch.Errors).Count -gt 0) { 'préchargement incomplet (voir le journal)' } else { 'préchargé' }
+        Update-VendorUtilityStatus
+    } -OnFailed {
+        param($message)
+        Write-RunLog -Log $script:Context.Log -Level ATTN -Message "Préchargement impossible : $message"
+        $state = (Get-UiSection -Id 'vendor-utility').State
+        $state.PrefetchStatus[$state.PendingPrefetchKey] = 'préchargement impossible (voir le journal)'
+        Update-VendorUtilityStatus
+    }
 }

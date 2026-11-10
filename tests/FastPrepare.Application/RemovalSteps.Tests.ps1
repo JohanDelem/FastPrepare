@@ -25,7 +25,6 @@ Describe 'Mode réel — désinstallations' {
         Mock @m Invoke-UninstallCommand { [pscustomobject]@{ RebootRequired = $false } }
         Mock @m Wait-UninstallEntryRemoval { $true }
         $context = New-TestContext -Folder $TestDrive -Mode Real
-        $context.Paths | Add-Member -NotePropertyName OdtFolder -NotePropertyValue 'C:\ODT'
     }
 
     It 'sections 2 à 4 cochées : toutes les actions réussissent, dans l''ordre du cahier' {
