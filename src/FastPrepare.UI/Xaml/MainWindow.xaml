@@ -12,6 +12,9 @@
     <!-- En-tête : connexion internet (section 0) + poste détecté -->
     <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
       <DockPanel>
+        <Border Name="BdReal" DockPanel.Dock="Right" Background="{StaticResource ErrorLightBrush}" BorderBrush="{StaticResource ErrorBrush}" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center" Visibility="Collapsed">
+          <TextBlock Text="MODE RÉEL — le poste sera modifié" Foreground="{StaticResource ErrorBrush}" FontWeight="SemiBold" FontSize="12"/>
+        </Border>
         <Border Name="BdSimu" DockPanel.Dock="Right" Background="{StaticResource WarningLightBrush}" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
           <TextBlock Text="MODE SIMULATION — aucune modification du poste" Foreground="{StaticResource WarningBrush}" FontWeight="SemiBold" FontSize="12"/>
         </Border>

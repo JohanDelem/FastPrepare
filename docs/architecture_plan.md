@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.4 — itérations 0 à 2 livrées, itérations 3 à 7 à venir
+- **Version** : 0.5 — itérations 0 à 3 livrées, itérations 4 à 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -743,6 +743,15 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - `Invoke` de `SetPowerPlan`, `DisableIpv6`, `InstallSoftware` (Adobe, E8), `RenameComputer`, `ExportInventory`.
 - Mode réel activable (`Lancer.cmd -Real`), confirmation avant exécution.
 - **Sortie** : première préparation réelle partielle sur poste de test.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-3`). Écarts et précisions :
+
+- **Adaptateurs** : `Invoke-ExternalProcess` (`System.Diagnostics.Process`, exécutable et arguments séparés, `-SuccessExitCode`, `-RebootExitCode` 3010/1641, `-CaptureOutput`, `-Interactive`, signification des codes MSI dans le message d'erreur ; un délai dépassé laisse le processus en cours et le signale avec son PID plutôt que de le tuer) ; `Get-SystemExecutablePath` (System32, jamais le PATH) ; `Save-RemoteFile` (HTTPS imposé, BITS puis HttpClient, fichier `.partiel` renommé après vérification SHA-256) et `Assert-TrustedExecutable` ; `Assert-WingetAvailable` (réenregistrement par nom de famille, puis paquet hors ligne avec ses dépendances `.appx`/`.msix` du même dossier : **E2 levé**) ; `Install-WingetPackage` (« déjà installé » = succès, `--override` entre guillemets : **E8 levé**) ; `Set-PowerTimeout` (**E9** : batterie selon `ApplyOnBattery`) ; `Disable-AdapterIpv6` (vérifie le résultat) ; `Rename-LocalComputer` (`System/ComputerName.ps1`, sans effet si le nom est déjà le bon, jamais de `-Restart`).
+- **Étapes réelles** : `export-inventory`, `install-software`, `disable-ipv6`, `set-power-plan`, `rename-computer`.
+- **Mode réel activé** (`Lancer.cmd -Real`) avec bandeau rouge « MODE RÉEL » et confirmation. **Changement de comportement** : une action dont l'étape n'a pas encore d'`Invoke` est désormais **ignorée et signalée** (`ATTN`, issue `Skipped`), et non plus comptée en échec ; la confirmation annonce leur nombre et le rapport final les compte à part. Raison : avec les cases cochées par défaut, une exécution réelle aurait sinon produit une dizaine d'erreurs rouges sans rapport avec un vrai problème.
+- **Codes de sortie de winget** traités comme succès : `0x8A150061` (déjà installé) et `0x8A15002B` (pas de mise à jour applicable) ; redémarrage : `0x8A150109`, 3010, 1641. À confirmer en recette.
+- **Règles d'architecture ajoutées** : processus lancés uniquement par `Process.ps1` ; `Disable-NetAdapterBinding`, `Add-AppxPackage`, `Start-BitsTransfer`, `Get-AuthenticodeSignature` confinés à `Infrastructure`.
+- **Vérifié** : 750 tests Pester verts. Les adaptateurs qui modifient le poste sont testés uniquement avec des simulacres ; `Invoke-ExternalProcess` est testé sur des commandes `cmd /c exit N` inoffensives, `Assert-TrustedExecutable` sur `notepad.exe`. Fenêtre ouverte en mode réel **sans lancer d'exécution** (bandeau, résumé de confirmation). **Aucune exécution réelle sur le poste de développement** : la première exécution réelle se fait en recette, sur un poste de test.
 
 ### Itération 4 — Désinstallations
 

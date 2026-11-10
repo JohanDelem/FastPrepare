@@ -47,22 +47,23 @@ Describe 'Invoke-ExecutionPlan — simulation' {
 Describe 'Invoke-ExecutionPlan — réel' {
     BeforeEach { $script:invoked.Clear() }
 
-    It 'une action en échec est notée en rouge et les suivantes s''exécutent (cahier)' {
+    It 'une action en échec est notée en rouge et les suivantes s''exécutent ; une étape sans Invoke est ignorée et signalée' {
         $context = New-TestContext -Folder $TestDrive -Mode Real
         $results = Invoke-ExecutionPlan -Plan (New-TestPlan) -Context $context -StepCatalog $catalog
         @($script:invoked) | Should -Be @('ok-1', 'panne', 'redemarrage')
-        @($results).Outcome | Should -Be @('Succeeded', 'Failed', 'Succeeded', 'NotImplemented')
+        @($results).Outcome | Should -Be @('Succeeded', 'Failed', 'Succeeded', 'Skipped')
         $results[1].Error | Should -Be 'code de sortie 1603'
         $entries = Get-Lines $context
         ($entries | Where-Object { $_.Level -eq 'ERREUR' -and $_.Line -match 'deuxième : code de sortie 1603' }) | Should -Not -BeNullOrEmpty
-        ($entries | Where-Object { $_.Level -eq 'ERREUR' -and $_.Line -match 'pas encore disponible en mode réel' }) | Should -Not -BeNullOrEmpty
+        ($entries | Where-Object { $_.Level -eq 'ATTN' -and $_.Line -match 'quatrième — pas encore disponible en mode réel' }) | Should -Not -BeNullOrEmpty
+        @($entries | Where-Object { $_.Level -eq 'ERREUR' -and $_.Line -match 'quatrième' }).Count | Should -Be 0
     }
 
     It 'rapport final : bilan, échecs rappelés, redémarrage nécessaire, inventaire, rappels manuels' {
         $context = New-TestContext -Folder $TestDrive -Mode Real
         [void](Invoke-ExecutionPlan -Plan (New-TestPlan) -Context $context -StepCatalog $catalog)
         $text = (Get-Lines $context).Line -join "`n"
-        $text | Should -Match '2 action\(s\) réussie\(s\), 2 en échec'
+        $text | Should -Match '2 action\(s\) réussie\(s\), 1 en échec, 1 ignorée\(s\)'
         $text | Should -Match 'Échec : \[ETAPE 02/13 · section 2\] deuxième'
         $text | Should -Match 'Redémarrage nécessaire'
         $text | Should -Match 'Inventaire_SN0000TEST'

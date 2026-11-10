@@ -21,6 +21,23 @@ function Get-PhysicalAdapter {
     }
 }
 
+function Disable-AdapterIpv6 {
+    <#
+        Désactive IPv6 (liaison ms_tcpip6) sur une carte réseau, puis vérifie le résultat.
+        Sans effet si IPv6 y est déjà désactivé. Renvoie { Changed }.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Name)
+
+    $binding = Get-NetAdapterBinding -Name $Name -ComponentID 'ms_tcpip6' -ErrorAction Stop
+    if (-not $binding.Enabled) { return [pscustomobject]@{ Changed = $false } }
+    Disable-NetAdapterBinding -Name $Name -ComponentID 'ms_tcpip6' -ErrorAction Stop
+    if ((Get-NetAdapterBinding -Name $Name -ComponentID 'ms_tcpip6' -ErrorAction Stop).Enabled) {
+        throw "IPv6 toujours actif sur la carte '$Name' après désactivation."
+    }
+    return [pscustomobject]@{ Changed = $true }
+}
+
 function New-ConnectivityProbe {
     <# Prépare une sonde de connexion réutilisable : { Client, Url, Expected, Task }. #>
     [CmdletBinding()]

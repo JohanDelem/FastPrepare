@@ -8,5 +8,14 @@ Register-Step -Id 'export-inventory' -Section 10 -Title 'Export de l''inventaire
     param($Selection, $Snapshot, $Context)
     $export = $Snapshot.InventoryExport
     if ($export -and $export.Path) { return }
-    New-StepAction -Label 'Inventaire N/S + MAC : nouvel essai d''export (échec au démarrage)' -Parameters @{ Kind = 'ExportInventory' }
+    New-StepAction -Label 'Inventaire N/S + MAC : nouvel essai d''export (échec au démarrage)' -Parameters @{
+        Kind          = 'ExportInventory'
+        Identity      = $Snapshot.Identity
+        InventoryText = [string]$Snapshot.InventoryText
+    }
+} -Invoke {
+    param($Action, $Context)
+    $inventory = [pscustomobject]@{ Identity = $Action.Parameters.Identity; InventoryText = $Action.Parameters.InventoryText }
+    $export = Export-MachineInventory -Snapshot $inventory -Context $Context
+    if ($export.Error) { throw "export de l'inventaire impossible : $($export.Error)" }
 }

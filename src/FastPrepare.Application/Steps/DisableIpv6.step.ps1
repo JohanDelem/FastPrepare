@@ -11,4 +11,8 @@ Register-Step -Id 'disable-ipv6' -Section 9 -Title 'Désactivation d''IPv6' -Pla
             Kind = 'DisableIpv6'; AdapterName = [string]$adapter.Name
         }
     }
+} -Invoke {
+    param($Action, $Context)
+    $result = Disable-AdapterIpv6 -Name $Action.Parameters.AdapterName
+    if (-not $result.Changed) { Write-RunLog -Log $Context.Log -Message ("IPv6 déjà désactivé sur '{0}'" -f $Action.Parameters.AdapterName) }
 }

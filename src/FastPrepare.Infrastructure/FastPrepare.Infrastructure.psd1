@@ -28,7 +28,18 @@
         'Read-ConnectivityResult',
         'Close-ConnectivityProbe',
         'Get-OneDriveFolderInfo',
-        'Test-Winget'
+        'Test-Winget',
+        'Assert-WingetAvailable',
+        'Install-WingetPackage',
+        'Get-WingetInstallArgument',
+        'Invoke-ExternalProcess',
+        'Get-SystemExecutablePath',
+        'Save-RemoteFile',
+        'Assert-TrustedExecutable',
+        'Set-PowerTimeout',
+        'Get-PowerTimeoutSetting',
+        'Disable-AdapterIpv6',
+        'Rename-LocalComputer'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

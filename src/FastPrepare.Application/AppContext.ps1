@@ -4,8 +4,9 @@
     à chaque fonction qui en a besoin et ne contient aucun objet WPF.
 #>
 
-# Le moteur d'exécution réel arrive à l'itération 3 (docs/architecture_plan.md §9).
-$script:RealModeAvailable = $false
+# Mode réel disponible depuis l'itération 3 ; les étapes pas encore implémentées en réel sont
+# ignorées (et signalées) par le moteur, jamais exécutées à moitié.
+$script:RealModeAvailable = $true
 
 function New-AppContext {
     <#
@@ -45,6 +46,8 @@ function New-AppContext {
             Logos     = Join-Path $Root 'logos'
             Packages  = Join-Path $Root 'packages'
             OdtFolder = [string]$Config.Office.OdtFolder
+            # Paquet winget hors ligne, relatif à la racine de la clé.
+            WingetBundle = Join-Path $Root ([string]$Config.Winget.OfflineBundle)
         }
     }
 

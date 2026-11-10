@@ -9,7 +9,8 @@ function Invoke-ExecutionPlan {
         Exécute le plan dans le mode du contexte, puis écrit le rapport final.
         -StepCatalog : table Id → étape (par défaut le catalogue du module ; injectable pour les tests).
         Renvoie les résultats { Action, Outcome, Error, RebootRequired, Duration }.
-        Outcome : 'Simulated', 'Succeeded', 'Failed' ou 'NotImplemented'.
+        Outcome : 'Simulated', 'Succeeded', 'Failed' ou 'Skipped' (étape pas encore disponible en
+        mode réel : signalée, jamais exécutée à moitié).
     #>
     [CmdletBinding()]
     param(
@@ -41,9 +42,9 @@ function Invoke-ExecutionPlan {
         } else {
             $step = $StepCatalog[$action.StepId]
             if (-not $step -or -not $step.Invoke) {
-                $result.Outcome = 'NotImplemented'
-                $result.Error = "l'étape « $($action.StepId) » n'est pas encore disponible en mode réel"
-                Write-RunLog -Log $log -Level ERREUR -Message ('{0}{1} : {2}' -f $prefix, $action.Label, $result.Error)
+                $result.Outcome = 'Skipped'
+                $result.Error = 'pas encore disponible en mode réel dans cette version : ignorée'
+                Write-RunLog -Log $log -Level ATTN -Message ('{0}{1} — {2}' -f $prefix, $action.Label, $result.Error)
             } else {
                 Write-RunLog -Log $log -Level $(if ($action.Interactive) { 'ATTN' } else { 'INFO' }) -Message ($prefix + $action.Label)
                 foreach ($line in @($action.Details)) { Write-RunLog -Log $log -Level DEBUG -Message ('     ' + $line) }

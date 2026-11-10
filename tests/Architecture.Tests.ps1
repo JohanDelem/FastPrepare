@@ -42,7 +42,7 @@ Describe 'Couches' {
     }
 
     It '<Name> : aucun accès système direct hors de FastPrepare.Infrastructure' -ForEach $notInfrastructure {
-        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'Get-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer')
+        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Disable-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'Get-AppxPackage', 'Add-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer', 'Start-BitsTransfer', 'Get-AuthenticodeSignature')
         @(Get-InvokedCommand $Path | Where-Object { $forbidden -contains $_ }) | Should -BeNullOrEmpty
         Get-CodeText $Path | Should -Not -Match "['`"](HKLM|HKCU):"
 
@@ -52,6 +52,13 @@ Describe 'Couches' {
         $forbidden = @('Get-Item', 'Get-ItemProperty', 'Get-ChildItem', 'Get-Content', 'Set-Content', 'Add-Content', 'Out-File', 'Remove-Item', 'Test-Path', 'Invoke-WebRequest', 'Get-Date', 'Write-RunLog')
         @(Get-InvokedCommand $Path | Where-Object { $forbidden -contains $_ }) | Should -BeNullOrEmpty
         Get-CodeText $Path | Should -Not -Match '\$env:|System\.Net|\[System\.IO\.File\]'
+    }
+}
+
+Describe 'Processus externes' {
+    It '<Name> : processus lancés uniquement par Process.ps1' -ForEach ($allCode | Where-Object { $_.Name -notlike '*\System\Process.ps1' }) {
+        Get-CodeText $Path | Should -Not -Match '\[System\.Diagnostics\.Process\]|System\.Diagnostics\.ProcessStartInfo'
+        @(Get-InvokedCommand $Path | Where-Object { @('Start-Process', 'Invoke-Item') -contains $_ }) | Should -BeNullOrEmpty
     }
 }
 

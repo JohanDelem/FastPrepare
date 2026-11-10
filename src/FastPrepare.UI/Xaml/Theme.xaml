@@ -19,6 +19,7 @@
   <SolidColorBrush x:Key="WarningBrush" Color="#8A5A00"/>
   <SolidColorBrush x:Key="WarningLightBrush" Color="#FFF4CE"/>
   <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C"/>
+  <SolidColorBrush x:Key="ErrorLightBrush" Color="#FDE7E9"/>
 
   <!-- Pastille de connexion -->
   <SolidColorBrush x:Key="NetOkBackgroundBrush" Color="#DFF6DD"/>

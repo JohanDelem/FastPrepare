@@ -5,8 +5,9 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 2** — détections réelles en arrière-plan, plan d'exécution unique en
-> 13 étapes ; bouton Lancer **en simulation** (aucune modification du poste).
+> **État : itération 3** — simulation par défaut ; **mode réel** disponible pour l'alimentation,
+> IPv6, les logiciels de la section 8 (winget) et le nom d'hôte. Les autres étapes sont ignorées
+> en mode réel (et signalées) jusqu'aux itérations suivantes.
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
 
 ## Pour le technicien
@@ -16,8 +17,8 @@ tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 3. Lire le journal en bas de la fenêtre ; il est aussi enregistré dans `logs\` sur la clé,
    avec l'inventaire N/S + adresses MAC.
 
-Options : `Lancer.cmd -Simulation` (force la simulation). Le mode réel (`-Real`) sera disponible
-à partir de l'itération 3.
+Options : `Lancer.cmd -Simulation` (force la simulation), `Lancer.cmd -Real` (modifie le poste,
+après confirmation ; à réserver pour l'instant aux postes de test).
 
 **Rien n'est fait automatiquement hors outil** : réinitialisation de Windows, RMM, antivirus,
 BitLocker, activation d'Office, redémarrage (liste dans `config.json`, `ManualReminders`).

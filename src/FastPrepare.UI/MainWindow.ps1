@@ -24,6 +24,7 @@ function Start-MainWindow {
 
     Initialize-LogView -RichTextBox $shell.RtbLog
     $shell.BdSimu.Visibility = if ($Context.Mode -eq 'Simulation') { 'Visible' } else { 'Collapsed' }
+    $shell.BdReal.Visibility = if ($Context.Mode -eq 'Real') { 'Visible' } else { 'Collapsed' }
     Set-MemoText -TextBlock $shell.TxtMemo -Reminder @($Context.Config.ManualReminders)
 
     foreach ($section in (Get-UiSection)) {
