@@ -5,9 +5,10 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 3** — simulation par défaut ; **mode réel** disponible pour l'alimentation,
-> IPv6, les logiciels de la section 8 (winget) et le nom d'hôte. Les autres étapes sont ignorées
-> en mode réel (et signalées) jusqu'aux itérations suivantes.
+> **État : itération 4** — simulation par défaut ; **mode réel** disponible pour les sessions
+> locales, les programmes Microsoft, OneDrive, les désinstallations de logiciels, l'alimentation,
+> IPv6, les logiciels de la section 8 et le nom d'hôte. Utilitaire constructeur, installation
+> d'Office et mises à jour : ignorés en mode réel (et signalés) jusqu'aux itérations suivantes.
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
 
 ## Pour le technicien

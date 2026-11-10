@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.5 — itérations 0 à 3 livrées, itérations 4 à 7 à venir
+- **Version** : 0.6 — itérations 0 à 4 livrées, itérations 5 à 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -759,6 +759,16 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - `Invoke` de `RemoveLocalAccounts`, `RemoveMicrosoftApps`, `RemoveOneDrive`, `UninstallSoftware` (silencieux puis assistants).
 - **Sortie** : étapes 2 à 5 réelles ; recette sur un poste avec Office C2R, Office MSI 2016, Teams classique et nouveau, OneDrive peuplé, deux comptes locaux.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-4`). Écarts et précisions :
+
+- **Emplacement des profils lu dans le registre** (`System/Profiles.ps1`, `Get-ProfileLocation` : racine `ProfilesDirectory`, profil courant, profil `Default`). Le relevé du poste le mémorise (`Snapshot.Profiles`) et chaque `Invoke` le relit juste avant de supprimer : la garde de chemin ne se fie jamais à une racine déduite du chemin à supprimer (l'étape OneDrive de l'itération 2 la déduisait encore, corrigé).
+- **`Remove-GuardedFolder`** : seul point de suppression récursive, toujours derrière `Test-SafeProfilePath` ; testé sur de vrais dossiers dans le dossier de test de Pester.
+- **Comptes** : `Remove-LocalAccountWithProfile` refuse un SID qui n'est pas celui d'un compte local (`S-1-5-21-…`) et un profil chargé (session ouverte) ; supprime l'instance `Win32_UserProfile` (dossier et clé `ProfileList`) puis le compte ; signale un dossier resté sur le disque. L'étape revérifie compte protégé et garde de chemin avec l'état relu sur le poste.
+- **Programmes Microsoft** : ODT (`Initialize-OdtFolder` télécharge `setup.exe` si absent et vérifie la signature Microsoft à chaque fois ; `Invoke-Odt` écrit le XML à côté) ; `Remove-AppxEverywhere` (tous les utilisateurs + paquet provisionné, nom validé sans joker) ; Teams Machine-Wide par code produit MSI (`Get-MsiProductCodeByName`, `Uninstall-MsiProduct`, 1605 = déjà absent) ; dossier Teams classique du **profil connecté seulement** (QO2 tranchée provisoirement). Les applications concernées (`olk`, `ms-teams`, `Teams`, `OneDrive`) sont fermées avant retrait (`Stop-ProcessByName`).
+- **OneDrive** : chaque installateur trouvé (System32, SysWOW64, Program Files avec `/allusers`, LocalAppData) ; clé `Run` du profil par défaut retirée en chargeant sa ruche, **toujours déchargée** même en cas d'erreur (testé). Les fichiers « à la demande » non téléchargés sont perdus avec le dossier : c'est le sens de la case, mais à rappeler en recette.
+- **Logiciels** : `Invoke-UninstallCommand` (msiexec toujours pris dans System32, 1605 accepté ; assistant affiché et attendu ; repli `Invoke-CmdLine` = `cmd.exe /d /c` tracé en `ATTN`, DEC8). **Ajout** : après la commande, `Wait-UninstallEntryRemoval` attend jusqu'à 2 min la disparition du logiciel de la liste (les désinstalleurs NSIS rendent la main avant d'avoir fini) ; s'il est toujours là (assistant annulé), l'action est en échec. Un logiciel sans commande de désinstallation produit un avertissement et aucune action.
+- **Vérifié** : 805 tests Pester verts, PSScriptAnalyzer sans avertissement ; poste de développement intact après les tests (OneDrive, comptes, applications du Store, programmes). **Aucune exécution réelle sur le poste de développement.**
+
 ### Itération 5 — Utilitaires constructeurs
 
 - `Prefetch` (E3), `Select-DotNetRequirement` branché (E5), éléments `Install` multiples (E6, Lenovo), `Update` structuré (D9).
@@ -854,6 +864,6 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | # | Question | Itération |
 |---|---|---|
 | QO1 | « Outlook classique » coché **sans** « Office Click-to-Run » : faut-il retirer Outlook seul (ODT suppression ciblée) ? Aujourd'hui la case est purement informative (« retiré avec la suite Office »). | 4 |
-| QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? | 4 |
+| QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? **Provisoirement : profil connecté seulement** (itération 4). | 4 |
 | QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. | 7 |
 | QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`). | 5 |
