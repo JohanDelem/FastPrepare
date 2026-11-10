@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; recette sur postes de test en attente
+- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; recette sur postes de test en attente
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -447,6 +447,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Get-WingetPackageVersion -Id -Source` — version proposée par winget (`winget show --id … --exact`), nécessaire au choix du runtime .NET de Dell ; analyse tolérante à la langue de sortie (recherche de la ligne par motif `Version`/`Version :`).
 - `Get-WingetPackageInfo -Id -Source` (it. 9) — `{ Name, Version }` du paquet par `winget show` : **ne télécharge ni n'installe rien**. Paquet introuvable (`0x8A150014`) → erreur « paquet introuvable dans la source <source> ». Utilisée par le test du catalogue.
 - (it. 10) **Tous les appels à winget** (`show`, `install`) passent par une fonction privée `Invoke-Winget` : si winget répond `0x8A15000F` (« données requises par la source manquantes », source jamais initialisée ou abîmée pour le compte qui exécute l'outil), elle lance **une fois** `winget source update`, puis réessaie ; si l'erreur persiste, message lisible qui nomme le compte et donne les commandes de réparation (`winget source reset --force`, `winget source update`), **sans les lancer** (DEC20).
+- (it. 11) **Seconde réparation automatique** : si `winget source update` ne suffit pas, `Install-WingetSourcePackage` télécharge le paquet de données de la source (`source.msix`, lien `Winget.SourcePackage.Url` de `config.json`), vérifie sa signature (`Winget.SourcePackage.ExpectedSigner`, « CN=Microsoft Corporation »), l'installe pour le compte courant (`Add-AppxPackage`), le supprime du cache, puis nouvel essai (DEC21). Les fonctions winget reçoivent ces paramètres par `-SourceRepair` (objet construit par `Get-WingetSourceRepair -Context`, `Application/AppContext.ps1`) : un runspace d'arrière-plan n'hérite d'aucun état de module.
 - `Test-WingetSource -Source` (it. 10) — la source s'ouvre-t-elle ? Recherche d'un terme qui ne correspond à aucun paquet (`winget search`) : « aucun résultat » prouve que la source répond, sans télécharger d'installateur. Même réparation automatique unique que ci-dessus. Renvoie `{ Ready, Error }`.
 - `Save-WingetPackage -Id -Source -Destination` — `winget download` vers le cache (téléchargement anticipé ; non disponible pour la source `msstore`, cf. DEC11).
 
@@ -941,6 +942,16 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - **Non reproduit sur le poste de développement** : la réparation elle-même (le compte administrateur concerné n'est pas accessible depuis la session de développement) ; elle est couverte par des tests à winget simulé et par la recette « Itération 10 ».
 - **Vérifié** : 1250 tests Pester verts, PSScriptAnalyzer sans avertissement ; relevé réel (`Source winget accessible`) et test réel des trois logiciels du catalogue (Adobe Acrobat Reader, Microsoft Teams, Visual Studio Code : paquets trouvés), en simulation, sans téléchargement ni installation.
 
+### Itération 11 — Réparation complète de la source winget, sans intervention
+
+**Constat** (recette de l'itération 10) : sur le compte administrateur concerné, la réparation automatique par `winget source update` puis `winget source reset --force` lancé à la main n'ont rien changé ; le diagnostic a montré que le paquet de données de la source (`Microsoft.Winget.Source`) était **absent du compte**. Son installation à la main (`Add-AppxPackage -Path …/source.msix`) a tout réparé. Objectif : que FastPrepare le fasse seul.
+
+- `config.json` : bloc facultatif `Winget.SourcePackage { Url, ExpectedSigner }` (`ConfigVersion` inchangée).
+- `Infrastructure/System/Winget.ps1` : `Install-WingetSourcePackage` ; `Invoke-Winget` enchaîne mise à jour, puis installation du paquet, puis nouvel essai ; paramètre `-SourceRepair` sur les fonctions winget.
+- `Application/AppContext.ps1` : `Get-WingetSourceRepair -Context` ; appelants (relevé, test du catalogue, préchargement, étapes 06 et 08) passent `-SourceRepair`.
+- Tests ; recette « Itération 11 ».
+- **Sortie** : sur un compte où la source winget est absente ou abîmée, l'outil la répare seul (journalisé) au démarrage, sans aucune commande à taper.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -954,6 +965,7 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 | 8 | 11 (hors cahier) | F1 | LocalAccountCreation, CreateLocalAccount.step, NewLocalAccountSection |
 | 9 | 8 + onglet Réglages (hors cahier) | F2 | SoftwareCatalog (Core, Infrastructure, Application), onglet Réglages |
 | 10 | 5, 8 (winget) | — (correctif, DEC20) | Winget (Infrastructure), MachineSnapshot |
+| 11 | 5, 8 (winget) | — (correctif, DEC21) | Winget (Infrastructure), AppContext |
 
 ---
 
@@ -1031,6 +1043,7 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC18 | « Tester sans télécharger ni installer » : que vérifier ? | **winget** : winget présent, `winget show --id <id> --exact --source <source>` trouve le paquet (nom et version affichés). **Lien direct** : requête d'en-têtes (`HEAD`, repli `GET` interrompu après les en-têtes) : réponse 200 après redirections, en `https`, type de contenu qui n'est pas une page web (`text/html` = lien vers une page de téléchargement, refusé), taille annoncée. **Non vérifiable sans télécharger**, et donc rappelé dans le résultat : signature et éditeur, empreinte, options silencieuses (elles le sont à l'installation, et une erreur y est explicite). Le test est journalisé. | 9 |
 | DEC19 | Modifier le catalogue : dans quel mode, à quel moment ? | **Dans les deux modes** : le catalogue est sur la clé, pas sur le poste préparé ; la simulation garantit « aucune modification du poste », pas « aucune écriture sur la clé » (le journal y est déjà écrit). **Jamais pendant une exécution** (onglet désactivé, comme le formulaire). Enregistrer une entrée **non testée** (ou modifiée depuis son dernier test) est permis — un technicien hors ligne doit pouvoir préparer sa clé — mais demande confirmation. | 9 |
 | DEC20 | Source winget inutilisable (`0x8A15000F`) : que fait l'outil ? | **Une réparation automatique, la plus légère** : `winget source update` puis un nouvel essai, au démarrage comme à chaque appel (elle ne fait que rafraîchir le catalogue de winget). **Jamais `winget source reset --force` automatiquement** : il supprime aussi les sources ajoutées par une organisation ; c'est au technicien de le décider, le message lui donne les commandes. Constat qui justifie de ne pas s'arrêter à la mise à jour dans le message : sur le poste de développement, `source update` seul n'a pas suffi. | 10 |
+| DEC21 | `winget source update` ne suffit pas (constaté : paquet `Microsoft.Winget.Source` absent du compte administrateur, réparé à la main par `Add-AppxPackage … source.msix`) : FastPrepare doit-il le faire seul ? | **Oui, en seconde tentative automatique**, pour qu'aucune commande ne soit à taper : téléchargement HTTPS du paquet désigné dans `config.json` (lien jamais dans le code), **signature Authenticode valide et émise pour « CN=Microsoft Corporation » exigée** avant installation, installation pour le seul compte courant, fichier supprimé ensuite. Toujours **pas** de `winget source reset --force` automatique (il supprime les sources d'une organisation). Bloc `Winget.SourcePackage` facultatif : absent, la seconde tentative est sautée et le message le dit. | 11 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 
