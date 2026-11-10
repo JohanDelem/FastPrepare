@@ -1,0 +1,105 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="Catalogue des logiciels (section 8)"/>
+    <TextBlock Name="TxtSwIntro" Style="{StaticResource Hint}" Margin="0,0,0,10"/>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="300"/>
+        <ColumnDefinition Width="20"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Liste des logiciels du catalogue -->
+      <DockPanel Grid.Column="0">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+          <Button Name="BtnSwNew" Content="Nouveau logiciel" Padding="12,4" Margin="0,0,8,0"/>
+          <Button Name="BtnSwRemove" Content="Retirer" Padding="12,4" IsEnabled="False"/>
+        </StackPanel>
+        <ListBox Name="LstSw" MinHeight="320" BorderBrush="{StaticResource BorderBrush}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+      </DockPanel>
+
+      <!-- Formulaire -->
+      <StackPanel Grid.Column="2">
+        <TextBlock Name="TxtSwFormTitle" Style="{StaticResource Sub}" Text="Nouveau logiciel"/>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="Libellé affiché" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwLabel" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="80"/>
+          <TextBlock Grid.Row="1" Text="Identifiant interne" VerticalAlignment="Center"/>
+          <TextBlock Name="TxtSwId" Grid.Row="1" Grid.Column="1" Style="{StaticResource Tech}" Margin="0,4"/>
+        </Grid>
+        <CheckBox Name="ChkSwDefault" Content="Coché par défaut dans la section 8"/>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+          <TextBlock Text="Type d'installation" Width="190" VerticalAlignment="Center"/>
+          <RadioButton Name="RbSwWinget" GroupName="SwType" Content="Paquet winget" IsChecked="True" Margin="0,0,16,0" VerticalContentAlignment="Center"/>
+          <RadioButton Name="RbSwDownload" GroupName="SwType" Content="Lien direct (.exe ou .msi)" VerticalContentAlignment="Center"/>
+        </StackPanel>
+
+        <Grid Name="GrdSwWinget">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="Identifiant winget" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwWingetId" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Ex. 7zip.7zip — visible avec « winget search »"/>
+          <TextBlock Grid.Row="1" Text="Source" VerticalAlignment="Center"/>
+          <ComboBox Name="CmbSwSource" Grid.Row="1" Grid.Column="1" Height="28" Margin="0,2" Width="160" HorizontalAlignment="Left">
+            <ComboBoxItem Content="winget" IsSelected="True"/>
+            <ComboBoxItem Content="msstore"/>
+          </ComboBox>
+          <TextBlock Grid.Row="2" Text="Options d'installation (facultatif)" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          <TextBox Name="TxtSwOverride" Grid.Row="2" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Remplace les options silencieuses de winget (--override), ex. /S"/>
+        </Grid>
+
+        <Grid Name="GrdSwDownload" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="Lien de téléchargement" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwUrl" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Lien https:// direct vers l'installateur, pas vers une page web"/>
+          <TextBlock Grid.Row="1" Text="Nom du fichier" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwFileName" Grid.Row="1" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Ex. setup.exe ou outil.msi"/>
+          <TextBlock Grid.Row="2" Text="Arguments silencieux" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwArguments" Grid.Row="2" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Ex. /S, /VERYSILENT /NORESTART ; pour un .msi, ajoutés après /qn /norestart"/>
+          <TextBlock Grid.Row="3" Text="Éditeur attendu (signature)" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwSigner" Grid.Row="3" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Nom figurant dans le certificat de signature, ex. Igor Pavlov"/>
+          <TextBlock Grid.Row="4" Text="Empreinte SHA-256 (facultatif)" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwSha256" Grid.Row="4" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="64"/>
+        </Grid>
+
+        <TextBlock Style="{StaticResource Sub}" Margin="0,10,0,2" Text="Commande exécutée lors d'une installation réelle"/>
+        <TextBlock Name="TxtSwCommand" Style="{StaticResource Tech}" Margin="0,0,0,6"/>
+        <TextBlock Name="TxtSwProblems" Style="{StaticResource Hint}" Foreground="{StaticResource ErrorBrush}"/>
+
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+          <Button Name="BtnSwTest" Content="Tester (sans télécharger ni installer)" Padding="12,6" Margin="0,0,8,0"/>
+          <Button Name="BtnSwSave" Content="Enregistrer" Width="130" Height="32" Style="{StaticResource Primary}" Margin="0,0,8,0"/>
+          <Button Name="BtnSwCancel" Content="Annuler les modifications" Padding="12,6"/>
+        </StackPanel>
+        <StackPanel Name="PnlSwTest" Margin="0,10,0,0"/>
+      </StackPanel>
+    </Grid>
+  </StackPanel>
+</Border>

@@ -3,7 +3,9 @@
         Style="{StaticResource Section}">
   <StackPanel>
     <TextBlock Style="{StaticResource H2}" Text="8 · Installation logiciels"/>
-    <!-- Cases générées depuis config.Software -->
+    <!-- Cases générées depuis le catalogue software.json (onglet Réglages) -->
     <StackPanel Name="PnlSoftware"/>
+    <TextBlock Name="TxtSoftwareNone" Style="{StaticResource Hint}" Visibility="Collapsed"
+               Text="Aucun logiciel au catalogue : ajoutez-en dans l'onglet Réglages."/>
   </StackPanel>
 </Border>
