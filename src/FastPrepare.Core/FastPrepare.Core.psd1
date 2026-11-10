@@ -38,7 +38,11 @@
         'Get-LocalAccountPasswordError',
         'Get-LocalAccountGroupSid',
         'Format-LocalAccountSummary',
-        'Clear-SelectionSecret'
+        'Clear-SelectionSecret',
+        'ConvertTo-SoftwareEntry',
+        'Get-SoftwareEntryError',
+        'New-SoftwareId',
+        'Format-SoftwareInstallCommand'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

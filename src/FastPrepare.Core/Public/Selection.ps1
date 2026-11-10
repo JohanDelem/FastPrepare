@@ -54,7 +54,9 @@ function Test-Selection {
     param(
         [Parameter(Mandatory)]$Selection,
         [Parameter(Mandatory)]$Config,
-        [Parameter(Mandatory)]$Snapshot
+        [Parameter(Mandatory)]$Snapshot,
+        # Catalogue des logiciels de la section 8 (software.json, itération 9).
+        [AllowEmptyCollection()][object[]]$SoftwareCatalog = @()
     )
 
     $problems = New-Object System.Collections.Generic.List[string]
@@ -97,7 +99,7 @@ function Test-Selection {
         }
     }
 
-    $knownSoftware = @(@($Config.Software) | ForEach-Object { [string]$_.Id })
+    $knownSoftware = @(@($SoftwareCatalog) | ForEach-Object { [string]$_.Id })
     foreach ($id in @($Selection.ExtraSoftware.Ids)) {
         if ($knownSoftware -notcontains $id) { $problems.Add("Logiciel inconnu (section 8) : '$id'") }
     }
