@@ -50,6 +50,7 @@
         'Assert-SoftwareCatalog',
         'Save-SoftwareCatalog',
         'Get-WingetPackageInfo',
+        'Test-WingetSource',
         'ConvertFrom-WingetShowDetail',
         'Test-RemoteFile',
         'Remove-AppxEverywhere',

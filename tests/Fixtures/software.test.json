@@ -1,0 +1,16 @@
+{
+  "CatalogVersion": 1,
+  "Software": [
+    {
+      "Id": "adobe-reader",
+      "Label": "Adobe Acrobat Reader (64 bits)",
+      "DefaultChecked": true,
+      "Install": {
+        "Type": "winget",
+        "Id": "Adobe.Acrobat.Reader.64-bit",
+        "Source": "winget",
+        "Override": "-sfx_nu /sAll /rs /msi"
+      }
+    }
+  ]
+}

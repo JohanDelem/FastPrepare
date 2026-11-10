@@ -2,12 +2,21 @@
     winget (« Programme d'installation d'application »).
     Cahier des charges : vérifié au démarrage, réenregistré si absent
     (Add-AppxPackage -RegisterByFamilyName), sinon installé depuis un paquet .msixbundle de la clé.
+    Tous les appels à winget passent par Invoke-Winget, qui répare une fois une source inutilisable
+    (itération 10, DEC20).
 #>
 
 # Codes de sortie de winget traités comme un succès : paquet déjà installé, pas de mise à jour applicable.
 $script:WingetAlreadyInstalledCodes = @(0x8A150061, 0x8A15002B)
 # Codes de sortie de winget signalant un redémarrage nécessaire.
 $script:WingetRebootCodes = @(0x8A150109, 3010, 1641)
+# « Aucun paquet ne correspond » (APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND, 0x8A150014).
+$script:WingetNoPackageFound = -1978335212
+# « Données requises par la source manquantes » (APPINSTALLER_CLI_ERROR_SOURCE_DATA_MISSING, 0x8A15000F) :
+# source jamais initialisée ou abîmée pour le compte qui exécute l'outil.
+$script:WingetSourceDataMissing = -1978335217
+# Terme recherché pour vérifier qu'une source s'ouvre : il ne correspond à aucun paquet.
+$script:WingetSourceProbeQuery = 'fastprepare-sonde-source'
 
 function Test-Winget {
     <# Vrai si winget.exe est disponible pour le compte courant. #>
@@ -72,8 +81,7 @@ function Install-WingetPackage {
     )
 
     $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override -Version $Version
-    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
-    $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList $arguments -TimeoutMinutes $TimeoutMinutes `
+    $result = Invoke-Winget -ArgumentList $arguments -TimeoutMinutes $TimeoutMinutes `
         -SuccessExitCode (@(0) + $script:WingetAlreadyInstalledCodes) -RebootExitCode $script:WingetRebootCodes -Log $Log
     return [pscustomobject]@{
         RebootRequired   = $result.RebootRequired
@@ -115,8 +123,7 @@ function Get-WingetPackageVersion {
         $Log
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
-    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
-    $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
+    $result = Invoke-Winget -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
         -CaptureOutput -TimeoutMinutes 5 -Log $Log
     return (ConvertFrom-WingetShowOutput -Output $result.Output)
 }
@@ -131,9 +138,6 @@ function ConvertFrom-WingetShowOutput {
     return $match.Groups[1].Value
 }
 
-# « Aucun paquet ne correspond » (APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND, 0x8A150014).
-$script:WingetNoPackageFound = -1978335212
-
 function Get-WingetPackageInfo {
     <#
         Nom et version d'un paquet par « winget show » : ne télécharge ni n'installe rien
@@ -146,8 +150,7 @@ function Get-WingetPackageInfo {
         $Log
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
-    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
-    $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
+    $result = Invoke-Winget -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
         -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 5 -Log $Log
     if ($result.ExitCode -eq $script:WingetNoPackageFound) { throw "paquet « $Id » introuvable dans la source « $Source »" }
     return (ConvertFrom-WingetShowDetail -Output $result.Output -Id $Id)
@@ -165,4 +168,70 @@ function ConvertFrom-WingetShowDetail {
         Name    = $(if ($nameMatch.Success) { $nameMatch.Groups[1].Value } else { '' })
         Version = (ConvertFrom-WingetShowOutput -Output $Output)
     }
+}
+
+function Test-WingetSource {
+    <#
+        Vérifie qu'une source winget s'ouvre pour le compte courant, sans rien télécharger : une
+        recherche sans résultat (« aucun paquet ») prouve que la source répond. Une source
+        inutilisable est réparée une fois (Invoke-Winget). Renvoie { Ready, Error }.
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidatePattern('^[A-Za-z0-9-]+$')][string]$Source = 'winget',
+        $Log
+    )
+    try {
+        [void](Invoke-Winget -ArgumentList ('search --query {0} --source {1} --accept-source-agreements --disable-interactivity' -f $script:WingetSourceProbeQuery, $Source) `
+                -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 3 -Log $Log)
+        return [pscustomobject]@{ Ready = $true; Error = $null }
+    } catch {
+        return [pscustomobject]@{ Ready = $false; Error = $_.Exception.Message }
+    }
+}
+
+function Invoke-Winget {
+    <#
+        Point de passage unique vers winget (par Invoke-ExternalProcess). Source inutilisable
+        (0x8A15000F) : « winget source update » une fois, puis nouvel essai ; si l'erreur persiste,
+        message lisible avec les commandes de réparation, qui ne sont jamais lancées d'office :
+        « winget source reset --force » supprime aussi les sources ajoutées par une organisation (DEC20).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ArgumentList,
+        [int[]]$SuccessExitCode = @(0),
+        [int[]]$RebootExitCode = @(3010, 1641),
+        [switch]$CaptureOutput,
+        [int]$TimeoutMinutes = 60,
+        $Log
+    )
+    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
+    $call = @{
+        FilePath        = $wingetPath
+        ArgumentList    = $ArgumentList
+        SuccessExitCode = @($SuccessExitCode) + $script:WingetSourceDataMissing
+        RebootExitCode  = $RebootExitCode
+        CaptureOutput   = [bool]$CaptureOutput
+        TimeoutMinutes  = $TimeoutMinutes
+        Log             = $Log
+    }
+    $result = Invoke-ExternalProcess @call
+    if ($result.ExitCode -ne $script:WingetSourceDataMissing) { return $result }
+
+    $account = [Environment]::UserName
+    if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Source winget inutilisable pour le compte « $account » (0x8A15000F) : mise à jour des sources (winget source update) puis nouvel essai" }
+    try {
+        [void](Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList 'source update --disable-interactivity' -CaptureOutput -TimeoutMinutes 5 -Log $Log)
+    } catch {
+        if ($Log) { Write-RunLog -Log $Log -Level DEBUG -Message "winget source update : $($_.Exception.Message)" }
+    }
+    $result = Invoke-ExternalProcess @call
+    if ($result.ExitCode -ne $script:WingetSourceDataMissing) {
+        if ($Log) { Write-RunLog -Log $Log -Level OK -Message 'Source winget réparée par la mise à jour' }
+        return $result
+    }
+    $message = ("source winget inutilisable pour le compte « {0} » (0x8A15000F : données requises par la source manquantes), " +
+        "même après « winget source update ». À réparer dans une invite de commandes administrateur ouverte avec ce compte : " +
+        "winget source reset --force, puis winget source update.") -f $account
+    throw $message
 }

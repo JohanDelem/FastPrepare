@@ -934,6 +934,13 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - Tests (`WingetSource.Tests`) ; recette : outil lancé avec un autre compte administrateur.
 - **Sortie** : un problème de source winget est signalé dès le démarrage, réparé automatiquement quand une mise à jour suffit, et sinon expliqué avec les commandes à lancer.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-10`). Précisions :
+
+- **Sonde** : `winget search --query fastprepare-sonde-source --source winget` ; mesurée sur le poste de développement avec une source saine : « aucun paquet » (`0x8A150014`) en 0,8 s, sans téléchargement. Le relevé du poste complet reste d'environ 5 s.
+- **Tests indépendants du catalogue du dépôt** : `New-TestContext` lit désormais `tests/Fixtures/software.test.json` ; les tests échouaient dès qu'un logiciel était ajouté à `software.json`. La validité du `software.json` du dépôt reste testée à part.
+- **Non reproduit sur le poste de développement** : la réparation elle-même (le compte administrateur concerné n'est pas accessible depuis la session de développement) ; elle est couverte par des tests à winget simulé et par la recette « Itération 10 ».
+- **Vérifié** : 1250 tests Pester verts, PSScriptAnalyzer sans avertissement ; relevé réel (`Source winget accessible`) et test réel des trois logiciels du catalogue (Adobe Acrobat Reader, Microsoft Teams, Visual Studio Code : paquets trouvés), en simulation, sans téléchargement ni installation.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |

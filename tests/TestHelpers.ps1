@@ -27,6 +27,7 @@ function New-TestSnapshot {
         PSTypeName          = 'FastPrepare.MachineSnapshot'
         Identity            = [pscustomobject]@{ Manufacturer = 'Dell Inc.'; Model = 'Latitude'; Serial = 'SN0000TEST'; OsLabel = 'Windows 11'; HostName = 'PC-TEST' }
         WingetAvailable     = $true
+        WingetSourceReady   = $true
         Software            = @()
         LocalAccounts       = [pscustomobject]@{
             Removable = @([pscustomobject]@{ Name = 'ancien'; Sid = 'S-1-5-21-1-2-3-1002'; ProfilePath = 'C:\Users\ancien' })
@@ -59,7 +60,8 @@ function New-TestContext {
         Variables    = @{ 'ProgramFiles' = 'C:\Program Files'; 'ProgramFiles(x86)' = 'C:\Program Files (x86)'; 'ProgramData' = 'C:\ProgramData'; 'OdtFolder' = 'C:\ODT'; 'CacheFolder' = $cache }
     }
     $paths | Add-Member -NotePropertyName SoftwareCatalog -NotePropertyValue (Join-Path $Folder 'software.json')
-    # Catalogue du dépôt (software.json), comme au démarrage de l'outil.
-    $catalog = (Read-SoftwareCatalog -Path (Join-Path $script:RepoRoot 'software.json')).Entries
+    # Catalogue de test fixe : les tests ne dépendent pas du software.json du dépôt, que l'onglet
+    # Réglages (ou un technicien) peut modifier ; sa validité est testée à part.
+    $catalog = (Read-SoftwareCatalog -Path (Join-Path $script:RepoRoot 'tests\Fixtures\software.test.json')).Entries
     return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @(); SoftwareCatalog = @($catalog) }
 }
