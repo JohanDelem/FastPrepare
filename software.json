@@ -9,7 +9,32 @@
         "Type": "winget",
         "Id": "Adobe.Acrobat.Reader.64-bit",
         "Source": "winget",
-        "Override": "-sfx_nu /sAll /rs /msi"
+        "Override": "-sfx_nu /sAll /rs /msi",
+        "Scope": "machine"
+      }
+    },
+    {
+      "Id": "microsoft-teams",
+      "Label": "Microsoft Teams",
+      "DefaultChecked": false,
+      "Install": {
+        "Type": "winget",
+        "Id": "Microsoft.Teams",
+        "Source": "winget",
+        "Override": "",
+        "Scope": "machine"
+      }
+    },
+    {
+      "Id": "vscode",
+      "Label": "Visual Studio Code",
+      "DefaultChecked": false,
+      "Install": {
+        "Type": "winget",
+        "Id": "Microsoft.VisualStudioCode",
+        "Source": "winget",
+        "Override": "",
+        "Scope": "machine"
       }
     }
   ]

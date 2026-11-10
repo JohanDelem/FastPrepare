@@ -21,7 +21,7 @@ Register-Step -Id 'install-software' -Section 8 -Title 'Installation de logiciel
     switch ([string]$install.Type) {
         'winget' {
             Assert-WingetAvailable -FamilyName $Context.Config.Winget.FamilyName -OfflineBundle $Context.Paths.WingetBundle -Log $log
-            $result = Install-WingetPackage -Id $install.Id -Source $install.Source -Override ([string]$install.Override) -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $log
+            $result = Install-WingetPackage -Id $install.Id -Source $install.Source -Override ([string]$install.Override) -Scope ([string]$install.Scope) -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $log
             if ($result.AlreadyInstalled) { Write-RunLog -Log $log -Message ('{0} : déjà installé' -f $software.Label) }
             return [pscustomobject]@{ RebootRequired = $result.RebootRequired }
         }

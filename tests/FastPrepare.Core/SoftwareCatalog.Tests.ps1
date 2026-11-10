@@ -82,6 +82,22 @@ Describe 'Get-SoftwareEntryError' {
     }
 }
 
+Describe 'Portée d''installation winget (DEC22)' {
+    It 'normalisée en minuscules, affichée dans la commande' {
+        $entry = New-Winget @{ Scope = 'Machine' }
+        $entry.Install.Scope | Should -Be 'machine'
+        Format-SoftwareInstallCommand -Entry $entry | Should -Be 'winget install --id 7zip.7zip --source winget --scope machine --silent'
+    }
+    It 'vide accepté (choix de winget, entrées antérieures)' {
+        (New-Winget).Install.Scope | Should -Be ''
+        Get-SoftwareEntryError -Entry (New-Winget) | Should -BeNullOrEmpty
+        Format-SoftwareInstallCommand -Entry (New-Winget) | Should -Not -Match 'scope'
+    }
+    It 'valeur inconnue refusée' {
+        (Get-SoftwareEntryError -Entry (New-Winget @{ Scope = 'tous' })) -join '' | Should -Match 'Portée'
+    }
+}
+
 Describe 'New-SoftwareId' {
     It '<Label> → <Expected>' -ForEach @(
         @{ Label = '7-Zip'; Expected = '7-zip' }

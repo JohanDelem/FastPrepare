@@ -76,13 +76,15 @@ function Install-WingetPackage {
         [Parameter(Mandatory)][string]$Source,
         [AllowEmptyString()][string]$Override,
         [AllowEmptyString()][string]$Version,
+        # Portée d'installation (machine, user ; vide = choix de winget).
+        [ValidateSet('', 'machine', 'user')][string]$Scope = '',
         [int]$TimeoutMinutes = 60,
         # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
         $SourceRepair,
         $Log
     )
 
-    $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override -Version $Version
+    $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override -Version $Version -Scope $Scope
     $result = Invoke-Winget -ArgumentList $arguments -TimeoutMinutes $TimeoutMinutes `
         -SuccessExitCode (@(0) + $script:WingetAlreadyInstalledCodes) -RebootExitCode $script:WingetRebootCodes -SourceRepair $SourceRepair -Log $Log
     return [pscustomobject]@{
@@ -99,12 +101,14 @@ function Get-WingetInstallArgument {
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
         [AllowEmptyString()][string]$Override,
-        [AllowEmptyString()][string]$Version
+        [AllowEmptyString()][string]$Version,
+        [ValidateSet('', 'machine', 'user')][string]$Scope = ''
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
     if ($Version -and $Version -notmatch '^[0-9][0-9A-Za-z.\-]*$') { throw "Version winget invalide : '$Version'." }
     $arguments = 'install --id {0} --exact --source {1} --silent --accept-package-agreements --accept-source-agreements --disable-interactivity' -f $Id, $Source
     if ($Version) { $arguments += " --version $Version" }
+    if ($Scope) { $arguments += " --scope $Scope" }
     if ($Override) {
         if ($Override.Contains('"')) { throw "Option --override invalide (guillemet) : $Override" }
         $arguments += ' --override "{0}"' -f $Override
@@ -144,19 +148,23 @@ function ConvertFrom-WingetShowOutput {
 
 function Get-WingetPackageInfo {
     <#
-        Nom et version d'un paquet par « winget show » : ne télécharge ni n'installe rien
-        (test du catalogue des logiciels, DEC18). Renvoie { Name, Version }.
+        Nom, version et installateur d'un paquet par « winget show » : ne télécharge ni n'installe
+        rien (test du catalogue des logiciels, DEC18). -Scope : installateur proposé pour cette
+        portée (DEC22). Renvoie { Name, Version, InstallerFound, InstallerFile }.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
+        [ValidateSet('', 'machine', 'user')][string]$Scope = '',
         # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
         $SourceRepair,
         $Log
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
-    $result = Invoke-Winget -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
+    $arguments = 'show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source
+    if ($Scope) { $arguments += " --scope $Scope" }
+    $result = Invoke-Winget -ArgumentList $arguments `
         -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 5 -SourceRepair $SourceRepair -Log $Log
     if ($result.ExitCode -eq $script:WingetNoPackageFound) { throw "paquet « $Id » introuvable dans la source « $Source »" }
     return (ConvertFrom-WingetShowDetail -Output $result.Output -Id $Id)
@@ -164,15 +172,25 @@ function Get-WingetPackageInfo {
 
 function ConvertFrom-WingetShowDetail {
     <#
-        Nom et version dans la sortie de « winget show » : première ligne « Trouvé <nom> [<id>] »
-        (« Found » en anglais) et ligne « Version: … ». Tolérant à la langue de winget.
+        Sortie de « winget show », tolérante à la langue : nom (première ligne « Trouvé <nom> [<id>] »,
+        « Found » en anglais), version (« Version: … »), installateur proposé. winget répond 0 même
+        quand aucun installateur ne correspond à la portée demandée : sa présence est reconnue à
+        sa ligne d'empreinte SHA-256 (64 caractères hexadécimaux), le fichier à la ligne de lien qui
+        la précède.
     #>
     [CmdletBinding()]
     param([AllowEmptyString()][string]$Output, [Parameter(Mandatory)][string]$Id)
-    $nameMatch = [regex]::Match([string]$Output, ('(?m)^\s*\S+\s+(.+?)\s+\[{0}\]\s*$' -f [regex]::Escape($Id)))
+    $text = [string]$Output
+    $nameMatch = [regex]::Match($text, ('(?m)^\s*\S+\s+(.+?)\s+\[{0}\]\s*$' -f [regex]::Escape($Id)))
+    $installerFound = [regex]::IsMatch($text, '(?mi)^[^\r\n]*SHA256[^\r\n:]*:\s*[0-9a-f]{64}\s*$')
+    $file = ''
+    $urlMatch = [regex]::Match($text, '(?mi)^[^\r\n:]*:\s*(https://\S+)\s*\r?\n[^\r\n]*SHA256[^\r\n:]*:\s*[0-9a-f]{64}')
+    if ($urlMatch.Success) { $file = ([System.Uri]$urlMatch.Groups[1].Value).Segments[-1] }
     return [pscustomobject]@{
-        Name    = $(if ($nameMatch.Success) { $nameMatch.Groups[1].Value } else { '' })
-        Version = (ConvertFrom-WingetShowOutput -Output $Output)
+        Name           = $(if ($nameMatch.Success) { $nameMatch.Groups[1].Value } else { '' })
+        Version        = (ConvertFrom-WingetShowOutput -Output $text)
+        InstallerFound = $installerFound
+        InstallerFile  = $file
     }
 }
 

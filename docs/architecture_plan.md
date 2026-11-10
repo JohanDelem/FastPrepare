@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; recette sur postes de test en attente
+- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; itération 12 : portée d'installation winget (pour tous les utilisateurs) dans le catalogue ; recette sur postes de test en attente
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -125,7 +125,7 @@ Le fichier reste **unique et à la racine** (contrat du cahier, et le technicien
 | C8 | `ManualReminders[]` (liste de libellés). | D12. |
 | C9 | `Execution` : `DefaultMode` (`"Simulation"` ou `"Real"`), `CacheFolder` (`%ProgramData%\FastPrepare\cache`). `Winget` : `FamilyName`, `OfflineBundle` (chemin relatif à la racine de la clé). `Logging` : `Folder` (`logs`). | D13, E2, E3. |
 | C10 | `NewLocalAccount` (**facultatif**, ajouté à l'itération 8) : `{ Administrator, PasswordNeverExpires, MustChangePassword }`, valeurs **par défaut** des cases de la section 11. `ConfigVersion` reste `2` : sans ce bloc, l'outil prend « utilisateur standard, mot de passe qui n'expire pas ». `PasswordNeverExpires` et `MustChangePassword` ne peuvent pas être vrais ensemble (Windows ignorerait le second). Aucun nom de compte ni mot de passe dans la configuration : ils sont saisis à chaque préparation. | F1 ; DEC15. |
-| C11 | **`ConfigVersion: 3`** (itération 9) : `Software[]` quitte `config.json` pour un fichier **`software.json`** à la racine (`{ CatalogVersion: 1, Software: [ … ] }`), désigné par la clé `SoftwareCatalog` (chemin relatif à la racine). Chaque logiciel : `{ Id, Label, DefaultChecked, Install }`, où `Install` est `{ Type: "winget", Id, Source, Override }` ou `{ Type: "download", Url, FileName, Arguments, Sha256, ExpectedSigner }` — le même modèle d'élément que les utilitaires constructeurs (C2). Une configuration en version 2 est refusée avec la consigne de migration. | F2 ; DEC17. |
+| C11 | **`ConfigVersion: 3`** (itération 9) : `Software[]` quitte `config.json` pour un fichier **`software.json`** à la racine (`{ CatalogVersion: 1, Software: [ … ] }`), désigné par la clé `SoftwareCatalog` (chemin relatif à la racine). Chaque logiciel : `{ Id, Label, DefaultChecked, Install }`, où `Install` est `{ Type: "winget", Id, Source, Override, Scope }` (`Scope` depuis l'itération 12 : `machine`, `user` ou vide) ou `{ Type: "download", Url, FileName, Arguments, Sha256, ExpectedSigner }` — le même modèle d'élément que les utilitaires constructeurs (C2). Une configuration en version 2 est refusée avec la consigne de migration. | F2 ; DEC17. |
 
 **Ce qui reste hors configuration** : les règles elles-mêmes (comptes protégés, format du nom d'hôte, stratégies de désinstallation, ordre d'exécution). Elles viennent du cahier, pas de l'exploitation ; les rendre configurables multiplierait les cas à tester sans besoin exprimé.
 
@@ -959,6 +959,22 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - **Non exécuté sur le poste de développement** : l'installation elle-même (la source de la session de développement est saine, et le mode « test seulement » demandé exclut d'installer) ; couverte par des tests à winget et `Add-AppxPackage` simulés, et par la recette « Itération 11 », qui reproduit le défaut.
 - **Vérifié** : 1259 tests Pester verts, PSScriptAnalyzer sans avertissement.
 
+### Itération 12 — Portée d'installation winget dans le catalogue
+
+- `Core/SoftwareCatalog.ps1` : champ `Install.Scope` (normalisé, validé : `machine`, `user` ou vide), affiché dans la commande (`--scope machine`).
+- `Infrastructure/System/Winget.ps1` : `--scope` dans `winget install` et `winget show` ; `ConvertFrom-WingetShowDetail` renvoie aussi `InstallerFound` et `InstallerFile`.
+- `Application/SoftwareCatalog.ps1` : le test échoue si winget ne propose aucun installateur pour la portée choisie ; il affiche le fichier installateur retenu.
+- Onglet Réglages : liste « Portée » (pour tous les utilisateurs par défaut).
+- `software.json` : Adobe Acrobat Reader, Microsoft Teams et Visual Studio Code en `machine`.
+- **Sortie** : un logiciel du catalogue s'installe pour tous les utilisateurs du poste, et le test le garantit avant une exécution réelle.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-12`). Précisions :
+
+- **Comportement de winget vérifié** (lecture seule, `winget show --scope`) : Visual Studio Code `machine` → `VSCodeSetup-x64-1.143.1.exe`, `user` → `VSCodeUserSetup-x64-1.143.1.exe` ; Microsoft Teams : `MSTeams-x64.msix` pour les deux ; Adobe Acrobat Reader et 7-Zip en `user` : code 0 **sans** installateur, d'où la détection par la ligne SHA-256.
+- **Test réel** (simulation, sans téléchargement) : Adobe Acrobat Reader, Microsoft Teams et Visual Studio Code en `machine` réussis avec leur installateur affiché ; contrôles : VS Code en `user` réussi (`VSCodeUserSetup`), Adobe Reader en `user` refusé.
+- **`software.json`** : les deux logiciels ajoutés par le technicien (Microsoft Teams, Visual Studio Code) sont versionnés, et les trois entrées passent en `machine`. Le catalogue de test (`tests/Fixtures/software.test.json`) reste sans portée, pour couvrir les entrées antérieures.
+- **Vérifié** : 1269 tests Pester verts, PSScriptAnalyzer sans avertissement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -973,6 +989,7 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 | 9 | 8 + onglet Réglages (hors cahier) | F2 | SoftwareCatalog (Core, Infrastructure, Application), onglet Réglages |
 | 10 | 5, 8 (winget) | — (correctif, DEC20) | Winget (Infrastructure), MachineSnapshot |
 | 11 | 5, 8 (winget) | — (correctif, DEC21) | Winget (Infrastructure), AppContext |
+| 12 | 8 | — (DEC22) | SoftwareCatalog, Winget, onglet Réglages |
 
 ---
 
@@ -1051,6 +1068,7 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC19 | Modifier le catalogue : dans quel mode, à quel moment ? | **Dans les deux modes** : le catalogue est sur la clé, pas sur le poste préparé ; la simulation garantit « aucune modification du poste », pas « aucune écriture sur la clé » (le journal y est déjà écrit). **Jamais pendant une exécution** (onglet désactivé, comme le formulaire). Enregistrer une entrée **non testée** (ou modifiée depuis son dernier test) est permis — un technicien hors ligne doit pouvoir préparer sa clé — mais demande confirmation. | 9 |
 | DEC20 | Source winget inutilisable (`0x8A15000F`) : que fait l'outil ? | **Une réparation automatique, la plus légère** : `winget source update` puis un nouvel essai, au démarrage comme à chaque appel (elle ne fait que rafraîchir le catalogue de winget). **Jamais `winget source reset --force` automatiquement** : il supprime aussi les sources ajoutées par une organisation ; c'est au technicien de le décider, le message lui donne les commandes. Constat qui justifie de ne pas s'arrêter à la mise à jour dans le message : sur le poste de développement, `source update` seul n'a pas suffi. | 10 |
 | DEC21 | `winget source update` ne suffit pas (constaté : paquet `Microsoft.Winget.Source` absent du compte administrateur, réparé à la main par `Add-AppxPackage … source.msix`) : FastPrepare doit-il le faire seul ? | **Oui, en seconde tentative automatique**, pour qu'aucune commande ne soit à taper : téléchargement HTTPS du paquet désigné dans `config.json` (lien jamais dans le code), **signature Authenticode valide et émise pour « CN=Microsoft Corporation » exigée** avant installation, installation pour le seul compte courant, fichier supprimé ensuite. Toujours **pas** de `winget source reset --force` automatique (il supprime les sources d'une organisation). Bloc `Winget.SourcePackage` facultatif : absent, la seconde tentative est sautée et le message le dit. | 11 |
+| DEC22 | Portée d'une installation winget (constat : sans `--scope`, VS Code s'installe avec `VSCodeUserSetup`, dans le profil du compte **qui lance l'outil** — souvent un compte administrateur, pas l'utilisateur final). | **Champ `Scope` par logiciel winget du catalogue** : `machine` (pour tous les utilisateurs), `user` (compte qui lance l'outil) ou vide (choix de winget, comportement antérieur, conservé pour les entrées existantes). **`machine` par défaut pour un nouveau logiciel** dans l'onglet Réglages : un outil de préparation de poste installe pour le poste. Le test vérifie qu'un installateur existe **pour cette portée** : `winget show --scope` répond 0 même quand aucun installateur ne correspond (constaté pour Adobe Reader et 7-Zip en `user`), donc la présence d'un installateur est détectée par sa ligne SHA-256 (indépendante de la langue) ; le nom du fichier installateur est affiché (ex. `VSCodeSetup-x64-1.143.1.exe`). Les éléments winget des utilitaires constructeurs (`config.json`) ne sont pas concernés pour l'instant. | 12 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 

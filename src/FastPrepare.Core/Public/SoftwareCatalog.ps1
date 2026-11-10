@@ -4,16 +4,18 @@
     et par le formulaire de l'onglet Réglages. Fonctions pures.
 
     Entrée : { Id, Label, DefaultChecked, Install }, Install étant
-      { Type = 'winget'; Id; Source; Override }  ou
+      { Type = 'winget'; Id; Source; Override; Scope }  ou   (Scope : machine, user ou vide)
       { Type = 'download'; Url; FileName; Arguments; Sha256; ExpectedSigner }
     (même modèle d'élément que les utilitaires constructeurs de config.json).
 #>
 
 $script:SoftwareInstallFields = @{
-    winget   = @('Id', 'Source', 'Override')
+    winget   = @('Id', 'Source', 'Override', 'Scope')
     download = @('Url', 'FileName', 'Arguments', 'Sha256', 'ExpectedSigner')
 }
 $script:WingetSources = @('winget', 'msstore')
+# Portée d'installation (DEC22) : vide = choix de winget.
+$script:WingetScopes = @('', 'machine', 'user')
 $script:MaxSoftwareLabelLength = 80
 
 function ConvertTo-SoftwareEntry {
@@ -34,6 +36,7 @@ function ConvertTo-SoftwareEntry {
     foreach ($field in $fields) {
         $value = Get-SoftwareText -Object $install -Name $field
         if ($field -eq 'Sha256') { $value = $value.ToUpperInvariant() }
+        if ($field -eq 'Scope') { $value = $value.ToLowerInvariant() }
         if ($field -eq 'Source' -and -not $value) { $value = 'winget' }
         $normalizedInstall[$field] = $value
     }
@@ -75,6 +78,7 @@ function Get-SoftwareEntryError {
             if (-not $install.Id) { $problems.Add('Identifiant winget : vide') }
             elseif ($install.Id -notmatch '^[A-Za-z0-9][A-Za-z0-9._+\-]*$') { $problems.Add('Identifiant winget : lettres, chiffres, point, tiret, + et _ uniquement (ex. 7zip.7zip)') }
             if ($script:WingetSources -notcontains $install.Source) { $problems.Add(("Source winget : '{0}' ou '{1}' attendu" -f $script:WingetSources[0], $script:WingetSources[1])) }
+            if ($script:WingetScopes -notcontains $install.Scope) { $problems.Add("Portée : « machine », « user » ou vide attendu") }
             if ($install.Override -and $install.Override.Contains('"')) { $problems.Add("Options d'installation : guillemet interdit (elles sont passées entre guillemets à --override)") }
         }
         'download' {
@@ -125,7 +129,9 @@ function Format-SoftwareInstallCommand {
     $install = $Entry.Install
     switch ([string]$install.Type) {
         'winget' {
-            $text = 'winget install --id {0} --source {1} --silent' -f $install.Id, $install.Source
+            $text = 'winget install --id {0} --source {1}' -f $install.Id, $install.Source
+            if ($install.Scope) { $text += ' --scope {0}' -f $install.Scope }
+            $text += ' --silent'
             if ($install.Override) { $text += ' --override "{0}"' -f $install.Override }
             return $text
         }

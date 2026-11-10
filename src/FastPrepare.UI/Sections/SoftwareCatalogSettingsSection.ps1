@@ -24,6 +24,7 @@ Register-UiSection -Id 'software-catalog-settings' -Number 100 -Column Settings 
     }
     $c.ChkSwDefault.Add_Click($onEdit)
     $c.CmbSwSource.Add_SelectionChanged($onEdit)
+    $c.CmbSwScope.Add_SelectionChanged($onEdit)
     $c.RbSwWinget.Add_Checked($onEdit)
     $c.RbSwDownload.Add_Checked($onEdit)
 
@@ -90,6 +91,9 @@ function Open-SoftwareForm {
         $c.TxtSwWingetId.Text = if ($winget) { $install.Id } else { '' }
         $c.CmbSwSource.SelectedIndex = if ($winget -and $install.Source -eq 'msstore') { 1 } else { 0 }
         $c.TxtSwOverride.Text = if ($winget) { $install.Override } else { '' }
+        # Portée : celle de l'entrée ; « pour tous les utilisateurs » pour un nouveau logiciel (DEC22).
+        $scope = if ($winget) { [string]$install.Scope } else { 'machine' }
+        foreach ($scopeItem in $c.CmbSwScope.Items) { if ([string]$scopeItem.Tag -eq $scope) { $c.CmbSwScope.SelectedItem = $scopeItem } }
         foreach ($pair in @(@('TxtSwUrl', 'Url'), @('TxtSwFileName', 'FileName'), @('TxtSwArguments', 'Arguments'), @('TxtSwSigner', 'ExpectedSigner'), @('TxtSwSha256', 'Sha256'))) {
             $c[$pair[0]].Text = if ($isDownload) { [string]$install.($pair[1]) } else { '' }
         }
@@ -113,7 +117,7 @@ function Get-SoftwareFormEntry {
     $install = if ($c.RbSwDownload.IsChecked) {
         [pscustomobject]@{ Type = 'download'; Url = $c.TxtSwUrl.Text; FileName = $c.TxtSwFileName.Text; Arguments = $c.TxtSwArguments.Text; Sha256 = $c.TxtSwSha256.Text; ExpectedSigner = $c.TxtSwSigner.Text }
     } else {
-        [pscustomobject]@{ Type = 'winget'; Id = $c.TxtSwWingetId.Text; Source = [string]$c.CmbSwSource.SelectedItem.Content; Override = $c.TxtSwOverride.Text }
+        [pscustomobject]@{ Type = 'winget'; Id = $c.TxtSwWingetId.Text; Source = [string]$c.CmbSwSource.SelectedItem.Content; Override = $c.TxtSwOverride.Text; Scope = [string]$c.CmbSwScope.SelectedItem.Tag }
     }
     $entry = ConvertTo-SoftwareEntry -InputObject ([pscustomobject]@{ Id = $id; Label = $c.TxtSwLabel.Text; DefaultChecked = [bool]$c.ChkSwDefault.IsChecked; Install = $install })
     return [pscustomobject]@{ Entry = $entry; Problems = @(Get-SoftwareEntryError -Entry $entry -ExistingId $others) }
