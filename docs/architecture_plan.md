@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.3 — itérations 0 et 1 livrées, itérations 2 à 7 à venir
+- **Version** : 0.4 — itérations 0 à 2 livrées, itérations 3 à 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -196,10 +196,9 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┣ 📜ExecutionEngine.ps1
  ┃ ┃ ┣ 📜ExecutionPlan.ps1
  ┃ ┃ ┣ 📜FinalReport.ps1
- ┃ ┃ ┣ 📜InventoryExport.ps1 (repris par ExportInventory.step à l'it. 2)
+ ┃ ┃ ┣ 📜InventoryExport.ps1 (export au démarrage, réutilisé par ExportInventory.step)
  ┃ ┃ ┣ 📜MachineSnapshot.ps1
  ┃ ┃ ┣ 📜Prefetch.ps1
- ┃ ┃ ┣ 📜SelectionSimulation.ps1 🗑️ (transitoire, supprimé à l'it. 2)
  ┃ ┃ ┣ 📜StepOrder.ps1
  ┃ ┃ ┣ 📜StepRegistry.ps1
  ┃ ┃ ┣ 📜FastPrepare.Application.psd1
@@ -726,6 +725,17 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - Les treize fichiers d'étape avec leur `Plan` seulement (`Invoke` non implémenté → l'étape est refusée en mode réel avec un message clair).
 - Suppression de `Invoke-Simulation`.
 - **Sortie** : le journal de simulation contient les mêmes actions qu'aujourd'hui, dans l'ordre du cahier, produites par le plan ; D2 levé.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-2`). Écarts et précisions :
+
+- **Contrat d'étape** (`StepRegistry.ps1`) : le `Plan` renvoie des actions (`New-StepAction -Label -Parameters -Details -Interactive`) et, au besoin, des avertissements (`New-PlanWarning`), journalisés en `ATTN` avant les actions. `Invoke` est facultatif : sans lui, l'action est refusée en mode réel (« pas encore disponible en mode réel », issue `NotImplemented`). Les paramètres d'une action ne contiennent que des données (vérifié par test), car le plan est construit sur le fil de l'interface et exécuté dans un runspace, qui a son propre catalogue d'étapes.
+- **Chargement** : le module `Application` charge les fichiers communs, puis `Steps\*.step.ps1`, puis appelle `Assert-StepCatalog` : une étape absente de `StepOrder.ps1` (ou l'inverse) fait échouer l'import du module.
+- **Moteur** : `Invoke-ExecutionPlan -StepCatalog` accepte un catalogue injecté (tests du comportement en échec sans toucher au système). `Start-ExecutionPlan` l'exécute en arrière-plan ; l'interface verrouille les deux colonnes et affiche « Exécution en cours… » jusqu'à la fin, et demande confirmation si l'on ferme la fenêtre pendant une exécution.
+- **Étape 3 plus fine que la simulation du prototype** : un seul passage ODT de suppression (`New-OdtRemoveXml`, XML recopié dans le journal) pour Click-to-Run et MSI ; Teams en quatre actions (MSI Machine-Wide, dossier local, deux Appx). **QO1** : « Outlook classique » coché sans suppression d'Office produit un avertissement et aucune action. **OneNote** : seule l'application du Store est retirée par sa case ; la version Click-to-Run part avec « Office Click-to-Run » (avertissement sinon).
+- **Étape 1** : aucune action quand l'inventaire a été exporté au démarrage (DEC10) ; le rapport final en donne l'emplacement.
+- **`Test-Selection`** (Core) contrôle la cohérence avant la construction du plan ; une sélection incohérente est refusée.
+- **Journal** : préfixe `[ETAPE 05/13 · section 2]` (contrat §8.2) ; rapport final avec bilan, échecs rappelés un par un, redémarrage nécessaire, inventaire, journal et rappels manuels.
+- **Vérifié** : 623 tests Pester verts, PSScriptAnalyzer sans avertissement ; fenêtre réelle pilotée : 19 actions simulées dans l'ordre du cahier, formulaire verrouillé puis libéré.
 
 ### Itération 3 — Exécution réelle des actions réversibles
 

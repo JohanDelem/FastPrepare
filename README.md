@@ -5,8 +5,8 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 1** — architecture en place, détections réelles en arrière-plan
-> (la fenêtre reste réactive), bouton Lancer **en simulation** (aucune modification du poste).
+> **État : itération 2** — détections réelles en arrière-plan, plan d'exécution unique en
+> 13 étapes ; bouton Lancer **en simulation** (aucune modification du poste).
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
 
 ## Pour le technicien
@@ -39,6 +39,7 @@ Tout se fait dans `config.json` (validé au démarrage, avec un message qui indi
 
 - Architecture, responsabilités par fichier, règles et feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md).
 - Conventions, tests, lint : [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
+- Ajouter une étape d'exécution : un fichier `src\FastPrepare.Application\Steps\<Nom>.step.ps1` + son rang dans `StepOrder.ps1` (plan, §10.1).
 - Recette manuelle sur poste réel : [`docs/recette.md`](docs/recette.md).
 
 ```text
