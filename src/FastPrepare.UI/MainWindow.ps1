@@ -8,6 +8,7 @@ $script:Context = $null
 $script:Shell = $null
 $script:Snapshot = $null
 $script:Running = $false
+$script:ProgressText = $null
 
 function Start-MainWindow {
     <# Construit et affiche la fenêtre ; rend la main à sa fermeture. #>
@@ -124,7 +125,7 @@ function Update-LaunchState {
     <# Lancer est actif si le relevé est prêt et qu'aucune section ne le bloque ; sinon le premier motif est affiché. #>
     $shell = $script:Shell.Controls
     $reason = $null
-    if ($script:Running) { $reason = 'Exécution en cours…' }
+    if ($script:Running) { $reason = if ($script:ProgressText) { $script:ProgressText } else { 'Exécution en cours…' } }
     elseif (-not $script:Snapshot) { $reason = 'Grisé : détection du poste en cours' }
     else {
         foreach ($section in (Get-UiSection)) {
@@ -166,11 +167,26 @@ function Invoke-Launch {
     }
 }
 
+function Set-RunProgress {
+    <# Avancement publié par le moteur (Publish-RunProgress) : barre et texte sous le bouton Lancer. #>
+    param([int]$Current, [int]$Total, [string]$Label)
+    if (-not $script:Running -or $Total -le 0) { return }
+    $shell = $script:Shell.Controls
+    $shell.PbRun.Maximum = $Total
+    $shell.PbRun.Value = $Current - 1
+    $short = if ($Label.Length -gt 70) { $Label.Substring(0, 67) + '…' } else { $Label }
+    $script:ProgressText = 'Action {0} / {1} : {2}' -f $Current, $Total, $short
+    $shell.TxtGoHint.Text = $script:ProgressText
+}
+
 function Set-ExecutionLock {
     <# Verrouille (ou libère) le formulaire pendant une exécution ; le journal reste lisible. #>
     param([bool]$Locked)
     $script:Running = $Locked
+    $script:ProgressText = $null
     $shell = $script:Shell.Controls
+    $shell.PbRun.Value = 0
+    $shell.PbRun.Visibility = if ($Locked) { 'Visible' } else { 'Collapsed' }
     $shell.ColLeft.IsEnabled = -not $Locked
     $shell.ColRight.IsEnabled = -not $Locked
     Update-UiState

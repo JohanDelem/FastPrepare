@@ -87,7 +87,10 @@ function Invoke-UiPumpTick {
 }
 
 function Invoke-UiLogDrain {
-    foreach ($entry in (Receive-RunLogEntry -Log $script:UiPumpLog)) { Add-LogLine -Entry $entry }
+    foreach ($entry in (Receive-RunLogEntry -Log $script:UiPumpLog)) {
+        if ([string]$entry.Level -eq 'PROGRESS') { Set-RunProgress -Current $entry.Current -Total $entry.Total -Label $entry.Line }
+        else { Add-LogLine -Entry $entry }
+    }
 }
 
 function Invoke-UiBackgroundWorkCheck {
