@@ -71,6 +71,25 @@ Describe 'Test-SoftwareCatalogEntry (sans téléchargement ni installation)' {
         ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'Test du logiciel 7-Zip \(sans téléchargement ni installation\) : réussi'
     }
 
+    It 'portée « machine » : installateur affiché ; aucun installateur pour la portée → échec' {
+        Mock @m Get-WingetPackageInfo { [pscustomobject]@{ Name = 'Microsoft Visual Studio Code'; Version = '1.143.1'; InstallerFound = $true; InstallerFile = 'VSCodeSetup-x64-1.143.1.exe' } }
+        $result = Test-SoftwareCatalogEntry -Entry (New-FormEntry -Install @{ Type = 'winget'; Id = 'Microsoft.VisualStudioCode'; Source = 'winget'; Scope = 'machine' }) -Context $context
+        $result.Succeeded | Should -BeTrue
+        ($result.Lines.Text -join ' | ') | Should -Match 'Installateur pour tous les utilisateurs \(machine\) : VSCodeSetup-x64-1.143.1.exe'
+        Should -Invoke @m Get-WingetPackageInfo -Times 1 -ParameterFilter { $Scope -eq 'machine' }
+
+        Mock @m Get-WingetPackageInfo { [pscustomobject]@{ Name = '7-Zip'; Version = '26.06'; InstallerFound = $false; InstallerFile = '' } }
+        $result = Test-SoftwareCatalogEntry -Entry (New-FormEntry -Install @{ Type = 'winget'; Id = '7zip.7zip'; Source = 'winget'; Scope = 'user' }) -Context $context
+        $result.Succeeded | Should -BeFalse
+        ($result.Lines | Where-Object Level -EQ 'ERREUR').Text | Should -Match 'aucun installateur pour le compte qui lance'
+    }
+
+    It 'portée non précisée : avertissement' {
+        $result = Test-SoftwareCatalogEntry -Entry (New-FormEntry) -Context $context
+        $result.Succeeded | Should -BeTrue
+        ($result.Lines | Where-Object Level -EQ 'ATTN').Text | Should -Match 'Portée non précisée'
+    }
+
     It 'winget : paquet introuvable → échec avec le motif' {
         Mock @m Get-WingetPackageInfo { throw 'paquet « x.y » introuvable dans la source « winget »' }
         $result = Test-SoftwareCatalogEntry -Entry (New-FormEntry -Install @{ Type = 'winget'; Id = 'x.y'; Source = 'winget' }) -Context $context
@@ -174,5 +193,20 @@ Describe 'Get-WingetSourceRepair' {
         Mock -ModuleName FastPrepare.Application Get-WingetPackageInfo { [pscustomobject]@{ Name = 'x'; Version = '1' } }
         [void](Test-SoftwareCatalogEntry -Entry $context.SoftwareCatalog[0] -Context $context)
         Should -Invoke -ModuleName FastPrepare.Application Get-WingetPackageInfo -Times 1 -ParameterFilter { $SourceRepair.ExpectedSigner -eq 'CN=Microsoft Corporation' }
+    }
+}
+
+Describe 'Installation winget avec portée (mode réel, simulacres)' {
+    It 'la portée du catalogue est transmise à winget install' {
+        $context = New-TestContext -Folder $TestDrive -Mode Real
+        $context.SoftwareCatalog = @(ConvertTo-SoftwareEntry -InputObject ([pscustomobject]@{ Id = 'vscode'; Label = 'Visual Studio Code'; Install = [pscustomobject]@{ Type = 'winget'; Id = 'Microsoft.VisualStudioCode'; Source = 'winget'; Scope = 'machine' } }))
+        Mock -ModuleName FastPrepare.Application Assert-WingetAvailable { }
+        Mock -ModuleName FastPrepare.Application Install-WingetPackage { [pscustomobject]@{ RebootRequired = $false; AlreadyInstalled = $false } }
+        $selection = New-Selection
+        $selection.ExtraSoftware.Ids = @('vscode')
+        $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
+        $plan.Actions[-1].Label | Should -Match '--scope machine'
+        [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
+        Should -Invoke -ModuleName FastPrepare.Application Install-WingetPackage -Times 1 -ParameterFilter { $Id -eq 'Microsoft.VisualStudioCode' -and $Scope -eq 'machine' }
     }
 }

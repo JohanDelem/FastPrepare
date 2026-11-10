@@ -75,9 +75,16 @@ function Test-SoftwareCatalogEntry {
         try {
             if ($install.Type -eq 'winget') {
                 if (-not (Test-Winget)) { throw "winget indisponible sur ce poste : test impossible (l'installation réelle tentera de le réenregistrer)" }
-                $info = Get-WingetPackageInfo -Id $install.Id -Source $install.Source -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $Context.Log
+                $info = Get-WingetPackageInfo -Id $install.Id -Source $install.Source -Scope ([string]$install.Scope) -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $Context.Log
                 $name = if ($info.Name) { $info.Name } else { $install.Id }
                 & $add 'OK' ('Paquet trouvé : {0}, version {1} (source {2})' -f $name, $info.Version, $install.Source)
+                # winget répond 0 même sans installateur pour la portée demandée (DEC22).
+                $scopeLabel = switch ([string]$install.Scope) { 'machine' { 'pour tous les utilisateurs (machine)' } 'user' { 'pour le compte qui lance l''outil (user)' } default { 'choisi par winget' } }
+                if ($install.Scope -and $install.Source -eq 'winget' -and -not $info.InstallerFound) {
+                    throw ("winget ne propose aucun installateur {0} pour ce paquet : choisissez une autre portée" -f $scopeLabel)
+                }
+                if ($info.InstallerFile) { & $add 'OK' ('Installateur {0} : {1}' -f $scopeLabel, $info.InstallerFile) }
+                if (-not $install.Scope) { & $add 'ATTN' "Portée non précisée : winget peut installer dans le profil du compte qui lance l'outil plutôt que pour tous les utilisateurs" }
                 if ($install.Override) { & $add 'ATTN' "Options d'installation (--override) : vérifiées seulement à l'installation réelle" }
             } else {
                 $head = Test-RemoteFile -Url $install.Url

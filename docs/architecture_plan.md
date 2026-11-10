@@ -968,6 +968,13 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - `software.json` : Adobe Acrobat Reader, Microsoft Teams et Visual Studio Code en `machine`.
 - **Sortie** : un logiciel du catalogue s'installe pour tous les utilisateurs du poste, et le test le garantit avant une exécution réelle.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-12`). Précisions :
+
+- **Comportement de winget vérifié** (lecture seule, `winget show --scope`) : Visual Studio Code `machine` → `VSCodeSetup-x64-1.143.1.exe`, `user` → `VSCodeUserSetup-x64-1.143.1.exe` ; Microsoft Teams : `MSTeams-x64.msix` pour les deux ; Adobe Acrobat Reader et 7-Zip en `user` : code 0 **sans** installateur, d'où la détection par la ligne SHA-256.
+- **Test réel** (simulation, sans téléchargement) : Adobe Acrobat Reader, Microsoft Teams et Visual Studio Code en `machine` réussis avec leur installateur affiché ; contrôles : VS Code en `user` réussi (`VSCodeUserSetup`), Adobe Reader en `user` refusé.
+- **`software.json`** : les deux logiciels ajoutés par le technicien (Microsoft Teams, Visual Studio Code) sont versionnés, et les trois entrées passent en `machine`. Le catalogue de test (`tests/Fixtures/software.test.json`) reste sans portée, pour couvrir les entrées antérieures.
+- **Vérifié** : 1269 tests Pester verts, PSScriptAnalyzer sans avertissement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |

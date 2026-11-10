@@ -190,6 +190,16 @@ puis vérifier que `winget show --id Microsoft.VisualStudioCode --exact --source
 - [ ] `Get-AppxPackage -Name Microsoft.Winget.Source` : présent ; `%ProgramData%\FastPrepare\cache\winget-source` ne contient plus `source.msix`.
 - [ ] Sans réseau au démarrage : message « malgré la mise à jour des sources (installation de son paquet de données : …) », aucune erreur bloquante.
 
+## Itération 12 — portée d'installation winget
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Onglet Réglages, nouveau logiciel winget : portée « Pour tous les utilisateurs (machine) » proposée par défaut ; la commande affichée contient `--scope machine`.
+- [ ] Tester Visual Studio Code en « machine » : « Installateur pour tous les utilisateurs (machine) : VSCodeSetup-x64-… » ; en « user » : `VSCodeUserSetup-x64-…`.
+- [ ] Tester Adobe Acrobat Reader en « user » : échec « winget ne propose aucun installateur … choisissez une autre portée ».
+- [ ] Entrée sans portée (« Choix de winget ») : test réussi avec l'avertissement « Portée non précisée ».
+- [ ] Exécution réelle sur poste de test, outil lancé avec un compte administrateur différent de l'utilisateur final : Visual Studio Code (« machine ») installé dans `C:\Program Files\Microsoft VS Code` et visible depuis la session de l'utilisateur final.
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :

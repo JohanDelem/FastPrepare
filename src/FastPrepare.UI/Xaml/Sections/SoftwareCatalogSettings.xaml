@@ -53,6 +53,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <TextBlock Grid.Row="0" Text="Identifiant winget" VerticalAlignment="Center"/>
           <TextBox Name="TxtSwWingetId" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Ex. 7zip.7zip — visible avec « winget search »"/>
@@ -63,6 +64,13 @@
           </ComboBox>
           <TextBlock Grid.Row="2" Text="Options d'installation (facultatif)" VerticalAlignment="Center" TextWrapping="Wrap"/>
           <TextBox Name="TxtSwOverride" Grid.Row="2" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" ToolTip="Remplace les options silencieuses de winget (--override), ex. /S"/>
+          <TextBlock Grid.Row="3" Text="Portée d'installation" VerticalAlignment="Center"/>
+          <ComboBox Name="CmbSwScope" Grid.Row="3" Grid.Column="1" Height="28" Margin="0,2" Width="320" HorizontalAlignment="Left"
+                    ToolTip="« Compte qui lance l'outil » installe dans le profil de ce compte (souvent un administrateur), pas pour l'utilisateur final.">
+            <ComboBoxItem Content="Pour tous les utilisateurs (machine)" Tag="machine" IsSelected="True"/>
+            <ComboBoxItem Content="Compte qui lance l'outil (user)" Tag="user"/>
+            <ComboBoxItem Content="Choix de winget (non précisé)" Tag=""/>
+          </ComboBox>
         </Grid>
 
         <Grid Name="GrdSwDownload" Visibility="Collapsed">

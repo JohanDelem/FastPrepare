@@ -95,6 +95,28 @@ Describe 'Get-WingetPackageInfo' {
         $info.Version | Should -Be '24.09'
         Should -Invoke @m Invoke-ExternalProcess -Times 1 -ParameterFilter { $ArgumentList -like 'show --id 7zip.7zip --exact --source winget*' -and $ArgumentList -notmatch 'install|download' }
     }
+    It 'installateur détecté (français) : fichier lu à la ligne qui précède l''empreinte' {
+        $output = "Trouvé Microsoft Visual Studio Code [Microsoft.VisualStudioCode]`r`nVersion : 1.143.1`r`nProgramme d'installation :`r`n  Type du programme d’installation : inno`r`n  URL du programme d’installation : https://vscode.download.prss.microsoft.com/dbazure/download/stable/e6/VSCodeSetup-x64-1.143.1.exe`r`n  SHA256 du programme d’installation : $('ab' * 32)`r`n"
+        $detail = ConvertFrom-WingetShowDetail -Output $output -Id 'Microsoft.VisualStudioCode'
+        $detail.InstallerFound | Should -BeTrue
+        $detail.InstallerFile | Should -Be 'VSCodeSetup-x64-1.143.1.exe'
+    }
+    It 'installateur détecté (anglais)' {
+        $output = "Found 7-Zip [7zip.7zip]`nVersion: 26.06`nInstaller:`n  Installer Type: wix`n  Installer Url: https://www.7-zip.org/a/7z2606-x64.msi`n  Installer SHA256: $('CD' * 32)`n"
+        (ConvertFrom-WingetShowDetail -Output $output -Id '7zip.7zip').InstallerFile | Should -Be '7z2606-x64.msi'
+    }
+    It 'aucun installateur pour la portée (winget répond pourtant 0) : InstallerFound faux' {
+        $detail = ConvertFrom-WingetShowDetail -Output "Trouvé 7-Zip [7zip.7zip]`r`nVersion : 26.06`r`nÉditeur : Igor Pavlov`r`n" -Id '7zip.7zip'
+        $detail.InstallerFound | Should -BeFalse
+        $detail.InstallerFile | Should -Be ''
+    }
+    It '--scope transmis à winget show et winget install' {
+        Mock @m Invoke-ExternalProcess { [pscustomobject]@{ ExitCode = 0; Output = "Trouvé 7-Zip [7zip.7zip]`r`nVersion : 26.06"; RebootRequired = $false } }
+        [void](Get-WingetPackageInfo -Id '7zip.7zip' -Source 'winget' -Scope 'machine')
+        Should -Invoke @m Invoke-ExternalProcess -Times 1 -ParameterFilter { $ArgumentList -like 'show --id 7zip.7zip*--scope machine' }
+        Get-WingetInstallArgument -Id '7zip.7zip' -Source 'winget' -Scope 'machine' | Should -Match ' --scope machine'
+        Get-WingetInstallArgument -Id '7zip.7zip' -Source 'winget' | Should -Not -Match 'scope'
+    }
     It 'sortie anglaise' {
         (ConvertFrom-WingetShowDetail -Output "Found Adobe Acrobat Reader (64-bit) [Adobe.Acrobat.Reader.64-bit]`nVersion: 25.001" -Id 'Adobe.Acrobat.Reader.64-bit').Name | Should -Be 'Adobe Acrobat Reader (64-bit)'
     }
