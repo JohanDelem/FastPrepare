@@ -38,14 +38,18 @@ Describe 'Mode réel — étapes de l''itération 3' {
     }
 
     It 'étapes pas encore disponibles en réel : ignorées et signalées, rien d''exécuté' {
+        # Indépendant de l'avancement : on compare au nombre d'actions dont l'étape n'a pas d'Invoke.
         $selection = New-Selection
-        $selection.Office.EditionKey = 'O365'
         $selection.Updates.WindowsUpdate = $true
+        $selection.SystemSettings.Power = $true
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
-        Format-ExecutionPlanSummary -Plan $plan | Should -Match '2 non disponible\(s\) en mode réel'
+        $unavailable = @($plan.Actions | Where-Object { -not $_.RealModeAvailable }).Count
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
-        @($results | Where-Object Outcome -NE 'Skipped').Count | Should -Be 0
-        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match '2 ignorée\(s\)'
+        @($results | Where-Object Outcome -EQ 'Skipped').Count | Should -Be $unavailable
+        if ($unavailable -gt 0) {
+            Format-ExecutionPlanSummary -Plan $plan | Should -Match ('{0} non disponible\(s\) en mode réel' -f $unavailable)
+            ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match ('{0} ignorée\(s\)' -f $unavailable)
+        }
     }
 
     It 'un échec (winget) n''empêche pas les actions suivantes' {

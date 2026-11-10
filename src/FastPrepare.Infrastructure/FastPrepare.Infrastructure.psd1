@@ -58,7 +58,8 @@
         'Get-WingetPackageVersion',
         'ConvertFrom-WingetShowOutput',
         'Get-DotNetDesktopRuntimeVersion',
-        'Find-InstalledExecutable'
+        'Find-InstalledExecutable',
+        'Get-OfficeClickToRunProduct'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

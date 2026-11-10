@@ -189,3 +189,14 @@ Describe 'Désinstallation de logiciels' {
         Wait-UninstallEntryRemoval -DisplayName 'App' -DisplayVersion '2.0' -TimeoutSeconds 1 -PollSeconds 1 | Should -BeTrue
     }
 }
+
+Describe 'Get-OfficeClickToRunProduct' {
+    It 'liste les produits de la configuration Click-to-Run' {
+        Mock -ModuleName FastPrepare.Infrastructure Get-ItemProperty { [pscustomobject]@{ ProductReleaseIds = 'O365BusinessRetail, ProjectProRetail' } }
+        Get-OfficeClickToRunProduct | Should -Be @('O365BusinessRetail', 'ProjectProRetail')
+    }
+    It 'Office Click-to-Run absent : liste vide' {
+        Mock -ModuleName FastPrepare.Infrastructure Get-ItemProperty { $null }
+        @(Get-OfficeClickToRunProduct).Count | Should -Be 0
+    }
+}
