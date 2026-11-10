@@ -74,3 +74,46 @@ function Assert-TrustedExecutable {
         throw ("{0} est signé par « {1} », et non par « {2} » : exécutable non lancé." -f [System.IO.Path]::GetFileName($Path), $subject, $ExpectedSigner)
     }
 }
+
+function Test-RemoteFile {
+    <#
+        Vérifie un lien de téléchargement SANS télécharger le fichier (test du catalogue, DEC18) :
+        requête HEAD, ou GET dont seuls les en-têtes sont lus si le serveur refuse HEAD.
+        Redirections suivies. Renvoie { StatusCode, ContentType, ContentLength, FinalUrl }.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Url)
+    if ($Url -notmatch '^https://') { throw "Lien refusé (https:// attendu) : $Url" }
+    $result = Invoke-HttpHeaderRequest -Url $Url -Method 'HEAD'
+    if (@(403, 405, 501) -contains $result.StatusCode) { $result = Invoke-HttpHeaderRequest -Url $Url -Method 'GET' }
+    return $result
+}
+
+function Invoke-HttpHeaderRequest {
+    <# Une requête dont seuls le code et les en-têtes sont lus ; le corps n'est jamais téléchargé. #>
+    param([string]$Url, [string]$Method)
+    $client = New-Object System.Net.Http.HttpClient
+    try {
+        $client.Timeout = [TimeSpan]::FromSeconds(30)
+        $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::new($Method), $Url)
+        $response = $client.SendAsync($request, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+        try {
+            $content = $response.Content
+            return [pscustomobject]@{
+                StatusCode    = [int]$response.StatusCode
+                ContentType   = $(if ($content -and $content.Headers.ContentType) { [string]$content.Headers.ContentType.MediaType } else { '' })
+                ContentLength = $(if ($content) { $content.Headers.ContentLength } else { $null })
+                FinalUrl      = [string]$response.RequestMessage.RequestUri
+            }
+        } finally {
+            # Ferme la connexion avant la lecture du corps.
+            $response.Dispose()
+        }
+    } catch {
+        $inner = $_.Exception
+        while ($inner.InnerException) { $inner = $inner.InnerException }
+        throw "Lien injoignable ($Url) : $($inner.Message)"
+    } finally {
+        $client.Dispose()
+    }
+}

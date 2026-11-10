@@ -24,7 +24,11 @@
         'Test-PrefetchUseful',
         'Invoke-Prefetch',
         'Start-Prefetch',
-        'Resolve-UtilityDotNetRequirement'
+        'Resolve-UtilityDotNetRequirement',
+        'Set-SoftwareCatalogEntry',
+        'Remove-SoftwareCatalogEntry',
+        'Test-SoftwareCatalogEntry',
+        'Start-SoftwareCatalogTest'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

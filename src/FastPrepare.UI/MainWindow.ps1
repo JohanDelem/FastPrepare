@@ -33,7 +33,7 @@ function Start-MainWindow {
             $fragment = Import-Xaml -Path (Join-Path $xamlFolder $section.XamlFile)
             $section.Root = $fragment.Root
             $section.Controls = $fragment.Controls
-            $column = if ($section.Column -eq 'Left') { $shell.ColLeft } else { $shell.ColRight }
+            $column = switch ($section.Column) { 'Left' { $shell.ColLeft } 'Settings' { $shell.ColSettings } default { $shell.ColRight } }
             [void]$column.Children.Add($fragment.Root)
         } else {
             $section.Controls = $shell
@@ -182,6 +182,21 @@ function Invoke-Launch {
     }
 }
 
+function Publish-SettingsChanged {
+    <#
+        Un réglage vient d'être enregistré (onglet Réglages) : chaque section qui l'affiche se met
+        à jour (OnSettingsChanged), puis l'état de Lancer est recalculé.
+    #>
+    foreach ($section in (Get-UiSection)) {
+        try {
+            Invoke-UiSectionCallback -Section $section -Name OnSettingsChanged -Arguments @($script:Context) | Out-Null
+        } catch {
+            Write-RunLog -Log $script:Context.Log -Level ERREUR -Message ("Mise à jour de la section {0} impossible : {1}" -f $section.Number, $_.Exception.Message)
+        }
+    }
+    Update-UiState
+}
+
 function Complete-Launch {
     <# Fin (ou abandon) d'un lancement : libère le mot de passe de la sélection lancée. #>
     Clear-SelectionSecret -Selection $script:LaunchSelection
@@ -210,6 +225,8 @@ function Set-ExecutionLock {
     $shell.PbRun.Visibility = if ($Locked) { 'Visible' } else { 'Collapsed' }
     $shell.ColLeft.IsEnabled = -not $Locked
     $shell.ColRight.IsEnabled = -not $Locked
+    # Aucun réglage modifié pendant une exécution (DEC19).
+    $shell.ColSettings.IsEnabled = -not $Locked
     Update-UiState
 }
 

@@ -10,3 +10,6 @@ tools/out/
 
 # Documents (cahier des charges et autres PDF) : non versionnés
 *.pdf
+# Copies de secours et fichiers temporaires du catalogue des logiciels (onglet Réglages)
+software.json.bak
+software.json.tmp

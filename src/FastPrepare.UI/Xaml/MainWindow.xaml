@@ -4,9 +4,10 @@
         WindowStartupLocation="CenterScreen" Background="#F3F3F3" FontFamily="Segoe UI" FontSize="13"
         Foreground="{StaticResource TextBrush}">
   <!--
-      Coquille de la fenêtre : en-tête, pied (journal + Lancer), deux colonnes vides et mémo.
-      Les sections sont des fragments séparés (Xaml/Sections), insérés dans ColLeft / ColRight
-      par MainWindow.ps1 selon leur enregistrement (SectionRegistry.ps1).
+      Coquille de la fenêtre : en-tête, pied (journal + Lancer) et deux onglets :
+      « Préparation » (deux colonnes vides et mémo) et « Réglages » (une colonne vide).
+      Les sections sont des fragments séparés (Xaml/Sections), insérés dans ColLeft / ColRight /
+      ColSettings par MainWindow.ps1 selon leur enregistrement (SectionRegistry.ps1).
   -->
   <DockPanel>
     <!-- En-tête : connexion internet (section 0) + poste détecté -->
@@ -48,8 +49,10 @@
       </Grid>
     </Border>
 
+    <TabControl Name="TabMain" Margin="12,8,12,0" Background="Transparent" BorderThickness="0,1,0,0" BorderBrush="#E0E0E0">
+      <TabItem Name="TabPrepare" Header="Préparation" Padding="14,5">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <Grid Margin="20,16,20,4">
+      <Grid Margin="8,12,8,4">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="16"/>
@@ -69,5 +72,13 @@
         </Border>
       </Grid>
     </ScrollViewer>
+      </TabItem>
+      <!-- Réglages enregistrés sur la clé (catalogue des logiciels…), jamais sur le poste préparé. -->
+      <TabItem Name="TabSettings" Header="Réglages" Padding="14,5">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Name="ColSettings" Margin="8,12,8,4"/>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </Window>

@@ -91,6 +91,16 @@ Describe 'Sécurité' {
         ([regex]::Matches($text, 'SecureStringToBSTR')).Count | Should -Be ([regex]::Matches($text, 'ZeroFreeBSTR')).Count
     }
 
+    It 'config.json n''est jamais réécrit par l''outil (DEC17)' {
+        $path = Join-Path $PSScriptRoot '..\src\FastPrepare.Infrastructure\Config\AppConfig.ps1'
+        @(Get-InvokedCommand $path | Where-Object { @('Set-Content', 'Out-File', 'Add-Content', 'Move-Item', 'Copy-Item') -contains $_ }) | Should -BeNullOrEmpty
+        Get-CodeText $path | Should -Not -Match 'WriteAll(Text|Bytes)|::Replace\('
+    }
+
+    It '<Name> : le catalogue des logiciels n''est écrit que par Application/SoftwareCatalog.ps1' -ForEach ($allCode | Where-Object { $_.Name -notlike '*\FastPrepare.Application\SoftwareCatalog.ps1' -and $_.Name -notlike '*\Config\SoftwareCatalog.ps1' }) {
+        @(Get-InvokedCommand $Path | Where-Object { $_ -eq 'Save-SoftwareCatalog' }) | Should -BeNullOrEmpty
+    }
+
     It '<Name> : aucun lien dans le code (les liens vivent dans config.json)' -ForEach $allCode {
         Get-CodeText $Path | Should -Not -Match 'https?://(?!schemas\.microsoft\.com)[\w-]+\.'
     }
