@@ -91,6 +91,7 @@ function New-StepAction {
         StepNumber  = 0
         Section     = 0
         Index       = 0
+        RealModeAvailable = $false
     }
 }
 

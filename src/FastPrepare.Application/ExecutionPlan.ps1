@@ -35,6 +35,7 @@ function New-ExecutionPlan {
                 $item.StepId = $step.Id
                 $item.StepNumber = $rank + 1
                 $item.Section = $step.Section
+                $item.RealModeAvailable = [bool]$step.Invoke
                 $actions.Add($item)
             } else {
                 throw "L'étape '$($step.Id)' a produit un objet inattendu (New-StepAction ou New-PlanWarning attendu)."
@@ -49,6 +50,7 @@ function New-ExecutionPlan {
 
     return [pscustomobject]@{
         PSTypeName    = 'FastPrepare.ExecutionPlan'
+        Mode          = [string]$Context.Mode
         Actions       = $actions.ToArray()
         Warnings      = $warnings.ToArray()
         StepCount     = $order.Count
@@ -67,6 +69,10 @@ function Format-ExecutionPlanSummary {
     $interactive = @($Plan.Actions | Where-Object { $_.Interactive }).Count
     $text = '{0} action(s)' -f $count
     if ($interactive -gt 0) { $text += ', dont {0} avec assistant à suivre à l''écran' -f $interactive }
+    if ($Plan.PSObject.Properties['Mode'] -and $Plan.Mode -eq 'Real') {
+        $unavailable = @($Plan.Actions | Where-Object { -not $_.RealModeAvailable }).Count
+        if ($unavailable -gt 0) { $text += (' · {0} non disponible(s) en mode réel dans cette version, ignorée(s)' -f $unavailable) }
+    }
     if (@($Plan.Warnings).Count -gt 0) { $text += (' · {0} avertissement(s)' -f @($Plan.Warnings).Count) }
     return $text
 }

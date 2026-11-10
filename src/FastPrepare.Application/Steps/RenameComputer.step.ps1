@@ -8,4 +8,12 @@ Register-Step -Id 'rename-computer' -Section 1 -Title 'Changement du nom d''hôt
     if (-not $Selection.HostName.Enabled) { return }
     $name = [string]$Selection.HostName.Name
     New-StepAction -Label ("Nom d'hôte : Rename-Computer -NewName '{0}' (pris en compte au redémarrage)" -f $name) -Parameters @{ Kind = 'RenameComputer'; NewName = $name }
+} -Invoke {
+    param($Action, $Context)
+    $name = [string]$Action.Parameters.NewName
+    $problem = Get-HostNameError -Name $name
+    if ($problem) { throw "nom d'hôte refusé ($problem)" }
+    $result = Rename-LocalComputer -NewName $name -Log $Context.Log
+    if (-not $result.Changed) { Write-RunLog -Log $Context.Log -Message "Le poste s'appelle déjà '$name'" }
+    [pscustomobject]@{ RebootRequired = $result.RebootRequired }
 }

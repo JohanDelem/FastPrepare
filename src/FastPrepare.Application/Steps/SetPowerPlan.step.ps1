@@ -13,4 +13,8 @@ Register-Step -Id 'set-power-plan' -Section 9 -Title 'Mode d''alimentation' -Pla
     New-StepAction -Label ('Alimentation : powercfg /change {0}' -f ($settings -join ', ')) -Parameters @{
         Kind = 'PowerTimeouts'; MonitorMinutes = [int]$m; StandbyMinutes = [int]$s; IncludeBattery = [bool]$power.ApplyOnBattery
     }
+} -Invoke {
+    param($Action, $Context)
+    $p = $Action.Parameters
+    Set-PowerTimeout -MonitorMinutes $p.MonitorMinutes -StandbyMinutes $p.StandbyMinutes -IncludeBattery:([bool]$p.IncludeBattery) -Log $Context.Log
 }
