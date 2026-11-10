@@ -61,6 +61,12 @@ Describe 'Assert-AppConfig' {
         Get-ConfigError $config | Should -Match 'en double'
     }
 
+    It 'codes de redémarrage non entiers : erreur' {
+        $config = Get-TestConfig
+        $config.Utilities.dell.Update.RebootExitCodes = @('un')
+        Get-ConfigError $config | Should -Match 'RebootExitCodes : entiers attendus'
+    }
+
     It 'motif de constructeur invalide : erreur' {
         $config = Get-TestConfig
         $config.Utilities.hp.ManufacturerPattern = 'HP('

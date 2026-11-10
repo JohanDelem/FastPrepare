@@ -174,9 +174,11 @@ function Test-UtilityConfig {
     if (Test-ConfigField $Report $Utility 'Update' $Path Object) {
         [void](Test-ConfigField $Report $Utility.Update 'FilePath' "$Path.Update" NonEmptyString)
         [void](Test-ConfigField $Report $Utility.Update 'Arguments' "$Path.Update" String)
-        if (Test-ConfigField $Report $Utility.Update 'SuccessExitCodes' "$Path.Update" Array) {
-            foreach ($code in @($Utility.Update.SuccessExitCodes)) {
-                if (-not (($code -is [int]) -or ($code -is [long]))) { $Report.Errors.Add("$Path.Update.SuccessExitCodes : entiers attendus") }
+        foreach ($codes in @(@{ Name = 'SuccessExitCodes'; Optional = $false }, @{ Name = 'RebootExitCodes'; Optional = $true })) {
+            if (Test-ConfigField $Report $Utility.Update $codes.Name "$Path.Update" Array -Optional:$codes.Optional) {
+                foreach ($code in @($Utility.Update.($codes.Name))) {
+                    if (-not (($code -is [int]) -or ($code -is [long]))) { $Report.Errors.Add("$Path.Update.$($codes.Name) : entiers attendus") }
+                }
             }
         }
     }

@@ -54,7 +54,11 @@
         'Get-MsiProductCodeByName',
         'Uninstall-MsiProduct',
         'Invoke-UninstallCommand',
-        'Wait-UninstallEntryRemoval'
+        'Wait-UninstallEntryRemoval',
+        'Get-WingetPackageVersion',
+        'ConvertFrom-WingetShowOutput',
+        'Get-DotNetDesktopRuntimeVersion',
+        'Find-InstalledExecutable'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
