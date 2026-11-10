@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.7 — itérations 0 à 5 livrées, itérations 6 et 7 à venir
+- **Version** : 0.8 — itérations 0 à 6 livrées, itération 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -788,6 +788,14 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 
 - `Invoke` de `InstallOffice` (quatre éditions, avec / sans Teams, exclusions).
 - **Sortie** : recette des quatre éditions ; XML de chaque installation présent dans le journal.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-6`). Écarts et précisions :
+
+- **`Invoke` de `install-office`** : `Initialize-OdtFolder` (réutilise le `setup.exe` téléchargé pour la suppression, signature Microsoft revérifiée), `Invoke-Odt -Name installation` (délai 120 min). Le XML est recopié en `INFO` dans le journal (affiché, pas seulement en `DEBUG`).
+- **Vérification ajoutée** : `Get-OfficeClickToRunProduct` lit `ProductReleaseIds` de la configuration Click-to-Run ; un ODT terminé sans erreur mais sans l'ID produit attendu est un échec explicite (« absent, produits trouvés : … »). Format confirmé en lecture sur le poste de développement (`O365BusinessRetail`).
+- **Ordre** : suppression (étape 3) puis installation (étape 7) dans la même exécution, deux passages ODT distincts (testé).
+- **Test rendu indépendant de l'avancement** : le test des étapes ignorées en mode réel compare au nombre d'actions sans `Invoke` au lieu d'un nombre fixe.
+- **Vérifié** : 870 tests Pester verts, PSScriptAnalyzer sans avertissement. Aucune installation réelle sur le poste de développement.
 
 ### Itération 7 — Windows Update, rapport final, livraison
 

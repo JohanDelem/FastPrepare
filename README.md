@@ -5,9 +5,8 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 5** — simulation par défaut ; **mode réel** disponible pour toutes les
-> étapes sauf l'installation d'Office et Windows Update (ignorées et signalées en mode réel
-> jusqu'aux itérations 6 et 7).
+> **État : itération 6** — simulation par défaut ; **mode réel** disponible pour toutes les
+> étapes sauf Windows Update (ignoré et signalé en mode réel jusqu'à l'itération 7).
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
 
 ## Pour le technicien

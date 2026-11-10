@@ -42,3 +42,16 @@ function Invoke-Odt {
     $result = Invoke-ExternalProcess -FilePath $SetupPath -ArgumentList ('/configure "{0}"' -f $configuration) -WorkingDirectory $folder -TimeoutMinutes $TimeoutMinutes -Log $Log
     return [pscustomobject]@{ RebootRequired = $result.RebootRequired; ConfigurationPath = $configuration }
 }
+
+function Get-OfficeClickToRunProduct {
+    <#
+        Produits Office Click-to-Run installés (ProductReleaseIds de la configuration Click-to-Run),
+        ex. « O365BusinessRetail ». Liste vide si Office Click-to-Run n'est pas installé.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param()
+    $configuration = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration' -ErrorAction SilentlyContinue
+    if (-not $configuration -or -not $configuration.PSObject.Properties['ProductReleaseIds']) { return @() }
+    return @(([string]$configuration.ProductReleaseIds).Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
