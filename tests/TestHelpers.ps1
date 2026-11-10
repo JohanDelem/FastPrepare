@@ -58,5 +58,8 @@ function New-TestContext {
         Cache        = $cache
         Variables    = @{ 'ProgramFiles' = 'C:\Program Files'; 'ProgramFiles(x86)' = 'C:\Program Files (x86)'; 'ProgramData' = 'C:\ProgramData'; 'OdtFolder' = 'C:\ODT'; 'CacheFolder' = $cache }
     }
-    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @() }
+    $paths | Add-Member -NotePropertyName SoftwareCatalog -NotePropertyValue (Join-Path $Folder 'software.json')
+    # Catalogue du dépôt (software.json), comme au démarrage de l'outil.
+    $catalog = (Read-SoftwareCatalog -Path (Join-Path $script:RepoRoot 'software.json')).Entries
+    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @(); SoftwareCatalog = @($catalog) }
 }

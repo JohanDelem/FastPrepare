@@ -33,10 +33,15 @@ function New-AppContext {
     $variables = Get-ConfigPathVariable -Config $Config
     $log = New-RunLog -Folder $logFolder -FallbackFolder (Join-Path $env:TEMP 'FastPrepare') -HostName $env:COMPUTERNAME -Stamp $stamp
 
+    $catalogPath = [string]$Config.SoftwareCatalog
+    if (-not [System.IO.Path]::IsPathRooted($catalogPath)) { $catalogPath = Join-Path $Root $catalogPath }
+
     $context = [pscustomobject]@{
         PSTypeName = 'FastPrepare.AppContext'
         Root       = $Root
         Config     = $Config
+        # Catalogue de la section 8 (software.json) ; remplacé quand l'onglet Réglages enregistre.
+        SoftwareCatalog = @()
         Mode       = $mode
         Stamp      = $stamp
         Log        = $log
@@ -53,6 +58,7 @@ function New-AppContext {
             Cache        = $variables['CacheFolder']
             # Variables acceptées dans les chemins de config.json (%ProgramFiles%…).
             Variables    = $variables
+            SoftwareCatalog = $catalogPath
         }
     }
 
@@ -61,6 +67,11 @@ function New-AppContext {
         Write-RunLog -Log $log -Level ATTN -Message "Dossier $logFolder non accessible en écriture : journal et inventaire écrits dans $($log.Folder)"
     }
     Write-RunLog -Log $log -Message ("Mode : {0}" -f $(if ($mode -eq 'Simulation') { 'simulation (aucune modification du poste)' } else { 'réel' }))
+
+    # Un catalogue invalide est refusé au démarrage, comme config.json.
+    $catalog = Read-SoftwareCatalog -Path $catalogPath
+    $context.SoftwareCatalog = @($catalog.Entries)
+    foreach ($warning in @($catalog.Warnings)) { Write-RunLog -Log $log -Level ATTN -Message $warning }
     return $context
 }
 

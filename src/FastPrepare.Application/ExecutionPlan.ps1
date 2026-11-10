@@ -16,7 +16,7 @@ function New-ExecutionPlan {
         [Parameter(Mandatory)]$Context
     )
 
-    $problems = @(Test-Selection -Selection $Selection -Config $Context.Config -Snapshot $Snapshot)
+    $problems = @(Test-Selection -Selection $Selection -Config $Context.Config -Snapshot $Snapshot -SoftwareCatalog @($Context.SoftwareCatalog))
     if ($problems.Count -gt 0) {
         throw ("Sélection incohérente, plan non construit :`n- " + ($problems -join "`n- "))
     }
