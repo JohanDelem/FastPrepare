@@ -1,0 +1,12 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="1 · Changer le nom d'hôte"/>
+    <DockPanel>
+      <CheckBox Name="ChkHost" DockPanel.Dock="Left" Content="Renommer l'hôte" Margin="0,0,12,0" VerticalAlignment="Center"/>
+      <TextBox Name="TxtHost" Height="30" Padding="8,0" VerticalContentAlignment="Center" MaxLength="15" IsEnabled="False"/>
+    </DockPanel>
+    <TextBlock Name="TxtHostHint" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+  </StackPanel>
+</Border>

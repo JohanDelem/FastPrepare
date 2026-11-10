@@ -1,0 +1,9 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="8 · Installation logiciels"/>
+    <!-- Cases générées depuis config.Software -->
+    <StackPanel Name="PnlSoftware"/>
+  </StackPanel>
+</Border>

@@ -1,0 +1,16 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="9 · Configuration des paramètres système"/>
+    <TextBlock Style="{StaticResource Sub}" Text="Désactivation IPv6 (interfaces NIC)"/>
+    <StackPanel Name="PnlNics"/>
+    <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
+      <StackPanel>
+        <TextBlock Style="{StaticResource Sub}" Text="Mode d'alimentation"/>
+        <CheckBox Name="ChkPower" IsChecked="True"/>
+        <TextBlock Name="TxtPowerTech" Style="{StaticResource Tech}"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</Border>

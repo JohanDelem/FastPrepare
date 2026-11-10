@@ -1,0 +1,69 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Préparation de poste" Width="1240" Height="880" MinWidth="1020" MinHeight="620"
+        WindowStartupLocation="CenterScreen" Background="#F3F3F3" FontFamily="Segoe UI" FontSize="13"
+        Foreground="{StaticResource TextBrush}">
+  <!--
+      Coquille de la fenêtre : en-tête, pied (journal + Lancer), deux colonnes vides et mémo.
+      Les sections sont des fragments séparés (Xaml/Sections), insérés dans ColLeft / ColRight
+      par MainWindow.ps1 selon leur enregistrement (SectionRegistry.ps1).
+  -->
+  <DockPanel>
+    <!-- En-tête : connexion internet (section 0) + poste détecté -->
+    <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
+      <DockPanel>
+        <Border Name="BdSimu" DockPanel.Dock="Right" Background="{StaticResource WarningLightBrush}" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
+          <TextBlock Text="MODE SIMULATION — aucune modification du poste" Foreground="{StaticResource WarningBrush}" FontWeight="SemiBold" FontSize="12"/>
+        </Border>
+        <StackPanel Orientation="Horizontal">
+          <Border Name="BdNet" CornerRadius="14" Padding="12,6" Background="{StaticResource NetKoBackgroundBrush}" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Name="NetDot" Width="10" Height="10" Fill="{StaticResource NetKoDotBrush}" VerticalAlignment="Center"/>
+              <TextBlock Name="TxtNet" Margin="8,0,0,0" FontWeight="SemiBold" Foreground="{StaticResource NetKoTextBrush}" Text="Test de la connexion…"/>
+            </StackPanel>
+          </Border>
+          <TextBlock Name="TxtPoste" Margin="24,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" Text="Détection du poste…"/>
+          <TextBlock Name="TxtOs" Margin="24,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Pied : journal + bouton Lancer -->
+    <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="20,12">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="236"/>
+        </Grid.ColumnDefinitions>
+        <RichTextBox Name="RtbLog" Height="130" IsReadOnly="True" Background="{StaticResource LogBackgroundBrush}" Foreground="{StaticResource LogInfoBrush}"
+                     FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="6" VerticalScrollBarVisibility="Auto"/>
+        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+          <Button Name="BtnGo" Content="Lancer" Height="44" FontSize="15" FontWeight="SemiBold" IsEnabled="False" Style="{StaticResource Primary}"/>
+          <TextBlock Name="TxtGoHint" Style="{StaticResource Hint}" TextAlignment="Center" Margin="0,6,0,0" Text="Grisé : détection du poste en cours"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <Grid Margin="20,16,20,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="16"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Name="ColLeft" Grid.Column="0"/>
+        <StackPanel Name="ColRight" Grid.Column="2"/>
+
+        <!-- Mémo : actions manuelles hors outil (texte issu de config.ManualReminders) -->
+        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="#FFF8D6" BorderBrush="#E8C84A" BorderThickness="1" CornerRadius="6" Padding="18,12" Margin="0,0,0,12">
+          <TextBlock Name="TxtMemo" TextWrapping="Wrap" Foreground="#3D3200" FontSize="12.5"/>
+        </Border>
+      </Grid>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

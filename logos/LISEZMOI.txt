@@ -1,1 +1,3 @@
-Logos des cards (facultatif) : dell.png, hp.png, lenovo.png, fujitsu.png
+Logos des cards constructeurs (facultatif).
+Le nom du fichier de chaque marque est indiqué dans config.json : Utilities.<marque>.Logo
+(par défaut : dell.png, hp.png, lenovo.png, fujitsu.png). PNG, hauteur affichée 40 px.

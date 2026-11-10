@@ -1,0 +1,10 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="5 · Installation d'utilitaire constructeur"/>
+    <!-- Cards générées depuis config.Utilities (Controls.ps1, New-SelectableCard) -->
+    <UniformGrid Name="PnlUtilities" Rows="1"/>
+    <TextBlock Name="TxtUtilStatus" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+  </StackPanel>
+</Border>
