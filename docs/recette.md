@@ -95,3 +95,19 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Dossier OneDrive : supprimé seulement si sa case est cochée ; jamais le profil entier.
 - [ ] Logiciels : silencieux d'abord (MSI, Inno, NSIS : plus listés à la fin), assistant ensuite (l'outil attend sa fermeture) ; assistant **annulé** : action en échec « toujours présent ».
 - [ ] Relancer l'outil sur le même poste : tout est « déjà absent », aucune erreur.
+
+## Itération 5 — utilitaire constructeur (poste de test de chaque marque)
+
+> Renseigner d'abord le lien de Thin Installer dans `config.json` (`Utilities.lenovo.Install[1].Url`, et si possible `Sha256`).
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Mode réel : la card de la marque est présélectionnée ; sous les cards, « préchargement en cours… » puis « préchargé » (Dell, Lenovo) ou « installation par winget à l'exécution » (HP, Fujitsu).
+- [ ] Simulation : aucun dossier `%ProgramData%\FastPrepare` créé.
+- [ ] Dell, DCU 5.7.0 : runtime .NET Desktop 8.0.25 installé avant DCU (si aucun 8.0.8–8.0.25 présent) ; DCU démarre.
+- [ ] Dell, DCU 5.7.1 (quand winget la propose) : runtime .NET 10 (≥ 10.0.8).
+- [ ] Dell avec un .NET 8 plus récent que 8.0.25 déjà présent : avertissement dans le journal.
+- [ ] Lenovo : Commercial Vantage installé depuis le Store ; Thin Installer installé silencieusement depuis le fichier préchargé (ligne « Fichier préchargé utilisé ») ; signature Lenovo acceptée.
+- [ ] HP, Fujitsu : outil installé par winget.
+- [ ] MàJ utilitaire (section 7) : outil trouvé, mise à jour lancée sans redémarrage automatique ; **noter le code de sortie** (journal, `[DEBUG]`) avec et sans mise à jour disponible, pour confirmer `SuccessExitCodes` / `RebootExitCodes` (QO4).
+- [ ] Noter le chemin réel de `HPImageAssistant.exe` et `ducmd.exe` après installation par winget.

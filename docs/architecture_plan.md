@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.6 — itérations 0 à 4 livrées, itérations 5 à 7 à venir
+- **Version** : 0.7 — itérations 0 à 5 livrées, itérations 6 et 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -775,6 +775,15 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - `Invoke` de `InstallVendorUtility` et `UpdateVendorUtility`.
 - **Sortie** : recette sur un poste de chaque marque (Dell avec DCU 5.7.0 et 5.7.1, HP, Lenovo, Fujitsu).
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-5`). Écarts et précisions :
+
+- **Préchargement** (`Application/Prefetch.ps1`, E3) : en mode réel, le choix d'une card (clic ou présélection) lance `Start-Prefetch` en arrière-plan ; l'état s'affiche sous les cards (« préchargement en cours… », « préchargé », « installation par winget à l'exécution »). Sont préchargés : les éléments `download` (dans `Paths.Cache`, `%ProgramData%\FastPrepare\cache\<marque>`) et, pour Dell, la version proposée par winget et le runtime .NET correspondant. **En simulation, rien n'est téléchargé** (un fichier dans `%ProgramData%` serait déjà une modification du poste). Le cache est un simple dossier : aucun état partagé entre la fenêtre et le moteur. Décision **DEC13** : les paquets winget ne sont pas préchargés.
+- **Dépendance .NET** (E5) : `Resolve-UtilityDotNetRequirement` (`winget show`, analyse tolérante à la langue de winget, puis `Select-DotNetRequirement`). Runtime déjà dans la plage → rien ; sinon `winget install --version <MaxVersion>` si la plage est bornée (DCU 5.7.0 → 8.0.25), puis vérification dans le registre (`Get-DotNetDesktopRuntimeVersion`). Un runtime plus récent de la même version majeure est signalé (`ATTN`) sans être désinstallé. Version d'outil absente de `config.json` → règle de la version inférieure la plus proche, signalée.
+- **Éléments d'installation multiples** (E6) : Lenovo installe Commercial Vantage (`msstore`) **et** Thin Installer (lien direct, fichier préchargé réutilisé, signature `Lenovo` vérifiée au moment de lancer, arguments silencieux Inno Setup de `config.json`). Lien encore vide : l'élément est en échec explicite, les autres continuent.
+- **Mise à jour** (D9) : `Expand-ConfigPath` avec `Paths.Variables` (`%ProgramFiles%`, `%ProgramFiles(x86)%`, `%ProgramData%`, `%OdtFolder%`, `%CacheFolder%`), puis `Find-InstalledExecutable` (chemin absolu vérifié, sinon PATH puis Program Files, Program Files (x86), `C:\SWSetup` sur trois niveaux). Nouveau champ facultatif **`Update.RebootExitCodes`**.
+- **Codes de sortie dans `config.json`** (QO4, à confirmer en recette) : Dell `0, 500` (aucune mise à jour) / redémarrage `1, 5` ; HP `0, 256, 257` / `3010` ; Lenovo `0` / `3010` ; Fujitsu `0`. Chemins à confirmer : HP et Fujitsu par recherche (`HPImageAssistant.exe`, `ducmd.exe`) ; Lenovo `%ProgramFiles(x86)%\Lenovo\ThinInstaller\ThinInstaller.exe`.
+- **Vérifié** : 859 tests Pester verts, PSScriptAnalyzer sans avertissement. Essai réel en **lecture seule** sur le poste de développement : fenêtre en mode réel sans exécution, clic sur Dell → vrai `winget show` (Dell Command Update 5.7.0 → runtime .NET 8, 8.0.8 à 8.0.25), rien écrit sur le poste.
+
 ### Itération 6 — Office
 
 - `Invoke` de `InstallOffice` (quatre éditions, avec / sans Teams, exclusions).
@@ -858,6 +867,7 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC10 | Export de l'inventaire : au démarrage ou à l'étape 1 ? | **Au démarrage** (comportement actuel, utile même si le technicien ne lance rien) ; l'étape 1 ne réexporte que si l'export initial a échoué. | 2 |
 | DEC11 | Téléchargement anticipé pour la source `msstore` (Lenovo Commercial Vantage). | `winget download` ne prend pas en charge `msstore` : pas de préchargement pour cet élément, installation en ligne à l'étape 06 ; le préchargement porte sur Thin Installer. | 5 |
 | DEC12 | Interface : WPF ou WinForms (les deux sont permis par le cahier) ? | **WPF**, comme l'existant et la maquette validée. | — |
+| DEC13 | Préchargement des paquets winget ? | **Non.** `winget install` ne réutilise pas un dossier produit par `winget download` ; réutiliser l'installateur téléchargé demanderait de connaître les options silencieuses de chacun. Le préchargement porte sur les liens directs et sur la résolution de la version et du runtime .NET. | 5 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 
@@ -866,4 +876,4 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | QO1 | « Outlook classique » coché **sans** « Office Click-to-Run » : faut-il retirer Outlook seul (ODT suppression ciblée) ? Aujourd'hui la case est purement informative (« retiré avec la suite Office »). | 4 |
 | QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? **Provisoirement : profil connecté seulement** (itération 4). | 4 |
 | QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. | 7 |
-| QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`). | 5 |
+| QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`) ou comme redémarrage nécessaire (`Update.RebootExitCodes`). **Valeurs provisoires dans `config.json`** (itération 5), à confirmer en recette. | 5 |
