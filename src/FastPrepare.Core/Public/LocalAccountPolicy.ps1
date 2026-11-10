@@ -31,7 +31,8 @@ function Test-ProtectedAccount {
 function Split-LocalAccount {
     <#
         Sépare les comptes locaux ({ Name, Sid, ProfilePath }) en supprimables et exclus.
-        Renvoie { Removable = comptes ; Excluded = libellés « nom » ou « nom (connecté) » }.
+        Renvoie { Removable = comptes ; Excluded = libellés « nom » ou « nom (connecté) » ;
+        Names = noms de tous les comptes (contrôle des doublons à la création d'une session) }.
     #>
     [CmdletBinding()]
     param(
@@ -41,12 +42,14 @@ function Split-LocalAccount {
 
     $removable = New-Object System.Collections.Generic.List[object]
     $excluded = New-Object System.Collections.Generic.List[string]
+    $names = New-Object System.Collections.Generic.List[string]
     foreach ($a in @($Account)) {
         if ($null -eq $a) { continue }
+        $names.Add([string]$a.Name)
         $reason = Get-ProtectedAccountReason -Sid ([string]$a.Sid) -CurrentSid $CurrentSid
         if ($reason -eq 'connecté') { $excluded.Add(('{0} (connecté)' -f $a.Name)) }
         elseif ($reason) { $excluded.Add([string]$a.Name) }
         else { $removable.Add($a) }
     }
-    return [pscustomobject]@{ Removable = $removable.ToArray(); Excluded = $excluded.ToArray() }
+    return [pscustomobject]@{ Removable = $removable.ToArray(); Excluded = $excluded.ToArray(); Names = $names.ToArray() }
 }

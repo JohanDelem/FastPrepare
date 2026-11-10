@@ -1,11 +1,11 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 1.0 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; recette sur postes de test en attente
+- **Version** : 1.1 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale (première fonctionnalité ajoutée après le cahier) ; recette sur postes de test en attente
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
 
-> **État au 2026-11-10** : toutes les itérations sont livrées ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence.
+> **État au 2026-11-10** : les itérations du cahier (0 à 7) sont livrées ; l'itération 8 ajoute la création d'une session locale (§3.3, DEC14 à DEC16) ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence.
 
 > Ce document est une **vue d'ensemble** : fichiers, responsabilités, noms des fonctions et ce qu'elles font. Il ne contient volontairement **aucun code**. Il décrivait au départ une **cible** : l'outil actuel tient dans un seul script de 1017 lignes écrit d'un trait, il doit devenir un ensemble de modules PowerShell à responsabilité unique, testables, et où l'ajout d'une étape, d'une marque ou d'un logiciel se fait sans toucher au reste. Les §2 et §3 décrivent l'existant et ses écarts ; les §4 à §8 la cible ; le §9 l'ordre de livraison ; le §10 les recettes d'extension ; le §11 les décisions.
 
@@ -124,8 +124,17 @@ Le fichier reste **unique et à la racine** (contrat du cahier, et le technicien
 | C7 | `Power.ApplyOnBattery` (booléen). | E9. |
 | C8 | `ManualReminders[]` (liste de libellés). | D12. |
 | C9 | `Execution` : `DefaultMode` (`"Simulation"` ou `"Real"`), `CacheFolder` (`%ProgramData%\FastPrepare\cache`). `Winget` : `FamilyName`, `OfflineBundle` (chemin relatif à la racine de la clé). `Logging` : `Folder` (`logs`). | D13, E2, E3. |
+| C10 | `NewLocalAccount` (**facultatif**, ajouté à l'itération 8) : `{ Administrator, PasswordNeverExpires, MustChangePassword }`, valeurs **par défaut** des cases de la section 11. `ConfigVersion` reste `2` : sans ce bloc, l'outil prend « utilisateur standard, mot de passe qui n'expire pas ». `PasswordNeverExpires` et `MustChangePassword` ne peuvent pas être vrais ensemble (Windows ignorerait le second). Aucun nom de compte ni mot de passe dans la configuration : ils sont saisis à chaque préparation. | F1 ; DEC15. |
 
 **Ce qui reste hors configuration** : les règles elles-mêmes (comptes protégés, format du nom d'hôte, stratégies de désinstallation, ordre d'exécution). Elles viennent du cahier, pas de l'exploitation ; les rendre configurables multiplierait les cas à tester sans besoin exprimé.
+
+### 3.3 Fonctionnalités ajoutées après le cahier
+
+Chaque fonctionnalité nouvelle suit les recettes du §10 : elle ajoute des fichiers et une ligne dans `StepOrder.ps1`, sans modifier le comportement des étapes du cahier.
+
+| # | Besoin | Cible | Itération |
+|---|---|---|---|
+| F1 | Créer une session locale pour l'utilisateur final : nom de session, nom complet, mot de passe (saisi deux fois), administrateur du poste ou utilisateur standard, mot de passe qui n'expire jamais **ou** à changer à la première ouverture de session. | Section d'interface 11 « Créer une session locale » (colonne gauche, sous la section 4) ; étape `create-local-account` (rang 14, après le renommage, DEC14) ; règles de saisie dans `Core/LocalAccountCreation.ps1` ; création dans `Infrastructure/System/LocalAccounts.ps1` (`New-LocalAccount`). Mot de passe en `SecureString` de bout en bout, jamais journalisé (DEC15). | 8 |
 
 ---
 
@@ -148,6 +157,7 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┃ ┣ 📜DotNetRequirement.ps1
  ┃ ┃ ┃ ┣ 📜HostName.ps1
  ┃ ┃ ┃ ┣ 📜Inventory.ps1
+ ┃ ┃ ┃ ┣ 📜LocalAccountCreation.ps1 (it. 8)
  ┃ ┃ ┃ ┣ 📜LocalAccountPolicy.ps1
  ┃ ┃ ┃ ┣ 📜ManufacturerMatch.ps1
  ┃ ┃ ┃ ┣ 📜OdtConfiguration.ps1
@@ -193,7 +203,8 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┃ ┣ 📜SetPowerPlan.step.ps1
  ┃ ┃ ┃ ┣ 📜UpdateVendorUtility.step.ps1
  ┃ ┃ ┃ ┣ 📜RunWindowsUpdate.step.ps1
- ┃ ┃ ┃ ┗ 📜RenameComputer.step.ps1
+ ┃ ┃ ┃ ┣ 📜RenameComputer.step.ps1
+ ┃ ┃ ┃ ┗ 📜CreateLocalAccount.step.ps1 (it. 8)
  ┃ ┃ ┣ 📜AppContext.ps1
  ┃ ┃ ┣ 📜ExecutionEngine.ps1
  ┃ ┃ ┣ 📜ExecutionPlan.ps1
@@ -217,7 +228,8 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┃ ┣ 📜UpdatesSection.ps1               (7)
  ┃ ┃ ┃ ┣ 📜SoftwareSection.ps1              (8)
  ┃ ┃ ┃ ┣ 📜SystemSettingsSection.ps1        (9)
- ┃ ┃ ┃ ┗ 📜InventorySection.ps1             (10)
+ ┃ ┃ ┃ ┣ 📜InventorySection.ps1             (10)
+ ┃ ┃ ┃ ┗ 📜NewLocalAccountSection.ps1       (11, it. 8)
  ┃ ┃ ┣ 📂Xaml
  ┃ ┃ ┃ ┣ 📂Sections
  ┃ ┃ ┃ ┃ ┗ 📜<une par section>.xaml
@@ -342,7 +354,12 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 
 **`Public/LocalAccountPolicy.ps1`** 🆕 — Comptes que l'outil ne supprime jamais (cahier, section 4). *Pur.*
 - `Test-ProtectedAccount -Sid -CurrentSid` — vrai pour les RID 500 (Administrateur intégré), 501 (Invité), 503 (DefaultAccount), 504 (WDAGUtilityAccount) et pour le compte connecté.
-- `Split-LocalAccount -Account -CurrentSid` — renvoie `{ Removable, Excluded }` ; `Excluded` porte le motif (« connecté », « intégré »).
+- `Split-LocalAccount -Account -CurrentSid` — renvoie `{ Removable, Excluded, Names }` ; `Excluded` porte le motif (« connecté », « intégré ») ; `Names` liste tous les comptes locaux (contrôle des doublons à la création, it. 8).
+
+**`Public/LocalAccountCreation.ps1`** (it. 8) — Règles de saisie d'une session à créer (F1). *Pur* : reçoit les noms existants et le nom du poste, ne lit rien lui-même.
+- `Get-LocalAccountNameError -Name -ExistingName -ComputerName` — motif lisible du refus ou `$null` : vide, plus de 20 caractères (limite Windows), caractère interdit (`" / \ [ ] : ; | = , + * ? < > @`), uniquement des points ou des espaces, point final, nom déjà pris par un compte local (comparaison insensible à la casse), nom identique au nom du poste (actuel ou futur).
+- `Get-LocalAccountPasswordError -Password -Confirmation` — reçoit deux `SecureString` : vide, plus de 127 caractères, confirmation différente. La comparaison se fait en mémoire non managée (`SecureStringToBSTR`, puis `ZeroFreeBSTR` en `finally`) : **aucune chaîne en clair n'est créée**. La politique de mots de passe du poste (longueur, complexité) n'est pas lue ici : Windows la vérifie à la création, et son refus est journalisé en `ERREUR` (DEC15).
+- `Get-LocalAccountGroupSid -Administrator` — SID **bien connus** des groupes : `S-1-5-32-545` (Utilisateurs) toujours, plus `S-1-5-32-544` (Administrateurs) si demandé. Par SID et non par nom : « Administrateurs » / « Administrators » selon la langue de Windows.
 
 **`Public/PathGuard.ps1`** 🆕 — Garde avant toute suppression récursive. *Pur.*
 - `Test-SafeProfilePath -Path -ProfilesRoot -CurrentProfile` — vrai seulement si le chemin est **strictement sous** le dossier des profils (`C:\Users`), n'est ni ce dossier lui-même, ni `Default`, `Default User`, `Public`, `All Users`, ni le profil connecté. Utilisée pour les profils supprimés (section 4) et pour le dossier OneDrive (section 3).
@@ -367,8 +384,9 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 - `ConvertTo-SafeFileName -Value` — caractères hors `[A-Za-z0-9_-]` remplacés par `_` ; valeur vide → `INCONNU`.
 
 **`Public/Selection.ps1`** 🆕 — Schéma de ce que le technicien a coché. *Pur.* C'est **le contrat entre l'interface et le plan**.
-- `New-Selection` — objet vide typé `FastPrepare.Selection` avec une propriété par section : `HostName { Enabled, Name }`, `Software { Items[] }`, `MicrosoftApps { OfficeC2R, OfficeMsi, OutlookClassic, OutlookNew, OneNote, Teams, OneDrive, OneDriveFolder }`, `LocalAccounts { Sids[] }`, `VendorUtility { Key, RunUpdate }`, `Office { EditionKey, WithoutTeams, IncludedApps[] }`, `Updates { WindowsUpdate }`, `ExtraSoftware { Ids[] }`, `SystemSettings { Ipv6DisabledAdapters[], Power }`.
-- `Test-Selection -Selection -Snapshot` — cohérence : un SID choisi existe et n'est pas protégé, une édition existe, « dossier OneDrive » implique « OneDrive »… ; renvoie la liste des incohérences. Appelée avant de construire le plan (défense en profondeur : l'interface ne devrait pas les permettre).
+- `New-Selection` — objet vide typé `FastPrepare.Selection` avec une propriété par section : `HostName { Enabled, Name }`, `Software { Items[] }`, `MicrosoftApps { OfficeC2R, OfficeMsi, OutlookClassic, OutlookNew, OneNote, Teams, OneDrive, OneDriveFolder }`, `LocalAccounts { Sids[] }`, `VendorUtility { Key, RunUpdate }`, `Office { EditionKey, WithoutTeams, IncludedApps[] }`, `Updates { WindowsUpdate }`, `ExtraSoftware { Ids[] }`, `SystemSettings { Ipv6DisabledAdapters[], Power }`, et depuis l'itération 8 `NewLocalAccount { Enabled, Name, FullName, Password (SecureString), Administrator, PasswordNeverExpires, MustChangePassword }`.
+- `Test-Selection -Selection -Snapshot` — cohérence : un SID choisi existe et n'est pas protégé, une édition existe, « dossier OneDrive » implique « OneDrive »… ; renvoie la liste des incohérences. Appelée avant de construire le plan (défense en profondeur : l'interface ne devrait pas les permettre). Pour la session à créer : nom valide (`Get-LocalAccountNameError`, avec les noms existants **moins** les sessions cochées pour suppression, qui sont supprimées avant), mot de passe présent et d'au plus 127 caractères, pas les deux options d'expiration à la fois.
+- `Clear-SelectionSecret -Selection` (it. 8) — libère (`Dispose`) le mot de passe porté par la sélection ; appelée par la fenêtre après chaque rafraîchissement et à la fin d'une exécution. Les actions du plan référencent le même objet : il est libéré aussi.
 
 ### 5.3 `FastPrepare.Infrastructure/Config` et `Logging`
 
@@ -421,6 +439,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 **`System/LocalAccounts.ps1`** 🆕
 - `Get-LocalAccount` — `{ Name, Sid, ProfilePath }` via `Get-LocalUser` + `Win32_UserProfile`, repli `Win32_UserAccount` (existant).
 - `Remove-LocalAccountWithProfile -Sid -ProfilePath` — supprime le profil par l'instance `Win32_UserProfile` (`Remove-CimInstance`, qui nettoie aussi la clé `ProfileList`), puis le compte (`Remove-LocalUser`) ; idempotent (compte déjà absent = succès).
+- `New-LocalAccount -Name -FullName -Password -GroupSid -PasswordNeverExpires -MustChangePassword -Log` (it. 8) — refuse un compte déjà existant ; `New-LocalUser` (compte sans date d'expiration, mot de passe en `SecureString`) ; ajout à chaque groupe par SID (`Add-LocalGroupMember -SID`, indispensable : `New-LocalUser` n'ajoute pas le compte au groupe Utilisateurs, sans lequel l'ouverture de session est refusée) ; « changer à la première ouverture » par `net.exe user <nom> /logonpasswordchg:yes` via `Invoke-ExternalProcess`. **Atomique** : si une étape après la création échoue, le compte est retiré et l'erreur remonte (DEC16). Renvoie `{ Name, Sid }`. Le profil, lui, est créé par Windows à la première ouverture de session.
 
 **`System/Network.ps1`** 🆕
 - `Get-PhysicalAdapter` — `{ Name, Description, Mac, Ipv6Enabled }` (existant).
@@ -461,7 +480,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Assert-StepCatalog` — chaque étape enregistrée figure exactement une fois dans `StepOrder`, et réciproquement ; appelé au chargement du module (une étape oubliée échoue au démarrage, pas en production).
 
 **`StepOrder.ps1`** 🆕 — **Ordre d'exécution du cahier, à un seul endroit.**
-- `Get-StepOrder` — liste ordonnée des identifiants : `export-inventory` (1), `remove-local-accounts` (2), `remove-microsoft-apps` (3), `remove-onedrive` (4), `uninstall-software` (5), `install-vendor-utility` (6), `install-office` (7), `install-software` (8), `disable-ipv6` (9), `set-power-plan` (10), `update-vendor-utility` (11), `run-windows-update` (12), `rename-computer` (13). Le rapport final (14) n'est pas une étape : c'est la conclusion du moteur.
+- `Get-StepOrder` — liste ordonnée des identifiants : `export-inventory` (1), `remove-local-accounts` (2), `remove-microsoft-apps` (3), `remove-onedrive` (4), `uninstall-software` (5), `install-vendor-utility` (6), `install-office` (7), `install-software` (8), `disable-ipv6` (9), `set-power-plan` (10), `update-vendor-utility` (11), `run-windows-update` (12), `rename-computer` (13), puis `create-local-account` (14, ajoutée à l'itération 8, DEC14). Le rapport final n'est pas une étape : c'est la conclusion du moteur.
 
 **`ExecutionPlan.ps1`** 🆕
 - `New-ExecutionPlan -Selection -Snapshot -Context` — `Test-Selection`, puis appelle le `Plan` de chaque étape dans l'ordre, numérote les actions et renvoie `{ Actions[], Warnings[] }`. **Même plan pour la simulation et l'exécution réelle.**
@@ -500,6 +519,7 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 | `UpdateVendorUtility.step.ps1` | 7 | Une action si une card est choisie et la case cochée. | `Expand-ConfigPath` sur `Update.FilePath`, `Invoke-ExternalProcess` avec `SuccessExitCodes`. |
 | `RunWindowsUpdate.step.ps1` | 7 | Une action si cochée. | `Invoke-WindowsUpdatePass`. |
 | `RenameComputer.step.ps1` | 1 | Une action si cochée (revalidée par `Test-HostName`). | `Rename-Computer -NewName -Force` **sans** `-Restart` ; marque « redémarrage requis ». |
+| `CreateLocalAccount.step.ps1` (it. 8) | 11 | Une action si cochée. Libellé : nom, nom complet, groupe, option d'expiration ; **jamais le mot de passe** (ni dans `Label`, ni dans `Details`). Le mot de passe voyage dans `Parameters`, que le moteur ne journalise pas. | Revalide le nom contre les comptes **relus sur le poste** (`Get-LocalAccount`) et le nom du poste, puis `New-LocalAccount` avec `Get-LocalAccountGroupSid`. |
 
 ### 5.8 `FastPrepare.UI` — fenêtre WPF
 
@@ -542,6 +562,7 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 | `SoftwareSection.ps1` (8) | Cases générées depuis `config.Software`. |
 | `SystemSettingsSection.ps1` (9) | Une case par carte réseau ; case alimentation avec libellé calculé (`ApplyOnBattery`). |
 | `InventorySection.ps1` (10) | Bloc N/S + MAC ; bouton Copier ; emplacement de l'export. |
+| `NewLocalAccountSection.ps1` (11, it. 8) | Case « Créer une session locale » qui active le formulaire : nom de session, nom complet, mot de passe et confirmation (`PasswordBox` : le texte n'est jamais lu, seulement `SecurePassword`), « Administrateur du poste », « Le mot de passe n'expire jamais » et « Changer le mot de passe à la première ouverture » (exclusives). Défauts depuis `config.NewLocalAccount`. Motif du refus affiché sous le formulaire ; `Refresh` retient les sessions cochées pour suppression et le futur nom d'hôte (un nom libéré par la section 4 redevient disponible) ; `Validate` bloque Lancer. |
 
 **`LogView.ps1`** 🆕
 - `Add-LogLine -RichTextBox -Entry` — ajoute la ligne colorée selon le niveau (couleurs du thème), défile en bas ; limite l'affichage aux 5 000 dernières lignes (le fichier, lui, garde tout).
@@ -577,13 +598,14 @@ Tests Pester sous `tests/`, en miroir de `src/`. `Core` est testé **sans mock**
 | `Core/OdtConfiguration.Tests.ps1` | XML valide pour chaque édition de `config.valid.json` ; aucune balise contenant « Teams », « PIDKEY » ou « CompanyName » ; « Sans Teams » → `O365BusinessEEANoTeamsRetail` ; refus de « Sans Teams » pour LTSC ; une `ExcludeApp` par case décochée. |
 | `Core/DotNetRequirement.Tests.ps1` | DCU 5.7.0 → .NET 8 dans [8.0.8 ; 8.0.25] ; 5.7.1 → .NET 10 ≥ 10.0.8 ; comparaison numérique (`8.0.9 < 8.0.25`). |
 | `Core/LocalAccountPolicy.Tests.ps1` | RID 500/501/503/504 et compte connecté exclus ; RID 1001 supprimable. |
+| `Core/LocalAccountCreation.Tests.ps1` (it. 8) | Chaque motif de refus du nom (longueur 20/21, caractères interdits, points, doublon insensible à la casse, nom du poste) ; mot de passe vide, trop long, confirmation différente, identique ; SID des groupes ; incohérences détectées par `Test-Selection` ; `Clear-SelectionSecret`. |
 | `Core/PathGuard.Tests.ps1` | `C:\Users`, `C:\Users\Default`, `C:\Users\Public`, le profil connecté, `C:\Users\x\..\..\Windows` refusés ; `C:\Users\ancien` accepté. |
 | `Core/ManufacturerMatch.Tests.ps1`, `Inventory.Tests.ps1`, `CommandLine.Tests.ps1`, `Selection.Tests.ps1` | Présélection (`Hewlett-Packard` → hp, `LENOVO` → lenovo, inconnu → aucune) ; format et nom de fichier sûr ; découpe des lignes avec guillemets ; incohérences de sélection détectées. |
 | `Infrastructure/AppConfig.Tests.ps1` | `config.valid.json` accepté ; chaque clé obligatoire retirée → erreur qui cite son chemin ; ancienne configuration (sans `ConfigVersion`) refusée avec un message explicite. |
 | `Application/StepRegistry.Tests.ps1` | Chaque étape de `Steps/` est dans `StepOrder` et réciproquement ; aucun doublon. |
 | `Application/ExecutionPlan.Tests.ps1` | Avec `Fixtures/selection.full.json`, les actions sortent **dans l'ordre du cahier** quelle que soit l'ordre des sections ; sélection vide → plan vide ; carte avec IPv6 déjà désactivé → pas d'action. |
 | `Application/ExecutionEngine.Tests.ps1` | Simulation : aucun `Invoke` appelé, une ligne `SIMU` par action. Réel : une action qui lève une erreur est journalisée `ERREUR` et **les suivantes s'exécutent** ; résultats agrégés justes ; « redémarrage requis » propagé au rapport. |
-| `Application/Steps/*.Tests.ps1` | Pour chaque étape : `Plan` produit les bonnes actions, `Invoke` appelle les bonnes fonctions d'`Infrastructure` avec les bons arguments (mocks) ; garde de chemin et comptes protégés revérifiés dans `Invoke`. |
+| `Application/Steps/*.Tests.ps1` | Pour chaque étape : `Plan` produit les bonnes actions, `Invoke` appelle les bonnes fonctions d'`Infrastructure` avec les bons arguments (mocks) ; garde de chemin et comptes protégés revérifiés dans `Invoke`. Session créée (it. 8) : **le mot de passe n'apparaît ni dans le plan, ni dans le fichier journal**, en simulation comme en réel. |
 | `Architecture.Tests.ps1` | Analyse statique des sources : aucun `System.Windows` hors `FastPrepare.UI` ; aucun `Get-CimInstance`, `Get-ItemProperty HKLM:`, `Start-Process` hors `Infrastructure` ; aucun `Invoke-Expression` ; aucune URL `http(s)://` dans `src/` (règle « liens jamais dans le code ») ; aucun fichier sans BOM. |
 
 ---
@@ -601,6 +623,9 @@ Une règle n'est écrite qu'une fois ; les autres fichiers l'**appellent**. Tout
 | Stratégie de désinstallation (tableau « Désinstallation silencieuse ») | `Core/UninstallStrategy.ps1` (`Resolve-UninstallStrategy`) | `MachineSnapshot` | `UninstallStrategy.Tests` |
 | Silencieux d'abord, assistants en dernier | `Core/UninstallStrategy.ps1` (`Get-UninstallOrder`) | `UninstallSoftware.step` | `UninstallStrategy.Tests` |
 | Comptes exclus d'office (section 4) | `Core/LocalAccountPolicy.ps1` | `MachineSnapshot`, `RemoveLocalAccounts.step` (revalidation) | `LocalAccountPolicy.Tests` |
+| Nom et mot de passe d'une session à créer (F1) | `Core/LocalAccountCreation.ps1` | `NewLocalAccountSection` (affichage), `Test-Selection`, `CreateLocalAccount.step` (revalidation) | `LocalAccountCreation.Tests` |
+| Groupes d'une session créée (par SID) | `Core/LocalAccountCreation.ps1` (`Get-LocalAccountGroupSid`) | `CreateLocalAccount.step` | `LocalAccountCreation.Tests` |
+| Mot de passe jamais en clair ni journalisé | `Core/LocalAccountCreation.ps1` (seule comparaison, en mémoire non managée) ; `SecureString` de la `PasswordBox` à `New-LocalUser` | `NewLocalAccountSection`, `CreateLocalAccount.step`, `New-LocalAccount` | `Architecture.Tests` (aucune conversion de `SecureString` en texte ailleurs) ; tests de l'étape (journal relu) |
 | Suppression récursive sûre | `Core/PathGuard.ps1` | `RemoveLocalAccounts.step`, `RemoveOneDrive.step` | `PathGuard.Tests` ; tests des deux étapes |
 | XML ODT (section 6) et suppression ODT (section 3) | `Core/OdtConfiguration.ps1` | `InstallOffice.step`, `RemoveMicrosoftApps.step`, `OfficeSection` (résumé) | `OdtConfiguration.Tests` |
 | ID produit avec / sans Teams | `Core/OdtConfiguration.ps1` (`Get-OfficeProductId`) + données `config.Office.Editions` | `New-OdtInstallXml` | `OdtConfiguration.Tests` |
@@ -642,6 +667,8 @@ L'outil s'exécute **en administrateur** sur un poste qui sera remis à un utili
 | Risque | Mesure | Fichier |
 |---|---|---|
 | Suppression du mauvais compte | Comptes protégés exclus à l'affichage **et** revérifiés juste avant suppression ; SID (et non nom) comme identifiant. | `LocalAccountPolicy.ps1`, `RemoveLocalAccounts.step.ps1` |
+| Session créée par erreur, ou à moitié (it. 8) | Case décochée par défaut ; résumé du plan dans la confirmation du mode réel ; création atomique (compte retiré si l'ajout aux groupes échoue) ; un compte existant n'est jamais modifié (ni mot de passe réinitialisé, ni groupe changé). | `NewLocalAccountSection.ps1`, `LocalAccounts.ps1` |
+| Fuite du mot de passe saisi (it. 8) | `SecureString` de bout en bout ; jamais dans un `Label`, un `Details`, un message d'erreur ni la ligne de commande de `net.exe` ; libéré après chaque rafraîchissement et après l'exécution (`Clear-SelectionSecret`). | `LocalAccountCreation.ps1`, `CreateLocalAccount.step.ps1`, `MainWindow.ps1` |
 | Suppression récursive hors cible (`C:\Users`, profil connecté) | `Test-SafeProfilePath` avant tout `Remove-Item -Recurse`. | `PathGuard.ps1` |
 | Ruche du profil Default restée chargée | Déchargement en `finally`. | `OneDrive.ps1` |
 | Exécution réelle déclenchée par erreur | Mode simulation par défaut ; en mode réel, boîte de confirmation avec le résumé du plan ; bandeau permanent indiquant le mode. | `AppContext.ps1`, `MainWindow.ps1` |
@@ -649,7 +676,7 @@ L'outil s'exécute **en administrateur** sur un poste qui sera remis à un utili
 
 ### 7.3 Données et traces
 
-- Le journal ne contient **aucun secret** : le XML ODT n'a ni clé ni nom d'organisation (cahier), aucun mot de passe n'est saisi. Il contient des données d'inventaire (N/S, MAC, noms de comptes locaux supprimés) : la clé USB doit être traitée comme un support interne.
+- Le journal ne contient **aucun secret** : le XML ODT n'a ni clé ni nom d'organisation (cahier), et le mot de passe d'une session créée (it. 8) n'y figure jamais : seuls le nom, le groupe et l'option d'expiration sont journalisés. Il contient des données d'inventaire (N/S, MAC, noms de comptes locaux supprimés) : la clé USB doit être traitée comme un support interne.
 - Idempotence : relancer l'outil sur un poste déjà préparé ne doit rien casser (produit MSI absent `1605`, Appx absent, compte absent = succès).
 - Une configuration invalide est refusée **au démarrage**, jamais découverte au milieu d'une exécution.
 
@@ -816,6 +843,28 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - **DEC6 appliquée telle quelle** : `Execution.DefaultMode` reste `Simulation` tant que la recette complète (`docs/recette.md`) n'a pas été déroulée sur postes de test ; le passage à `Real` est un changement d'une ligne dans `config.json`, à faire après la recette.
 - **Vérifié** : 898 tests Pester verts, PSScriptAnalyzer sans avertissement ; recherche Windows Update réelle en lecture seule ; aucune installation sur le poste de développement.
 
+### Itération 8 — Créer une session locale (F1)
+
+Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §10.1 (étape) et §10.5 (section) sans modifier les étapes existantes.
+
+- `Core/LocalAccountCreation.ps1` : `Get-LocalAccountNameError`, `Get-LocalAccountPasswordError`, `Get-LocalAccountGroupSid` ; `Selection.ps1` : bloc `NewLocalAccount`, contrôles dans `Test-Selection`, `Clear-SelectionSecret` ; `LocalAccountPolicy.ps1` : `Split-LocalAccount` renvoie aussi `Names`.
+- `Infrastructure/System/LocalAccounts.ps1` : `New-LocalAccount` (atomique, groupes par SID) ; `AppConfig.ps1` : bloc facultatif `NewLocalAccount` (C10).
+- `Application/Steps/CreateLocalAccount.step.ps1` (`Plan` + `Invoke`) ; `StepOrder.ps1` : `create-local-account` au rang 14 (DEC14).
+- `UI/Xaml/Sections/NewLocalAccount.xaml` et `UI/Sections/NewLocalAccountSection.ps1` (section 11) ; `MainWindow.ps1` libère le mot de passe après chaque rafraîchissement et en fin d'exécution.
+- Tests : `LocalAccountCreation.Tests`, cas ajoutés à `AppConfig.Tests`, tests d'`New-LocalAccount` (mocks), de l'étape (journal relu : mot de passe absent), règle d'architecture « aucune conversion de `SecureString` en texte hors `LocalAccountCreation.ps1` ».
+- `docs/recette.md` : section « Itération 8 ».
+- **Sortie** : en mode réel, la session cochée est créée avec ses groupes et ses options ; le journal ne contient jamais le mot de passe ; une saisie invalide grise Lancer avec son motif.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-8`). Écarts et précisions :
+
+- **`Format-LocalAccountSummary`** (Core) ajoutée : seule fabrique du libellé de la session (journal, confirmation). Elle ne reçoit pas le mot de passe, elle ne peut donc pas l'écrire.
+- **SecureString libérée** : PowerShell masque l'exception d'une `SecureString` libérée (sa longueur devient `$null`) ; `Get-LocalAccountPasswordError` le détecte et l'étape échoue avec « mot de passe indisponible (déjà libéré) » au lieu de transmettre un objet inutilisable.
+- **Groupes** : le membre est ajouté par son SID (`Add-LocalGroupMember -SID <groupe> -Member <SID du compte>`), sans dépendre de la langue de Windows ni du type d'objet renvoyé par `New-LocalUser`.
+- **Nom du poste** : le plan transmet à l'action le nom actuel et le futur nom ; `Invoke` revalide avec les comptes relus sur le poste (`Get-LocalAccount`).
+- **Fenêtre** : `Update-UiState` libère le mot de passe de chaque sélection instantanée ; `Invoke-Launch` garde la sélection lancée jusqu'à la fin de l'exécution, puis la libère (`Complete-Launch`), y compris en cas d'abandon ou d'erreur de construction du plan. `Validate` compare les deux saisies sur des copies libérées aussitôt.
+- **Règles d'architecture ajoutées** : `New-LocalUser` et `Add-LocalGroupMember` réservés à `Infrastructure` ; aucune conversion de `SecureString` en texte (ni lecture de `PasswordBox.Password`) hors de `Core/LocalAccountCreation.ps1`, où chaque copie non managée est effacée.
+- **Vérifié** : 1062 tests Pester verts, PSScriptAnalyzer sans avertissement ; essai de la fenêtre en simulation (saisies refusées puis acceptées, lancement, journal relu : mot de passe absent). Aucune session créée sur le poste de développement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -826,6 +875,7 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 | 5 | 5, 7 (utilitaire) | D9, E3, E5, E6 | Prefetch, utilitaires |
 | 6 | 6 | — | Office |
 | 7 | 7 (WU), 14 | E1, E7, E10 | WindowsUpdate, livraison |
+| 8 | 11 (hors cahier) | F1 | LocalAccountCreation, CreateLocalAccount.step, NewLocalAccountSection |
 
 ---
 
@@ -888,6 +938,9 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC11 | Téléchargement anticipé pour la source `msstore` (Lenovo Commercial Vantage). | `winget download` ne prend pas en charge `msstore` : pas de préchargement pour cet élément, installation en ligne à l'étape 06 ; le préchargement porte sur Thin Installer. | 5 |
 | DEC12 | Interface : WPF ou WinForms (les deux sont permis par le cahier) ? | **WPF**, comme l'existant et la maquette validée. | — |
 | DEC13 | Préchargement des paquets winget ? | **Non.** `winget install` ne réutilise pas un dossier produit par `winget download` ; réutiliser l'installateur téléchargé demanderait de connaître les options silencieuses de chacun. Le préchargement porte sur les liens directs et sur la résolution de la version et du runtime .NET. | 5 |
+| DEC14 | Session créée : où dans l'ordre d'exécution ? | **En dernier (rang 14), après le renommage.** Les rangs 1 à 13 restent ceux du cahier (le journal `[ETAPE nn/14]` et le cahier gardent la même numérotation pour les étapes existantes). Aucune étape antérieure n'en dépend : la création ne fait qu'ajouter un compte, dont le profil n'existe qu'à la première ouverture de session ; venir après la suppression des sessions (rang 2) permet de recréer un nom libéré. Section d'interface **11** (et non une sous-partie de la section 4) : un fichier par responsabilité, numéros du cahier inchangés. | 8 |
+| DEC15 | Mot de passe : comment le saisir, le transporter, le vérifier ? | **`SecureString` de bout en bout** : `PasswordBox.SecurePassword` → `Selection` → paramètres de l'action → `New-LocalUser -Password`. Jamais lu en clair, jamais dans un libellé, un détail ni la ligne de commande de `net.exe`, jamais dans `config.json`. Saisi deux fois ; seules la présence, la longueur (127 au plus) et l'égalité des deux saisies sont vérifiées avant l'exécution. La politique du poste (longueur, complexité) n'est pas relue : Windows l'applique à la création et son refus est une erreur explicite de l'étape. Options : administrateur ou standard ; « n'expire jamais » **ou** « à changer à la première ouverture » (exclusives). | 8 |
+| DEC16 | Session existante, création partielle. | **Jamais de modification d'un compte existant** : nom déjà pris → saisie refusée dans la fenêtre, et l'étape revérifie sur le poste juste avant de créer. **Création atomique** : si l'ajout aux groupes ou l'option « à changer » échoue, le compte créé est retiré et l'étape est en échec ; jamais de compte à moitié configuré. | 8 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 
@@ -896,4 +949,5 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | QO1 | « Outlook classique » coché **sans** « Office Click-to-Run » : faut-il retirer Outlook seul (ODT suppression ciblée) ? Aujourd'hui la case est purement informative (« retiré avec la suite Office »). | 4 |
 | QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? **Provisoirement : profil connecté seulement** (itération 4). | 4 |
 | QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. **Appliqué ainsi** (itération 7). | 7 |
+| QO5 | Session créée : faut-il aussi la configurer en ouverture automatique, ou créer son profil d'avance ? **Non pour l'instant** (aucun besoin exprimé ; l'ouverture automatique stocke le mot de passe dans le registre). | 8 |
 | QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`) ou comme redémarrage nécessaire (`Update.RebootExitCodes`). **Valeurs provisoires dans `config.json`** (itération 5), à confirmer en recette. | 5 |

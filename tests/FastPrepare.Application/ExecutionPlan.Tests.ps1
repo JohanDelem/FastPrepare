@@ -24,10 +24,10 @@
 Describe 'New-ExecutionPlan' {
     BeforeEach { $context = New-TestContext -Folder $TestDrive }
 
-    It 'sélection vide : plan vide, 13 étapes connues' {
+    It 'sélection vide : plan vide, 14 étapes connues' {
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         @($plan.Actions).Count | Should -Be 0
-        $plan.StepCount | Should -Be 13
+        $plan.StepCount | Should -Be 14
     }
 
     It 'actions dans l''ordre du cahier, quel que soit l''ordre des sections, numérotées 1..N' {

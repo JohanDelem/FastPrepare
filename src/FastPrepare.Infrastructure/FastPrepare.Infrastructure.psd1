@@ -45,6 +45,7 @@
         'Remove-GuardedFolder',
         'Stop-ProcessByName',
         'Remove-LocalAccountWithProfile',
+        'New-LocalAccount',
         'Remove-AppxEverywhere',
         'Initialize-OdtFolder',
         'Invoke-Odt',

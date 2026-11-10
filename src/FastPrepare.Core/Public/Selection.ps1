@@ -29,6 +29,16 @@ function New-Selection {
         Updates        = [pscustomobject]@{ WindowsUpdate = $false; VendorUtility = $false }
         ExtraSoftware  = [pscustomobject]@{ Ids = @() }
         SystemSettings = [pscustomobject]@{ Ipv6Adapters = @(); Power = $false }
+        # Session à créer (section 11). Password : SecureString, jamais une chaîne (DEC15).
+        NewLocalAccount = [pscustomobject]@{
+            Enabled              = $false
+            Name                 = ''
+            FullName             = ''
+            Password             = $null
+            Administrator        = $false
+            PasswordNeverExpires = $false
+            MustChangePassword   = $false
+        }
     }
     return $selection
 }
@@ -64,6 +74,8 @@ function Test-Selection {
         }
     }
 
+    foreach ($problem in @(Get-NewLocalAccountProblem -Selection $Selection -Snapshot $Snapshot)) { $problems.Add($problem) }
+
     $utilityKey = $Selection.VendorUtility.Key
     if ($utilityKey -and -not $Config.Utilities.PSObject.Properties[$utilityKey]) {
         $problems.Add("Utilitaire constructeur inconnu : '$utilityKey'")
@@ -91,4 +103,44 @@ function Test-Selection {
     }
 
     return $problems.ToArray()
+}
+
+function Get-NewLocalAccountProblem {
+    <#
+        Incohérences de la session à créer : nom refusé (comptes qui existeront encore après les
+        suppressions cochées, nom du poste actuel et futur), mot de passe absent ou trop long,
+        options d'expiration contradictoires.
+    #>
+    param($Selection, $Snapshot)
+    $account = $Selection.NewLocalAccount
+    if (-not $account -or -not $account.Enabled) { return }
+
+    $removed = @(@($Selection.LocalAccounts.Items) | ForEach-Object { [string]$_.Name })
+    $existing = @()
+    if ($Snapshot.LocalAccounts -and $Snapshot.LocalAccounts.PSObject.Properties['Names']) {
+        $existing = @(@($Snapshot.LocalAccounts.Names) | Where-Object { $removed -notcontains $_ })
+    }
+    $computers = @([string]$Snapshot.Identity.HostName)
+    if ($Selection.HostName.Enabled) { $computers += [string]$Selection.HostName.Name }
+
+    $nameError = Get-LocalAccountNameError -Name $account.Name -ExistingName $existing -ComputerName $computers
+    if ($nameError) { ("Session à créer : nom refusé ({0})" -f $nameError) }
+    $passwordError = Get-LocalAccountPasswordError -Password $account.Password
+    if ($passwordError) { ("Session à créer : {0}" -f $passwordError) }
+    if ($account.PasswordNeverExpires -and $account.MustChangePassword) {
+        "Session à créer : « n'expire jamais » et « à changer à la première ouverture » sont incompatibles"
+    }
+}
+
+function Clear-SelectionSecret {
+    <#
+        Libère le mot de passe porté par la sélection (les actions du plan référencent le même
+        objet). À appeler dès que la sélection n'est plus utile.
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Selection)
+    if (-not $Selection -or -not $Selection.PSObject.Properties['NewLocalAccount']) { return }
+    $password = $Selection.NewLocalAccount.Password
+    if ($password -is [System.Security.SecureString]) { $password.Dispose() }
+    $Selection.NewLocalAccount.Password = $null
 }

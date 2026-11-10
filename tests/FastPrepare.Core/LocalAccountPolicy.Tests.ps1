@@ -30,5 +30,6 @@ Describe 'Split-LocalAccount' {
         $result = Split-LocalAccount -Account $accounts -CurrentSid $current
         @($result.Removable).Name | Should -Be @('ancien')
         $result.Excluded | Should -Be @('Administrateur', 'technicien (connecté)')
+        $result.Names | Should -Be @('Administrateur', 'technicien', 'ancien')
     }
 }

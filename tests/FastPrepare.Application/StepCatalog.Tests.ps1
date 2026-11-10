@@ -9,10 +9,10 @@ BeforeAll {
 }
 
 Describe 'Catalogue des étapes' {
-    It 'ordre du cahier : 13 étapes, sans doublon' {
+    It 'ordre du cahier et fonctionnalités ajoutées : 14 étapes, sans doublon' {
         $order = @(Get-StepOrder)
-        $order.Count | Should -Be 13
-        @($order | Sort-Object -Unique).Count | Should -Be 13
+        $order.Count | Should -Be 14
+        @($order | Sort-Object -Unique).Count | Should -Be 14
     }
 
     It 'chaque étape de l''ordre est enregistrée, et réciproquement' {
@@ -27,10 +27,10 @@ Describe 'Catalogue des étapes' {
         $calls.Count | Should -Be 1
     }
 
-    It 'section de l''interface renseignée pour chaque étape (1 à 10)' {
+    It 'section de l''interface renseignée pour chaque étape (1 à 11)' {
         foreach ($step in (Get-RegisteredStep).Values) {
             $step.Section | Should -BeGreaterOrEqual 1
-            $step.Section | Should -BeLessOrEqual 10
+            $step.Section | Should -BeLessOrEqual 11
         }
     }
 }
