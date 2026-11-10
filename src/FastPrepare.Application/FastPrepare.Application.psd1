@@ -7,11 +7,17 @@
     PowerShellVersion = '5.1'
     FunctionsToExport = @(
         'New-AppContext',
+        'Get-BackgroundModulePath',
         'Get-MachineSnapshot',
         'Start-MachineSnapshot',
-        'Get-BackgroundModulePath',
         'Export-MachineInventory',
-        'Invoke-SelectionSimulation'
+        'Get-StepOrder',
+        'Get-RegisteredStep',
+        'New-ExecutionPlan',
+        'Format-ExecutionPlanSummary',
+        'Invoke-ExecutionPlan',
+        'Start-ExecutionPlan',
+        'Write-FinalReport'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
