@@ -111,3 +111,14 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] HP, Fujitsu : outil installé par winget.
 - [ ] MàJ utilitaire (section 7) : outil trouvé, mise à jour lancée sans redémarrage automatique ; **noter le code de sortie** (journal, `[DEBUG]`) avec et sans mise à jour disponible, pour confirmer `SuccessExitCodes` / `RebootExitCodes` (QO4).
 - [ ] Noter le chemin réel de `HPImageAssistant.exe` et `ducmd.exe` après installation par winget.
+
+## Itération 6 — installation d'Office (poste de test)
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] 365 Apps for Business « Avec Teams » : installé (`O365BusinessRetail`), Teams présent, langue du système, 64 bits.
+- [ ] 365 « Sans Teams (EEE) » : `O365BusinessEEANoTeamsRetail`, Teams absent.
+- [ ] LTSC Pro Plus 2024, Standard 2019, Pro Plus 2019 : installés (`ProPlus2024Volume`, `Standard2019Volume`, `ProPlus2019Volume`) ; activation à faire à la main.
+- [ ] Cases « Inclure » décochées : application absente (nouvel Outlook, Outlook classique, OneDrive).
+- [ ] Suppression (section 3) et installation (section 6) dans la même exécution : suppression d'abord, puis installation, aucune erreur.
+- [ ] Le XML de l'installation figure dans le journal et dans `C:\ODT\configuration-installation-*.xml`.
