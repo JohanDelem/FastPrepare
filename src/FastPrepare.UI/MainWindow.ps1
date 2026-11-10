@@ -115,8 +115,13 @@ function Get-CurrentSelection {
 function Update-UiState {
     <# À appeler après tout changement : informe les sections (Refresh) puis met à jour Lancer. #>
     $selection = Get-CurrentSelection
-    foreach ($section in (Get-UiSection)) {
-        Invoke-UiSectionCallback -Section $section -Name Refresh -Arguments @($selection) | Out-Null
+    try {
+        foreach ($section in (Get-UiSection)) {
+            Invoke-UiSectionCallback -Section $section -Name Refresh -Arguments @($selection) | Out-Null
+        }
+    } finally {
+        # La sélection n'est qu'un instantané : le mot de passe qu'elle porte est libéré aussitôt.
+        Clear-SelectionSecret -Selection $selection
     }
     Update-LaunchState
 }
@@ -146,25 +151,41 @@ function Invoke-Launch {
         confirmation en mode réel → exécution en arrière-plan, formulaire verrouillé jusqu'à la fin.
     #>
     $context = $script:Context
-    $plan = New-ExecutionPlan -Selection (Get-CurrentSelection) -Snapshot $script:Snapshot -Context $context
+    # Gardée jusqu'à la fin de l'exécution : les actions du plan référencent son mot de passe.
+    $script:LaunchSelection = Get-CurrentSelection
+    $started = $false
+    try {
+        $plan = New-ExecutionPlan -Selection $script:LaunchSelection -Snapshot $script:Snapshot -Context $context
 
-    if ($context.Mode -ne 'Simulation') {
-        $answer = [System.Windows.MessageBox]::Show(
-            ("Lancer la préparation du poste ?`n`n{0}`n`nAucun redémarrage automatique." -f (Format-ExecutionPlanSummary -Plan $plan)),
-            'Préparation de poste', 'YesNo', 'Question')
-        if ($answer -ne 'Yes') { return }
+        if ($context.Mode -ne 'Simulation') {
+            $answer = [System.Windows.MessageBox]::Show(
+                ("Lancer la préparation du poste ?`n`n{0}`n`nAucun redémarrage automatique." -f (Format-ExecutionPlanSummary -Plan $plan)),
+                'Préparation de poste', 'YesNo', 'Question')
+            if ($answer -ne 'Yes') { return }
+        }
+
+        Set-ExecutionLock -Locked $true
+        $work = Start-ExecutionPlan -Plan $plan -Context $context
+        $started = $true
+    } finally {
+        if (-not $started) { Complete-Launch }
     }
-
-    Set-ExecutionLock -Locked $true
-    $work = Start-ExecutionPlan -Plan $plan -Context $context
     Register-UiBackgroundWork -Work $work -OnCompleted {
         param($result)
+        Complete-Launch
         Set-ExecutionLock -Locked $false
     } -OnFailed {
         param($message)
         Write-RunLog -Log $script:Context.Log -Level ERREUR -Message "Exécution interrompue : $message"
+        Complete-Launch
         Set-ExecutionLock -Locked $false
     }
+}
+
+function Complete-Launch {
+    <# Fin (ou abandon) d'un lancement : libère le mot de passe de la sélection lancée. #>
+    Clear-SelectionSecret -Selection $script:LaunchSelection
+    $script:LaunchSelection = $null
 }
 
 function Set-RunProgress {

@@ -1,0 +1,34 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="11 · Créer une session locale"/>
+    <CheckBox Name="ChkNewAccount" Content="Créer une session pour l'utilisateur du poste"/>
+    <StackPanel Name="PnlNewAccount" IsEnabled="False" Margin="0,6,0,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="170"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Nom de session" VerticalAlignment="Center"/>
+        <TextBox Name="TxtNewName" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="20"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Nom complet (facultatif)" VerticalAlignment="Center"/>
+        <TextBox Name="TxtNewFullName" Grid.Row="1" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="256"/>
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Mot de passe" VerticalAlignment="Center"/>
+        <PasswordBox Name="PwdNew" Grid.Row="2" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="127"/>
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Confirmation" VerticalAlignment="Center"/>
+        <PasswordBox Name="PwdNewConfirm" Grid.Row="3" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="127"/>
+      </Grid>
+      <CheckBox Name="ChkNewAdmin" Margin="0,8,0,3" Content="Administrateur du poste"/>
+      <CheckBox Name="ChkNewNeverExpires" Content="Le mot de passe n'expire jamais"/>
+      <CheckBox Name="ChkNewMustChange" Content="Changer le mot de passe à la première ouverture de session"/>
+    </StackPanel>
+    <TextBlock Name="TxtNewHint" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+  </StackPanel>
+</Border>

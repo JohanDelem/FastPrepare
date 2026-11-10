@@ -81,7 +81,7 @@ Describe 'Plan réel de bout en bout en simulation' {
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
         @($results).Count | Should -Be 2
         $text = (Get-Lines $context).Line -join "`n"
-        $text | Should -Match '\[ETAPE 12/13 · section 7\] Windows Update'
-        $text | Should -Match "\[ETAPE 13/13 · section 1\] Nom d'hôte : Rename-Computer -NewName 'PC-02'"
+        $text | Should -Match '\[ETAPE 12/14 · section 7\] Windows Update'
+        $text | Should -Match "\[ETAPE 13/14 · section 1\] Nom d'hôte : Rename-Computer -NewName 'PC-02'"
     }
 }

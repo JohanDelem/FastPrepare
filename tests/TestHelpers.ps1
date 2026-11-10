@@ -31,6 +31,7 @@ function New-TestSnapshot {
         LocalAccounts       = [pscustomobject]@{
             Removable = @([pscustomobject]@{ Name = 'ancien'; Sid = 'S-1-5-21-1-2-3-1002'; ProfilePath = 'C:\Users\ancien' })
             Excluded  = @('Administrateur', 'technicien (connecté)')
+            Names     = @('Administrateur', 'Invité', 'technicien', 'ancien')
         }
         Adapters            = @(
             [pscustomobject]@{ Name = 'Ethernet'; Description = 'Carte filaire'; Mac = '00-11-22-33-44-55'; Ipv6Enabled = $true }

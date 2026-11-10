@@ -42,7 +42,7 @@ Describe 'Couches' {
     }
 
     It '<Name> : aucun accès système direct hors de FastPrepare.Infrastructure' -ForEach $notInfrastructure {
-        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Disable-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'Get-AppxPackage', 'Add-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer', 'Start-BitsTransfer', 'Get-AuthenticodeSignature', 'Remove-CimInstance', 'Get-AppxProvisionedPackage', 'Remove-AppxProvisionedPackage', 'Stop-Process', 'Remove-ItemProperty')
+        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Disable-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'New-LocalUser', 'Add-LocalGroupMember', 'Get-AppxPackage', 'Add-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer', 'Start-BitsTransfer', 'Get-AuthenticodeSignature', 'Remove-CimInstance', 'Get-AppxProvisionedPackage', 'Remove-AppxProvisionedPackage', 'Stop-Process', 'Remove-ItemProperty')
         @(Get-InvokedCommand $Path | Where-Object { $forbidden -contains $_ }) | Should -BeNullOrEmpty
         Get-CodeText $Path | Should -Not -Match "['`"](HKLM|HKCU):"
 
@@ -78,6 +78,17 @@ Describe 'Sécurité' {
     It '<Name> : jamais de redémarrage automatique' -ForEach $allCode {
         @(Get-InvokedCommand $Path | Where-Object { $_ -eq 'Restart-Computer' }) | Should -BeNullOrEmpty
         Get-CodeText $Path | Should -Not -Match '\s-Restart\b'
+    }
+
+    It '<Name> : un mot de passe n''est jamais converti en texte (DEC15)' -ForEach ($allCode | Where-Object { $_.Name -notlike '*\Public\LocalAccountCreation.ps1' }) {
+        # Pwd*.Password : texte en clair d'une PasswordBox (seule SecurePassword est permise).
+        Get-CodeText $Path | Should -Not -Match 'SecureStringTo(BSTR|GlobalAlloc|CoTaskMem)|PtrToString|NetworkCredential|\bPwd\w*\.Password\b'
+        @(Get-InvokedCommand $Path | Where-Object { @('ConvertFrom-SecureString') -contains $_ }) | Should -BeNullOrEmpty
+    }
+
+    It '<Name> : la comparaison des mots de passe libère toujours sa copie non managée' -ForEach ($allCode | Where-Object { $_.Name -like '*\Public\LocalAccountCreation.ps1' }) {
+        $text = Get-CodeText $Path
+        ([regex]::Matches($text, 'SecureStringToBSTR')).Count | Should -Be ([regex]::Matches($text, 'ZeroFreeBSTR')).Count
     }
 
     It '<Name> : aucun lien dans le code (les liens vivent dans config.json)' -ForEach $allCode {

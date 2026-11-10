@@ -24,7 +24,7 @@ function Start-MachineSnapshot {
 
 function Get-MachineSnapshot {
     <#
-        Renvoie { Identity, WingetAvailable, Software, LocalAccounts { Removable, Excluded },
+        Renvoie { Identity, WingetAvailable, Software, LocalAccounts { Removable, Excluded, Names },
         Adapters, OneDrive, SuggestedUtilityKey, InventoryText }.
     #>
     [CmdletBinding()]
@@ -36,7 +36,7 @@ function Get-MachineSnapshot {
         Identity            = [pscustomobject]@{ Manufacturer = ''; Model = ''; Serial = ''; OsLabel = ''; HostName = $env:COMPUTERNAME }
         WingetAvailable     = $false
         Software            = @()
-        LocalAccounts       = [pscustomobject]@{ Removable = @(); Excluded = @() }
+        LocalAccounts       = [pscustomobject]@{ Removable = @(); Excluded = @(); Names = @() }
         Adapters            = @()
         OneDrive            = [pscustomobject]@{ Path = ''; Exists = $false; FileCount = 0 }
         Profiles            = $null
