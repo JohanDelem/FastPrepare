@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.2 — itération 0 livrée (branche `iteration-0`), itérations 1 à 7 à venir
+- **Version** : 0.3 — itérations 0 et 1 livrées, itérations 2 à 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -708,6 +708,17 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - `BackgroundRunner`, adaptateurs de lecture (`Hardware`, `InstalledSoftware` avec sonde NSIS bornée, `LocalAccounts` lecture, `Network` lecture, `OneDrive` comptage), `MachineSnapshot`.
 - Fenêtre affichée immédiatement, listes remplies à la fin des détections (indicateur « détection en cours… »).
 - **Sortie** : E4 levé ; la fenêtre ne gèle plus au démarrage.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-1`). Écarts et constats :
+
+- **`Core` complet** : `PathGuard` (`Test-SafeProfilePath`, avec `-AllowInsideProfile` pour un sous-dossier comme OneDrive, et `Test-SafeChildPath`), `CommandLine` (`Split-CommandLine`, `Expand-ConfigPath`, qui refuse une variable inconnue pour signaler une faute de frappe dans `config.json`), `DotNetRequirement` (`Test-VersionInRange`, `Select-DotNetRequirement`, qui renvoie `{ Requirement, IsExactMatch }` ; « 5.7.0 » couvre « 5.7.0.1234 »).
+- **`BackgroundRunner`** : `Start-BackgroundWork`, `Test-BackgroundWorkCompleted`, `Receive-BackgroundWork`, `Stop-BackgroundWork`. Le bloc est transmis sous forme de texte (un scriptblock reste lié à son runspace d'origine) ; `$ErrorActionPreference = 'Stop'` est posé par l'état initial du runspace (deux `AddScript` formeraient un pipeline).
+- **Journal partagé entre fils** : verrou (`SyncRoot`) autour de l'écriture du fichier, `File.AppendAllText` en UTF-8 avec BOM ; test de 600 écritures simultanées depuis deux fils, aucune perte.
+- **Relevé du poste** : `Start-MachineSnapshot` (relevé et export d'inventaire dans un runspace) ; `Register-UiBackgroundWork` dans la pompe appelle le rappel sur le fil de l'interface à la fin du travail. Le contexte porte `ModulePaths` (modules non graphiques importés par le runspace).
+- **Présélection constructeur** : elle n'écrase plus une card choisie par le technicien pendant la détection.
+- **Bogue de PowerShell 5.1** rencontré : `@($liste)` sur une `List[object]` lève une `ArgumentException` dans le binder (« Les types des arguments ne correspondent pas »), ce qui fermait la fenêtre. Remplacé par `.ToArray()` ; le battement de la pompe est désormais entièrement protégé.
+- **Mesuré** sur poste réel (Lenovo 20NR, 32 logiciels) : fenêtre affichée immédiatement, relevé prêt en 7 s ; le fil de l'interface reste réactif pendant tout le relevé (connexion validée pendant la détection). Il subsiste **un gel unique d'environ 0,6 s** au remplissage des sections, à la fin du relevé (construction des lignes de logiciels et première compilation des blocs de script). Un clic coûte ensuite ~30 ms. Piste si besoin : liste des logiciels en `ItemsControl` avec `DataTemplate` XAML au lieu de contrôles construits en code.
+- **Vérifié** : 461 tests Pester verts (dont un test d'intégration du relevé réel en arrière-plan, marqué `Integration`), PSScriptAnalyzer sans avertissement, règle d'architecture « runspaces créés uniquement par `BackgroundRunner.ps1` ».
 
 ### Itération 2 — Plan unique, moteur en simulation
 

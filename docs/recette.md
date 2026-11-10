@@ -37,3 +37,14 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] XML ODT affiché pour l'édition choisie ; ID `O365BusinessEEANoTeamsRetail` si « Sans Teams ».
 - [ ] Rappel final des actions manuelles = liste du mémo.
 - [ ] Aucune modification du poste (nom, logiciels, comptes, IPv6, alimentation inchangés).
+
+## Itération 1 — détections en arrière-plan
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] La fenêtre s'affiche immédiatement ; « Détection du poste… » dans l'en-tête, « Détection en cours… » dans les sections 2, 4, 9 et 10.
+- [ ] Pendant la détection, la fenêtre reste réactive : on peut cocher, faire défiler, saisir un nom d'hôte ; la pastille de connexion passe au vert.
+- [ ] Lancer reste grisé « détection du poste en cours » jusqu'à la fin du relevé.
+- [ ] Une card constructeur cliquée pendant la détection reste sélectionnée après le relevé (pas d'écrasement par la présélection).
+- [ ] À la fin du relevé, toutes les sections sont remplies comme à l'itération 0 ; aucune ligne `[ERREUR]` dans le journal.
+- [ ] Fermer la fenêtre pendant la détection : l'outil se ferme sans message d'erreur.
