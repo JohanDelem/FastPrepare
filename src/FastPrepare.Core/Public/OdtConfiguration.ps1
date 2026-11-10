@@ -64,6 +64,67 @@ function New-OdtInstallXml {
         [string]$Language = 'MatchOS'
     )
 
+    return (Invoke-OdtXmlWriter -Body {
+            param($writer)
+            $writer.WriteStartElement('Add')
+            $writer.WriteAttributeString('OfficeClientEdition', $Architecture)
+            $writer.WriteAttributeString('Channel', $Channel)
+            $writer.WriteStartElement('Product')
+            $writer.WriteAttributeString('ID', $ProductId)
+            $writer.WriteStartElement('Language')
+            $writer.WriteAttributeString('ID', $Language)
+            $writer.WriteEndElement()
+            foreach ($app in @($ExcludedApp)) {
+                if (-not $app) { continue }
+                $writer.WriteStartElement('ExcludeApp')
+                $writer.WriteAttributeString('ID', $app)
+                $writer.WriteEndElement()
+            }
+            $writer.WriteEndElement()   # Product
+            $writer.WriteEndElement()   # Add
+
+            $writer.WriteStartElement('Updates')
+            $writer.WriteAttributeString('Enabled', 'TRUE')
+            $writer.WriteEndElement()
+        })
+}
+
+function New-OdtRemoveXml {
+    <#
+        Fichier configuration.xml de suppression (section 3) :
+        -RemoveClickToRun → <Remove All="TRUE"/> (toutes éditions et langues, OneNote C2R compris) ;
+        -RemoveMsi        → <RemoveMSI/> (Office MSI 2010 à 2016).
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [switch]$RemoveClickToRun,
+        [switch]$RemoveMsi
+    )
+    if (-not $RemoveClickToRun -and -not $RemoveMsi) { throw 'Suppression ODT : rien à supprimer.' }
+
+    return (Invoke-OdtXmlWriter -Body {
+            param($writer)
+            if ($RemoveClickToRun) {
+                $writer.WriteStartElement('Remove')
+                $writer.WriteAttributeString('All', 'TRUE')
+                $writer.WriteEndElement()
+            }
+            if ($RemoveMsi) {
+                $writer.WriteStartElement('RemoveMSI')
+                $writer.WriteEndElement()
+            }
+        })
+}
+
+function Invoke-OdtXmlWriter {
+    <#
+        Construit un document <Configuration> par System.Xml (échappement garanti) : -Body écrit les
+        éléments propres à l'opération, puis les réglages communs (affichage silencieux, EULA
+        acceptée, fermeture forcée des applications) sont ajoutés.
+    #>
+    param([scriptblock]$Body)
+
     $settings = New-Object System.Xml.XmlWriterSettings
     $settings.Indent = $true
     $settings.IndentChars = '  '
@@ -74,27 +135,7 @@ function New-OdtInstallXml {
     $writer = [System.Xml.XmlWriter]::Create($buffer, $settings)
     try {
         $writer.WriteStartElement('Configuration')
-
-        $writer.WriteStartElement('Add')
-        $writer.WriteAttributeString('OfficeClientEdition', $Architecture)
-        $writer.WriteAttributeString('Channel', $Channel)
-        $writer.WriteStartElement('Product')
-        $writer.WriteAttributeString('ID', $ProductId)
-        $writer.WriteStartElement('Language')
-        $writer.WriteAttributeString('ID', $Language)
-        $writer.WriteEndElement()
-        foreach ($app in @($ExcludedApp)) {
-            if (-not $app) { continue }
-            $writer.WriteStartElement('ExcludeApp')
-            $writer.WriteAttributeString('ID', $app)
-            $writer.WriteEndElement()
-        }
-        $writer.WriteEndElement()   # Product
-        $writer.WriteEndElement()   # Add
-
-        $writer.WriteStartElement('Updates')
-        $writer.WriteAttributeString('Enabled', 'TRUE')
-        $writer.WriteEndElement()
+        & $Body $writer
 
         $writer.WriteStartElement('Display')
         $writer.WriteAttributeString('Level', 'None')
