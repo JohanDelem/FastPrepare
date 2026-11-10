@@ -138,7 +138,7 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┣ 📜architecture_plan.md 🆕 (ce document)
  ┃ ┣ 📜CONTRIBUTING.md 🆕
  ┃ ┣ 📜recette.md 🆕
- ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf 🚚
+ ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf (local, non versionné : *.pdf ignoré par Git)
  ┣ 📂src 🆕
  ┃ ┣ 📂FastPrepare.Core                      (pur : ni système, ni WPF)
  ┃ ┃ ┣ 📂Public

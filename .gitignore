@@ -7,3 +7,6 @@ packages/
 
 # Fichiers produits par l'outillage
 tools/out/
+
+# Documents (cahier des charges et autres PDF) : non versionnés
+*.pdf
