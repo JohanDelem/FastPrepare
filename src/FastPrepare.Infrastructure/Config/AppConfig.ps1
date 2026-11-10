@@ -115,6 +115,17 @@ function Assert-AppConfig {
         [void](Test-ConfigField $report $Config.Power 'ApplyOnBattery' 'Power' Bool)
     }
 
+    # NewLocalAccount (facultatif, itération 8) : valeurs par défaut des cases de la section 11.
+    if (Test-ConfigField $report $Config 'NewLocalAccount' '' Object -Optional) {
+        $account = $Config.NewLocalAccount
+        $neverExpires = Test-ConfigField $report $account 'PasswordNeverExpires' 'NewLocalAccount' Bool -Optional
+        $mustChange = Test-ConfigField $report $account 'MustChangePassword' 'NewLocalAccount' Bool -Optional
+        [void](Test-ConfigField $report $account 'Administrator' 'NewLocalAccount' Bool -Optional)
+        if ($neverExpires -and $mustChange -and $account.PasswordNeverExpires -and $account.MustChangePassword) {
+            $report.Errors.Add('NewLocalAccount : PasswordNeverExpires et MustChangePassword ne peuvent pas être vrais ensemble')
+        }
+    }
+
     # ManualReminders
     if (Test-ConfigField $report $Config 'ManualReminders' '' Array) {
         $i = 0

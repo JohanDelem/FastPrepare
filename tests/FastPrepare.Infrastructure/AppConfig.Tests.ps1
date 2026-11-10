@@ -72,6 +72,24 @@ Describe 'Assert-AppConfig' {
         $config.Utilities.hp.ManufacturerPattern = 'HP('
         Get-ConfigError $config | Should -Match 'expression régulière invalide'
     }
+
+    It 'bloc NewLocalAccount absent : accepté (valeurs par défaut de l''outil)' {
+        $config = Get-TestConfig
+        $config.PSObject.Properties.Remove('NewLocalAccount')
+        { Assert-AppConfig -Config $config } | Should -Not -Throw
+    }
+
+    It 'NewLocalAccount : options d''expiration contradictoires refusées' {
+        $config = Get-TestConfig
+        $config.NewLocalAccount.MustChangePassword = $true
+        Get-ConfigError $config | Should -Match 'PasswordNeverExpires et MustChangePassword'
+    }
+
+    It 'NewLocalAccount : valeur non booléenne refusée' {
+        $config = Get-TestConfig
+        $config.NewLocalAccount.Administrator = 'oui'
+        Get-ConfigError $config | Should -Match 'NewLocalAccount.Administrator : true ou false attendu'
+    }
 }
 
 Describe 'Read-AppConfig' {
