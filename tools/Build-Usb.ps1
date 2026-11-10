@@ -1,15 +1,18 @@
 ﻿<#
     Prépare une clé (ou un dossier) avec le strict nécessaire à l'exécution :
-    Lancer.cmd, Preparation.ps1, config.json, src\, logos\, packages\ et un dossier logs\ vide.
-    Ni tests, ni documentation, ni journaux de développement.
-    Les journaux déjà présents sur la clé sont conservés.
+    Lancer.cmd, Preparation.ps1, config.json, software.json, src\, logos\, packages\ et un dossier
+    logs\ vide. Ni tests, ni documentation, ni journaux de développement.
+    Les journaux déjà présents sur la clé sont conservés, ainsi que son catalogue des logiciels
+    (software.json, modifiable depuis l'onglet Réglages) : -ReplaceSoftwareCatalog le remplace
+    par celui du dépôt.
 
-    Usage : tools\Build-Usb.ps1 -Destination E:\FastPrepare [-SkipChecks] [-PesterPath <chemin>]
+    Usage : tools\Build-Usb.ps1 -Destination E:\FastPrepare [-ReplaceSoftwareCatalog] [-SkipChecks] [-PesterPath <chemin>]
 #>
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Script console interactif : sortie colorée pour le développeur.')]
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Destination,
+    [switch]$ReplaceSoftwareCatalog,
     [switch]$SkipChecks,
     [string]$PesterPath
 )
@@ -29,6 +32,9 @@ foreach ($module in 'FastPrepare.Core', 'FastPrepare.Infrastructure') {
 }
 $loaded = Read-AppConfig -Path (Join-Path $root 'config.json')
 foreach ($warning in $loaded.Warnings) { Write-Host "[config.json] $warning" -ForegroundColor Yellow }
+$catalogName = [string]$loaded.Config.SoftwareCatalog
+$catalog = Read-SoftwareCatalog -Path (Join-Path $root $catalogName)
+foreach ($warning in $catalog.Warnings) { Write-Host "[$catalogName] $warning" -ForegroundColor Yellow }
 $bundle = Join-Path $root ([string]$loaded.Config.Winget.OfflineBundle)
 if (-not (Test-Path -LiteralPath $bundle -PathType Leaf)) {
     Write-Host "[packages] Paquet winget hors ligne absent ($bundle) : un poste sans winget ne pourra pas l'installer depuis la clé." -ForegroundColor Yellow
@@ -54,6 +60,13 @@ foreach ($item in 'Lancer.cmd', 'Preparation.ps1', 'config.json', 'src', 'logos'
     if (Test-Path -LiteralPath $source) {
         Copy-Item -LiteralPath $source -Destination $Destination -Recurse -Force
     }
+}
+# Catalogue des logiciels : celui de la clé a pu être enrichi depuis l'onglet Réglages.
+$catalogDestination = Join-Path $Destination $catalogName
+if ((Test-Path -LiteralPath $catalogDestination) -and -not $ReplaceSoftwareCatalog) {
+    Write-Host "[$catalogName] Catalogue de la clé conservé (-ReplaceSoftwareCatalog pour le remplacer par celui du dépôt)." -ForegroundColor Yellow
+} elseif (Test-Path -LiteralPath (Join-Path $root $catalogName)) {
+    Copy-Item -LiteralPath (Join-Path $root $catalogName) -Destination $catalogDestination -Force
 }
 $logs = Join-Path $Destination 'logs'
 if (-not (Test-Path -LiteralPath $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }

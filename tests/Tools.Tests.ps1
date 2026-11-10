@@ -15,7 +15,7 @@ Describe 'Build-Usb' {
 
         & $build -Destination $destination -SkipChecks 6>$null
 
-        foreach ($item in 'Lancer.cmd', 'Preparation.ps1', 'config.json', 'VERSION.txt', 'src\FastPrepare.Core\FastPrepare.Core.psd1', 'src\FastPrepare.UI\Xaml\MainWindow.xaml', 'logos') {
+        foreach ($item in 'Lancer.cmd', 'Preparation.ps1', 'config.json', 'software.json', 'VERSION.txt', 'src\FastPrepare.Core\FastPrepare.Core.psd1', 'src\FastPrepare.UI\Xaml\MainWindow.xaml', 'logos') {
             Join-Path $destination $item | Should -Exist
         }
         foreach ($item in 'tests', 'docs', 'tools', '.git', 'README.md', 'src\obsolete') {
@@ -23,6 +23,16 @@ Describe 'Build-Usb' {
         }
         Join-Path $destination 'logs\Journal_ancien.log' | Should -Exist
         Get-Content -LiteralPath (Join-Path $destination 'VERSION.txt') -Raw | Should -Match 'config.json : SHA256 [0-9A-F]{64}'
+    }
+
+    It 'conserve le catalogue des logiciels de la clé, sauf avec -ReplaceSoftwareCatalog' {
+        $destination = Join-Path $TestDrive 'CLE2'
+        New-Item -ItemType Directory -Path $destination -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $destination 'software.json') -Value '{ "CatalogVersion": 1, "Software": [] }'
+        & $build -Destination $destination -SkipChecks 6>$null
+        Get-Content -LiteralPath (Join-Path $destination 'software.json') -Raw | Should -Match '"Software": \[\]'
+        & $build -Destination $destination -SkipChecks -ReplaceSoftwareCatalog 6>$null
+        Get-Content -LiteralPath (Join-Path $destination 'software.json') -Raw | Should -Match 'adobe-reader'
     }
 
     It 'refuse une destination à l''intérieur du dépôt' {

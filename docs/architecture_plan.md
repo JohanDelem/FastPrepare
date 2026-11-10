@@ -911,6 +911,16 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - `Build-Usb.ps1` copie `software.json` ; tests ; recette « Itération 9 ».
 - **Sortie** : un technicien ajoute un logiciel depuis l'onglet Réglages, le teste sans rien télécharger ni installer, l'enregistre, et le retrouve en section 8 ; une exécution réelle l'installe.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-9`). Écarts et précisions :
+
+- **Constat de départ** : les logiciels de la section 8 n'étaient pas écrits dans le code mais dans `config.json` (`Software[]`) ; le besoin réel était de les gérer sans éditer de JSON et de les vérifier avant une exécution réelle.
+- **`Build-Usb.ps1`** conserve le `software.json` déjà présent sur la clé (il a pu être enrichi depuis l'onglet Réglages) ; `-ReplaceSoftwareCatalog` le remplace par celui du dépôt. QO6 est donc moins pressante : un catalogue modifié sur une clé n'est plus écrasé par une nouvelle préparation, mais il faut toujours le recopier dans le dépôt pour le partager.
+- **Écriture** : `[IO.File]::Replace` avec repli copie + déplacement pour les systèmes de fichiers qui ne le permettent pas (clés FAT32) ; le catalogue est revalidé avant d'être écrit, un catalogue qui serait refusé à la relecture n'est jamais écrit.
+- **Test** : une adresse finale redirigée n'est affichée que par son serveur (les liens signés de GitHub font plusieurs centaines de caractères) ; le résultat du test est journalisé (`OK`/`ERREUR`, détail en `DEBUG`).
+- **Fenêtre** : la page suit l'état « testé » par révision du formulaire (toute modification invalide le test) ; Enregistrer est grisé tant qu'une règle de saisie n'est pas respectée ; la section 8 garde les cases cochées quand le catalogue change.
+- **Règles d'architecture ajoutées** : `AppConfig.ps1` n'écrit jamais ; seul `Application/SoftwareCatalog.ps1` appelle `Save-SoftwareCatalog`.
+- **Vérifié** : 1240 tests Pester verts, PSScriptAnalyzer sans avertissement ; essai de la fenêtre en simulation sur une copie du catalogue, avec le vrai winget et de vraies requêtes d'en-têtes (lecture seule) : paquet trouvé (7-Zip), paquet inexistant refusé, lien direct valide (1,6 Mo, après redirection), lien vers une page web refusé, enregistrement visible en section 8. Rien n'a été téléchargé ni installé sur le poste de développement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |

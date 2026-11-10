@@ -151,6 +151,23 @@ Mot de passe d'essai à choisir pour la recette, **jamais** celui d'un vrai util
 - [ ] Deuxième exécution avec la même saisie, sans relancer l'outil : action en échec « existe déjà », la session existante n'est pas modifiée.
 - [ ] Le mot de passe n'apparaît pas dans le journal de l'exécution réelle.
 
+## Itération 9 — catalogue des logiciels (onglet Réglages)
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Onglet Réglages : la liste reprend `software.json` ; le chemin du fichier sur la clé est affiché.
+- [ ] Nouveau logiciel winget (ex. 7-Zip, `7zip.7zip`) : identifiant interne déduit du libellé, commande affichée ; **Tester** → « Paquet trouvé : nom, version » ; rien n'apparaît dans « Applications installées » du poste.
+- [ ] Identifiant winget inexistant → « introuvable dans la source » ; source `msstore` (ex. `9NR5B8GVVM13`) → paquet trouvé.
+- [ ] Lien direct vers un installateur → « Lien valide : fichier de … Mo » ; lien vers une page web → refusé « page web » ; lien `http://` ou éditeur vide → Enregistrer grisé avec le motif.
+- [ ] Modifier un champ après un test réussi → « Formulaire modifié depuis le dernier test » ; Enregistrer sans test → demande de confirmation.
+- [ ] Enregistrer : la case apparaît aussitôt en section 8 (onglet Préparation), les cases déjà cochées gardent leur état ; `software.json` mis à jour, ancienne version dans `software.json.bak` ; ligne `[OK] Catalogue des logiciels : … ajouté` dans le journal.
+- [ ] Retirer : confirmation, la case disparaît de la section 8.
+- [ ] Clé protégée en écriture : « Catalogue non enregistré : la clé … est protégée en écriture », catalogue inchangé.
+- [ ] Pendant une exécution : l'onglet Réglages est grisé.
+- [ ] Exécution réelle sur poste de test : un logiciel winget et un logiciel par lien direct ajoutés depuis l'onglet sont installés ; lien direct avec un mauvais éditeur attendu → action en rouge « signature », rien n'est lancé.
+- [ ] Relancer l'outil : les logiciels ajoutés sont toujours là ; `software.json` modifié à la main avec une erreur → refus au démarrage avec l'entrée fautive.
+- [ ] `tools\Build-Usb.ps1` sur une clé déjà préparée : catalogue de la clé conservé (message) ; avec `-ReplaceSoftwareCatalog` : remplacé.
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :
