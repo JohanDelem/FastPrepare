@@ -40,8 +40,9 @@ function Start-MainWindow {
 
     $shell.BtnGo.Add_Click({ Invoke-UiAction -Name 'Lancer' -Action { Invoke-Launch } })
 
+    # Le relevé démarre une fois la fenêtre affichée et tourne en arrière-plan : la fenêtre reste réactive.
     $window.Add_ContentRendered({
-            Invoke-UiAction -Name 'relevé du poste' -Action { Initialize-MachineView }
+            Invoke-UiAction -Name 'relevé du poste' -Action { Start-MachineView }
         })
     $window.Add_Closed({
             Stop-UiPump
@@ -54,19 +55,36 @@ function Start-MainWindow {
     [void]$window.ShowDialog()
 }
 
-function Initialize-MachineView {
-    <# Relevé du poste, export de l'inventaire, remplissage des sections. #>
+function Start-MachineView {
+    <# Lance le relevé du poste en arrière-plan ; les sections sont remplies à son retour. #>
+    $work = Start-MachineSnapshot -Context $script:Context
+    Register-UiBackgroundWork -Work $work -OnCompleted {
+        param($result)
+        Complete-MachineView -Snapshot (@($result) | Select-Object -Last 1)
+    } -OnFailed {
+        param($message)
+        Write-RunLog -Log $script:Context.Log -Level ERREUR -Message "Relevé du poste impossible : $message"
+        $script:Shell.Controls.TxtPoste.Text = 'Détection du poste impossible (voir le journal)'
+        $script:Shell.Controls.TxtGoHint.Text = 'Grisé : détection du poste impossible'
+    }
+}
+
+function Complete-MachineView {
+    <# Relevé terminé : en-tête, remplissage des sections, état du bouton Lancer. #>
+    param([Parameter(Mandatory)]$Snapshot)
     $context = $script:Context
-    $snapshot = Get-MachineSnapshot -Context $context
-    $snapshot.InventoryExport = Export-MachineInventory -Snapshot $snapshot -Context $context
-    $script:Snapshot = $snapshot
+    $script:Snapshot = $Snapshot
 
     $shell = $script:Shell.Controls
-    $shell.TxtPoste.Text = 'Poste détecté : {0} — {1}' -f $snapshot.Identity.Manufacturer, $snapshot.Identity.Model
-    $shell.TxtOs.Text = $snapshot.Identity.OsLabel
+    $shell.TxtPoste.Text = 'Poste détecté : {0} — {1}' -f $Snapshot.Identity.Manufacturer, $Snapshot.Identity.Model
+    $shell.TxtOs.Text = $Snapshot.Identity.OsLabel
 
     foreach ($section in (Get-UiSection)) {
-        Invoke-UiSectionCallback -Section $section -Name OnSnapshot -Arguments @($snapshot, $context) | Out-Null
+        try {
+            Invoke-UiSectionCallback -Section $section -Name OnSnapshot -Arguments @($Snapshot, $context) | Out-Null
+        } catch {
+            Write-RunLog -Log $context.Log -Level ERREUR -Message ("Affichage de la section {0} impossible : {1}" -f $section.Number, $_.Exception.Message)
+        }
     }
     Update-UiState
 }

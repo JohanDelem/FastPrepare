@@ -1,8 +1,26 @@
 ﻿<#
     Relevé du poste : tout ce que la fenêtre affiche, calculé une fois.
     Chaque partie est protégée séparément : un échec de lecture n'empêche pas les autres.
-    Itération 0 : exécuté sur le fil de l'interface ; passage en arrière-plan à l'itération 1.
+    Exécuté en arrière-plan (Start-MachineSnapshot) : la fenêtre reste réactive pendant les
+    requêtes WMI, la lecture du registre et le comptage du dossier OneDrive.
 #>
+
+function Start-MachineSnapshot {
+    <#
+        Lance en arrière-plan le relevé du poste puis l'export de l'inventaire.
+        Renvoie le travail (FastPrepare.Infrastructure, Start-BackgroundWork) ; son résultat est
+        le relevé, avec InventoryExport renseigné.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Context)
+
+    return Start-BackgroundWork -Name 'releve-poste' -ModulePath $Context.ModulePaths -Argument @($Context) -ScriptBlock {
+        param($Context)
+        $snapshot = Get-MachineSnapshot -Context $Context
+        $snapshot.InventoryExport = Export-MachineInventory -Snapshot $snapshot -Context $Context
+        $snapshot
+    }
+}
 
 function Get-MachineSnapshot {
     <#

@@ -5,8 +5,8 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 0** — architecture en place, comportement identique au prototype :
-> détections réelles, bouton Lancer **en simulation** (aucune modification du poste).
+> **État : itération 1** — architecture en place, détections réelles en arrière-plan
+> (la fenêtre reste réactive), bouton Lancer **en simulation** (aucune modification du poste).
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
 
 ## Pour le technicien

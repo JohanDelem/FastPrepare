@@ -5,7 +5,7 @@
     Format d'une ligne (contrat, cf. docs/architecture_plan.md §8) : HH:mm:ss [NIVEAU] message
 #>
 
-$script:RunLogLevels = @('INFO', 'OK', 'ERREUR', 'ATTN', 'SIMU', 'DEBUG')
+$script:RunLogEncoding = New-Object System.Text.UTF8Encoding($true)
 
 function New-RunLog {
     <#
@@ -36,6 +36,8 @@ function New-RunLog {
         Queue      = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'
         IsFallback = $isFallback
         FileFailed = $false
+        # Verrou partagé : le fil de l'interface et les runspaces d'arrière-plan écrivent dans le même fichier.
+        SyncRoot   = New-Object object
     }
 }
 
@@ -55,12 +57,18 @@ function Write-RunLog {
     $line = '{0} [{1}] {2}' -f (Get-Date -Format 'HH:mm:ss'), $Level, $Message
 
     if (-not $Log.FileFailed) {
+        [System.Threading.Monitor]::Enter($Log.SyncRoot)
         try {
-            Add-Content -LiteralPath $Log.FilePath -Value $line -Encoding UTF8 -ErrorAction Stop
+            # UTF-8 avec BOM : le préambule n'est écrit qu'à la création du fichier.
+            [System.IO.File]::AppendAllText($Log.FilePath, $line + "`r`n", $script:RunLogEncoding)
         } catch {
-            $Log.FileFailed = $true
-            $warning = '{0} [ATTN] Écriture du journal impossible ({1}) : {2}' -f (Get-Date -Format 'HH:mm:ss'), $Log.FilePath, $_.Exception.Message
-            $Log.Queue.Enqueue([pscustomobject]@{ Level = 'ATTN'; Line = $warning })
+            if (-not $Log.FileFailed) {
+                $Log.FileFailed = $true
+                $warning = '{0} [ATTN] Écriture du journal impossible ({1}) : {2}' -f (Get-Date -Format 'HH:mm:ss'), $Log.FilePath, $_.Exception.Message
+                $Log.Queue.Enqueue([pscustomobject]@{ Level = 'ATTN'; Line = $warning })
+            }
+        } finally {
+            [System.Threading.Monitor]::Exit($Log.SyncRoot)
         }
     }
 
