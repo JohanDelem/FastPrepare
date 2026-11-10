@@ -3,7 +3,8 @@
 Prépare un poste Windows 11 en une seule exécution, depuis une clé USB, juste après une
 réinitialisation : le technicien coche les actions dans une fenêtre, clique sur **Lancer**,
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
-tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
+tout ce qui varie d'un parc à l'autre se règle dans `config.json` (écrit à la main) et, pour les
+logiciels proposés en section 8, dans `software.json` (modifié depuis l'onglet **Réglages**).
 
 > **État : itération 9, toutes les étapes du cahier disponibles en mode réel, plus la création
 > d'une session locale (section 11) et le catalogue des logiciels modifiable dans l'onglet Réglages.** La simulation
@@ -14,9 +15,18 @@ tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 ## Pour le technicien
 
 1. Préparer la clé depuis un poste de développement : `tools\Build-Usb.ps1 -Destination E:\FastPrepare`.
+   Le script lance d'abord l'analyse statique et les tests : il faut PSScriptAnalyzer et Pester 5
+   sur ce poste (`-PesterPath <dossier de Pester>` si Pester n'est pas installé, `-SkipChecks` pour
+   ne pas les lancer). Pour les postes sans winget, placer au préalable le paquet hors ligne
+   `Microsoft.DesktopAppInstaller.msixbundle` dans `packages\` (chemin : `Winget.OfflineBundle`).
 2. Sur le poste à préparer : double-cliquer `Lancer.cmd` (demande les droits administrateur).
 3. Lire le journal en bas de la fenêtre ; il est aussi enregistré dans `logs\` sur la clé,
-   avec l'inventaire N/S + adresses MAC.
+   avec l'inventaire N/S + adresses MAC. Si la clé est protégée en écriture, ils sont écrits
+   dans `%TEMP%\FastPrepare` puis recopiés sur la clé en fin d'exécution si elle est redevenue
+   accessible (sinon le rapport final indique de les copier à la main).
+
+Une clé préparée avant l'itération 9 (`ConfigVersion` 2) est refusée au démarrage avec un message
+explicite : la préparer de nouveau avec `tools\Build-Usb.ps1`.
 
 Options : `Lancer.cmd -Simulation` (force la simulation), `Lancer.cmd -Real` (modifie le poste,
 après confirmation ; bandeau rouge « MODE RÉEL »). Pendant l'exécution, la barre sous **Lancer**
@@ -37,7 +47,8 @@ BitLocker, activation d'Office, redémarrage (liste dans `config.json`, `ManualR
 
 ## Adapter l'outil à un parc
 
-Tout se fait dans `config.json` (validé au démarrage, avec un message qui indique la clé fautive) :
+`config.json` et `software.json` sont validés au démarrage, avec un message qui indique la clé
+ou l'entrée fautive :
 
 | Besoin | Clé |
 |---|---|
@@ -47,6 +58,7 @@ Tout se fait dans `config.json` (validé au démarrage, avec un message qui indi
 | Ajouter une édition Office | `Office.Editions[]` |
 | Durées d'alimentation, batterie incluse ou non | `Power` |
 | Rappels des actions manuelles | `ManualReminders` |
+| Mode par défaut (simulation ou réel) | `Execution.DefaultMode` |
 | Options proposées par défaut pour la session à créer (section 11) | `NewLocalAccount` (facultatif) |
 
 ## Pour le développeur
@@ -54,6 +66,7 @@ Tout se fait dans `config.json` (validé au démarrage, avec un message qui indi
 - Architecture, responsabilités par fichier, règles et feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md).
 - Conventions, tests, lint : [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
 - Ajouter une étape d'exécution : un fichier `src\FastPrepare.Application\Steps\<Nom>.step.ps1` + son rang dans `StepOrder.ps1` (plan, §10.1).
+- Ajouter un réglage à l'onglet Réglages : une section `Register-UiSection -Column Settings` (plan, §10.6).
 - Recette manuelle sur poste réel : [`docs/recette.md`](docs/recette.md).
 
 ```text
