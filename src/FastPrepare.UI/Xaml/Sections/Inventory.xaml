@@ -6,7 +6,7 @@
       <Button Name="BtnCopy" DockPanel.Dock="Right" Content="Copier" Padding="12,3" VerticalAlignment="Top" IsEnabled="False"/>
       <TextBlock Style="{StaticResource H2}" Text="10 · Numéro de série et adresses MAC"/>
     </DockPanel>
-    <TextBox Name="TxtInventory" IsReadOnly="True" BorderThickness="0" Background="Transparent" FontFamily="Consolas" FontSize="12.5" TextWrapping="NoWrap"/>
+    <TextBox Name="TxtInventory" IsReadOnly="True" BorderThickness="0" Background="Transparent" FontFamily="Consolas" FontSize="12.5" TextWrapping="NoWrap" Text="Détection en cours…"/>
     <TextBlock Name="TxtExport" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
   </StackPanel>
 </Border>

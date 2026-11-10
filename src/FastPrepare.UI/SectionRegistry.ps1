@@ -14,6 +14,8 @@
 #>
 
 $script:UiSections = [ordered]@{}
+# Liste triée mise en cache : Get-UiSection est appelé plusieurs fois à chaque clic.
+$script:UiSectionsSorted = $null
 
 function Register-UiSection {
     <# Enregistre une section. -Column : Left, Right ou Header (contrôles de la coquille, sans fragment). #>
@@ -31,6 +33,7 @@ function Register-UiSection {
         [scriptblock]$Dispose
     )
     if ($script:UiSections.Contains($Id)) { throw "Section d'interface enregistrée deux fois : '$Id'." }
+    $script:UiSectionsSorted = $null
     $script:UiSections[$Id] = [pscustomobject]@{
         PSTypeName   = 'FastPrepare.UiSection'
         Id           = $Id
@@ -57,17 +60,18 @@ function Get-UiSection {
         if (-not $script:UiSections.Contains($Id)) { throw "Section d'interface inconnue : '$Id'." }
         return $script:UiSections[$Id]
     }
-    return @($script:UiSections.Values | Sort-Object -Property Number)
+    if ($null -eq $script:UiSectionsSorted) {
+        $script:UiSectionsSorted = @($script:UiSections.Values | Sort-Object -Property Number)
+    }
+    return $script:UiSectionsSorted
 }
 
 function Invoke-UiSectionCallback {
-    <# Appelle une fonction du contrat d'une section si elle est définie ; renvoie son résultat. #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]$Section,
-        [Parameter(Mandatory)][ValidateSet('Initialize', 'OnSnapshot', 'GetSelection', 'Refresh', 'Validate', 'Dispose')][string]$Name,
-        [object[]]$Arguments = @()
-    )
+    <#
+        Appelle une fonction du contrat d'une section si elle est définie ; renvoie son résultat.
+        Fonction simple (sans CmdletBinding) : appelée 30 à 40 fois à chaque clic.
+    #>
+    param($Section, [string]$Name, [object[]]$Arguments = @())
     $callback = $Section.$Name
     if (-not $callback) { return $null }
     return (& $callback $Section @Arguments)

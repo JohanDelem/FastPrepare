@@ -38,6 +38,8 @@ function New-AppContext {
         Mode       = $mode
         Stamp      = $stamp
         Log        = $log
+        # Modules chargés dans les runspaces d'arrière-plan (jamais FastPrepare.UI).
+        ModulePaths = @(Get-BackgroundModulePath -Root $Root)
         Paths      = [pscustomobject]@{
             Logs      = $log.Folder
             Logos     = Join-Path $Root 'logos'
@@ -52,4 +54,14 @@ function New-AppContext {
     }
     Write-RunLog -Log $log -Message ("Mode : {0}" -f $(if ($mode -eq 'Simulation') { 'simulation (aucune modification du poste)' } else { 'réel' }))
     return $context
+}
+
+function Get-BackgroundModulePath {
+    <# Chemins absolus des manifestes des modules non graphiques, dans l'ordre de dépendance. #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$Root)
+    foreach ($module in 'FastPrepare.Core', 'FastPrepare.Infrastructure', 'FastPrepare.Application') {
+        Join-Path $Root "src\$module\$module.psd1"
+    }
 }

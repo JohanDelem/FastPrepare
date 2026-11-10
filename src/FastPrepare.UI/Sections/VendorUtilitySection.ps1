@@ -9,6 +9,7 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
     $utilities = $Context.Config.Utilities
     $keys = @($utilities.PSObject.Properties | ForEach-Object { $_.Name })
     $cards = New-Object System.Collections.Generic.List[object]
+    $Section.State.UserChose = $false
 
     for ($i = 0; $i -lt $keys.Count; $i++) {
         $utility = $utilities.($keys[$i])
@@ -18,6 +19,7 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
                 param($source, $routedEventArgs)
                 Invoke-UiAction -Name 'utilitaire constructeur' -Action {
                     $section = Get-UiSection -Id 'vendor-utility'
+                    $section.State.UserChose = $true
                     Set-ExclusiveSelection -Card $section.State.Cards -Source $source
                     Update-VendorUtilityStatus
                     $key = Get-CheckedCardKey -Card $section.State.Cards
@@ -34,7 +36,8 @@ Register-UiSection -Id 'vendor-utility' -Number 5 -Column Right -XamlFile 'Secti
     Update-VendorUtilityStatus
 } -OnSnapshot {
     param($Section, $Snapshot, $Context)
-    if ($Snapshot.SuggestedUtilityKey) {
+    # Présélection selon le constructeur, sauf si le technicien a déjà cliqué une card pendant la détection.
+    if ($Snapshot.SuggestedUtilityKey -and -not $Section.State.UserChose) {
         foreach ($card in $Section.State.Cards) { $card.IsChecked = ([string]$card.Tag -eq $Snapshot.SuggestedUtilityKey) }
     }
     Update-VendorUtilityStatus

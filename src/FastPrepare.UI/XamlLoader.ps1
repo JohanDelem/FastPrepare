@@ -50,11 +50,18 @@ function Import-Xaml {
     return [pscustomobject]@{ Root = $root; Controls = $controls }
 }
 
+$script:ThemeResourceCache = @{}
+
 function Get-ThemeResource {
-    <# Ressource nommée du thème (pinceau, style) ; erreur explicite si elle n'existe pas. #>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Key)
+    <#
+        Ressource nommée du thème (pinceau, style) ; erreur explicite si elle n'existe pas.
+        Mise en cache, fonction simple : appelée pour chaque contrôle généré (une ligne par logiciel).
+    #>
+    param([string]$Key)
+    $resource = $script:ThemeResourceCache[$Key]
+    if ($null -ne $resource) { return $resource }
     $resource = [System.Windows.Application]::Current.TryFindResource($Key)
     if ($null -eq $resource) { throw "Ressource de thème introuvable : '$Key'." }
+    $script:ThemeResourceCache[$Key] = $resource
     return $resource
 }

@@ -8,6 +8,8 @@
     FunctionsToExport = @(
         'New-AppContext',
         'Get-MachineSnapshot',
+        'Start-MachineSnapshot',
+        'Get-BackgroundModulePath',
         'Export-MachineInventory',
         'Invoke-SelectionSimulation'
     )

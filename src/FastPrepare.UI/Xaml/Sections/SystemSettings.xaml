@@ -5,6 +5,7 @@
     <TextBlock Style="{StaticResource H2}" Text="9 · Configuration des paramètres système"/>
     <TextBlock Style="{StaticResource Sub}" Text="Désactivation IPv6 (interfaces NIC)"/>
     <StackPanel Name="PnlNics"/>
+    <TextBlock Name="TxtNicsLoading" Style="{StaticResource Hint}" Text="Détection en cours…"/>
     <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
       <StackPanel>
         <TextBlock Style="{StaticResource Sub}" Text="Mode d'alimentation"/>

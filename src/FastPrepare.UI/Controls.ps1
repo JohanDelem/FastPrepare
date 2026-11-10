@@ -18,23 +18,23 @@ function New-SelectableCard {
         $Log
     )
 
-    $card = New-Object System.Windows.Controls.Primitives.ToggleButton
+    $card = [System.Windows.Controls.Primitives.ToggleButton]::new()
     $card.Style = Get-ThemeResource -Key 'Card'
     $card.Tag = $Key
-    if ($IsLast) { $card.Margin = New-Object System.Windows.Thickness(0) }
+    if ($IsLast) { $card.Margin = [System.Windows.Thickness]::new(0) }
 
-    $panel = New-Object System.Windows.Controls.StackPanel
+    $panel = [System.Windows.Controls.StackPanel]::new()
 
     if ($LogoPath -and (Test-Path -LiteralPath $LogoPath -PathType Leaf)) {
         try {
-            $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bitmap = [System.Windows.Media.Imaging.BitmapImage]::new()
             $bitmap.BeginInit()
             $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-            $bitmap.UriSource = New-Object System.Uri($LogoPath)
+            $bitmap.UriSource = [System.Uri]::new($LogoPath)
             $bitmap.EndInit()
-            $image = New-Object System.Windows.Controls.Image
+            $image = [System.Windows.Controls.Image]::new()
             $image.Height = 40
-            $image.Margin = New-Object System.Windows.Thickness(0, 0, 0, 6)
+            $image.Margin = [System.Windows.Thickness]::new(0, 0, 0, 6)
             $image.Source = $bitmap
             [void]$panel.Children.Add($image)
         } catch {
@@ -42,7 +42,7 @@ function New-SelectableCard {
         }
     }
 
-    $titleBlock = New-Object System.Windows.Controls.TextBlock
+    $titleBlock = [System.Windows.Controls.TextBlock]::new()
     $titleBlock.Text = $Title
     $titleBlock.FontWeight = [System.Windows.FontWeights]::SemiBold
     $titleBlock.TextWrapping = [System.Windows.TextWrapping]::Wrap
@@ -51,7 +51,7 @@ function New-SelectableCard {
     [void]$panel.Children.Add($titleBlock)
 
     if ($Subtitle) {
-        $subtitleBlock = New-Object System.Windows.Controls.TextBlock
+        $subtitleBlock = [System.Windows.Controls.TextBlock]::new()
         $subtitleBlock.Text = $Subtitle
         $subtitleBlock.Style = Get-ThemeResource -Key 'Hint'
         $subtitleBlock.TextAlignment = [System.Windows.TextAlignment]::Center
@@ -70,33 +70,33 @@ function New-SoftwareRow {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Software)
 
-    $grid = New-Object System.Windows.Controls.Grid
+    $grid = [System.Windows.Controls.Grid]::new()
     foreach ($width in @('*', 170, 96)) {
-        $column = New-Object System.Windows.Controls.ColumnDefinition
-        if ($width -eq '*') { $column.Width = New-Object System.Windows.GridLength(1, [System.Windows.GridUnitType]::Star) }
-        else { $column.Width = New-Object System.Windows.GridLength($width) }
+        $column = [System.Windows.Controls.ColumnDefinition]::new()
+        if ($width -eq '*') { $column.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star) }
+        else { $column.Width = [System.Windows.GridLength]::new($width) }
         $grid.ColumnDefinitions.Add($column)
     }
 
-    $label = New-Object System.Windows.Controls.TextBlock
+    $label = [System.Windows.Controls.TextBlock]::new()
     $label.Text = $Software.Name
     $label.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-    $check = New-Object System.Windows.Controls.CheckBox
+    $check = [System.Windows.Controls.CheckBox]::new()
     $check.Content = $label
     $check.Tag = $Software
-    $check.Margin = New-Object System.Windows.Thickness(10, 5, 8, 5)
+    $check.Margin = [System.Windows.Thickness]::new(10, 5, 8, 5)
     $check.ToolTip = if ($Software.Command) { '{0} : {1}' -f $Software.Method, $Software.Command } else { $Software.Method }
     [System.Windows.Controls.Grid]::SetColumn($check, 0)
 
-    $publisher = New-Object System.Windows.Controls.TextBlock
+    $publisher = [System.Windows.Controls.TextBlock]::new()
     $publisher.Text = $Software.Publisher
     $publisher.Foreground = Get-ThemeResource -Key 'TextSecondaryBrush'
     $publisher.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
     $publisher.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
-    $publisher.Margin = New-Object System.Windows.Thickness(0, 0, 8, 0)
+    $publisher.Margin = [System.Windows.Thickness]::new(0, 0, 8, 0)
     [System.Windows.Controls.Grid]::SetColumn($publisher, 1)
 
-    $mark = New-Object System.Windows.Controls.TextBlock
+    $mark = [System.Windows.Controls.TextBlock]::new()
     $mark.FontWeight = [System.Windows.FontWeights]::SemiBold
     $mark.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     if ($Software.Silent) {
@@ -112,9 +112,9 @@ function New-SoftwareRow {
     [void]$grid.Children.Add($publisher)
     [void]$grid.Children.Add($mark)
 
-    $border = New-Object System.Windows.Controls.Border
+    $border = [System.Windows.Controls.Border]::new()
     $border.BorderBrush = Get-ThemeResource -Key 'BorderSubtleBrush'
-    $border.BorderThickness = New-Object System.Windows.Thickness(0, 1, 0, 0)
+    $border.BorderThickness = [System.Windows.Thickness]::new(0, 1, 0, 0)
     $border.Child = $grid
     return [pscustomobject]@{ Element = $border; CheckBox = $check }
 }
@@ -128,7 +128,7 @@ function New-CheckItem {
         [bool]$IsChecked = $false,
         [System.Windows.Thickness]$Margin
     )
-    $check = New-Object System.Windows.Controls.CheckBox
+    $check = [System.Windows.Controls.CheckBox]::new()
     $check.Content = $Content
     $check.Tag = $Tag
     $check.IsChecked = $IsChecked

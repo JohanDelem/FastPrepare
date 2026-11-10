@@ -55,6 +55,14 @@ Describe 'Couches' {
     }
 }
 
+Describe 'Fils d''exécution' {
+    It '<Name> : runspaces créés uniquement par BackgroundRunner.ps1' -ForEach ($allCode | Where-Object { $_.Name -notlike '*\BackgroundRunner.ps1' }) {
+        $text = Get-CodeText $Path
+        $text | Should -Not -Match 'RunspaceFactory|\[(System\.Management\.Automation\.)?PowerShell\]::Create'
+        @(Get-InvokedCommand $Path | Where-Object { @('Start-Job', 'Start-ThreadJob') -contains $_ }) | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Sécurité' {
     It '<Name> : jamais d''Invoke-Expression' -ForEach $allCode {
         @(Get-InvokedCommand $Path | Where-Object { @('Invoke-Expression', 'iex') -contains $_ }) | Should -BeNullOrEmpty
