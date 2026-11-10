@@ -77,12 +77,14 @@ function Install-WingetPackage {
         [AllowEmptyString()][string]$Override,
         [AllowEmptyString()][string]$Version,
         [int]$TimeoutMinutes = 60,
+        # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
+        $SourceRepair,
         $Log
     )
 
     $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override -Version $Version
     $result = Invoke-Winget -ArgumentList $arguments -TimeoutMinutes $TimeoutMinutes `
-        -SuccessExitCode (@(0) + $script:WingetAlreadyInstalledCodes) -RebootExitCode $script:WingetRebootCodes -Log $Log
+        -SuccessExitCode (@(0) + $script:WingetAlreadyInstalledCodes) -RebootExitCode $script:WingetRebootCodes -SourceRepair $SourceRepair -Log $Log
     return [pscustomobject]@{
         RebootRequired   = $result.RebootRequired
         AlreadyInstalled = ($script:WingetAlreadyInstalledCodes -contains $result.ExitCode)
@@ -120,11 +122,13 @@ function Get-WingetPackageVersion {
     param(
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
+        # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
+        $SourceRepair,
         $Log
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
     $result = Invoke-Winget -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
-        -CaptureOutput -TimeoutMinutes 5 -Log $Log
+        -CaptureOutput -TimeoutMinutes 5 -SourceRepair $SourceRepair -Log $Log
     return (ConvertFrom-WingetShowOutput -Output $result.Output)
 }
 
@@ -147,11 +151,13 @@ function Get-WingetPackageInfo {
     param(
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
+        # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
+        $SourceRepair,
         $Log
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
     $result = Invoke-Winget -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
-        -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 5 -Log $Log
+        -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 5 -SourceRepair $SourceRepair -Log $Log
     if ($result.ExitCode -eq $script:WingetNoPackageFound) { throw "paquet « $Id » introuvable dans la source « $Source »" }
     return (ConvertFrom-WingetShowDetail -Output $result.Output -Id $Id)
 }
@@ -179,11 +185,13 @@ function Test-WingetSource {
     [CmdletBinding()]
     param(
         [ValidatePattern('^[A-Za-z0-9-]+$')][string]$Source = 'winget',
+        # Réparation de la source (Get-WingetSourceRepair, FastPrepare.Application) ; facultative.
+        $SourceRepair,
         $Log
     )
     try {
         [void](Invoke-Winget -ArgumentList ('search --query {0} --source {1} --accept-source-agreements --disable-interactivity' -f $script:WingetSourceProbeQuery, $Source) `
-                -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 3 -Log $Log)
+                -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 3 -SourceRepair $SourceRepair -Log $Log)
         return [pscustomobject]@{ Ready = $true; Error = $null }
     } catch {
         return [pscustomobject]@{ Ready = $false; Error = $_.Exception.Message }
@@ -193,9 +201,13 @@ function Test-WingetSource {
 function Invoke-Winget {
     <#
         Point de passage unique vers winget (par Invoke-ExternalProcess). Source inutilisable
-        (0x8A15000F) : « winget source update » une fois, puis nouvel essai ; si l'erreur persiste,
-        message lisible avec les commandes de réparation, qui ne sont jamais lancées d'office :
-        « winget source reset --force » supprime aussi les sources ajoutées par une organisation (DEC20).
+        (0x8A15000F), réparations automatiques, chacune suivie d'un nouvel essai :
+          1. « winget source update » ;
+          2. installation du paquet de données de la source (Install-WingetSourcePackage), si
+             -SourceRepair le désigne (DEC21).
+        Si l'erreur persiste : message lisible avec la commande de réparation manuelle. Jamais
+        de « winget source reset --force » automatique : il supprime aussi les sources ajoutées
+        par une organisation (DEC20).
     #>
     param(
         [Parameter(Mandatory)][string]$ArgumentList,
@@ -203,6 +215,7 @@ function Invoke-Winget {
         [int[]]$RebootExitCode = @(3010, 1641),
         [switch]$CaptureOutput,
         [int]$TimeoutMinutes = 60,
+        $SourceRepair,
         $Log
     )
     $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
@@ -219,6 +232,7 @@ function Invoke-Winget {
     if ($result.ExitCode -ne $script:WingetSourceDataMissing) { return $result }
 
     $account = [Environment]::UserName
+    # 1. Mise à jour des sources.
     if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Source winget inutilisable pour le compte « $account » (0x8A15000F) : mise à jour des sources (winget source update) puis nouvel essai" }
     try {
         [void](Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList 'source update --disable-interactivity' -CaptureOutput -TimeoutMinutes 5 -Log $Log)
@@ -230,8 +244,51 @@ function Invoke-Winget {
         if ($Log) { Write-RunLog -Log $Log -Level OK -Message 'Source winget réparée par la mise à jour' }
         return $result
     }
+
+    # 2. Installation du paquet de données de la source.
+    $packageProblem = $null
+    if ($SourceRepair -and $SourceRepair.PackageUrl) {
+        try {
+            Install-WingetSourcePackage -SourceRepair $SourceRepair -Log $Log
+            $result = Invoke-ExternalProcess @call
+            if ($result.ExitCode -ne $script:WingetSourceDataMissing) {
+                if ($Log) { Write-RunLog -Log $Log -Level OK -Message 'Source winget réparée par l''installation de son paquet de données' }
+                return $result
+            }
+            $packageProblem = 'paquet installé, source toujours inutilisable'
+        } catch {
+            $packageProblem = $_.Exception.Message
+            if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Installation du paquet de la source winget impossible : $packageProblem" }
+        }
+    } else {
+        $packageProblem = 'non tentée (Winget.SourcePackage absent de config.json)'
+    }
+
     $message = ("source winget inutilisable pour le compte « {0} » (0x8A15000F : données requises par la source manquantes), " +
-        "même après « winget source update ». À réparer dans une invite de commandes administrateur ouverte avec ce compte : " +
-        "winget source reset --force, puis winget source update.") -f $account
+        "malgré la mise à jour des sources (installation de son paquet de données : {1}). " +
+        "À réparer dans une invite de commandes administrateur ouverte avec ce compte : winget source reset --force, puis winget source update.") -f $account, $packageProblem
     throw $message
+}
+
+function Install-WingetSourcePackage {
+    <#
+        Télécharge le paquet de données de la source winget (-SourceRepair.PackageUrl), exige une
+        signature valide émise pour -SourceRepair.ExpectedSigner, l'installe pour le compte
+        courant puis supprime le fichier. Erreur explicite à chaque étape.
+    #>
+    param(
+        [Parameter(Mandatory)]$SourceRepair,
+        $Log
+    )
+    if (-not $SourceRepair.ExpectedSigner) { throw 'éditeur attendu du paquet de la source absent : installation refusée' }
+    $folder = [string]$SourceRepair.Folder
+    $path = Join-Path $folder 'source.msix'
+    if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message ("Installation du paquet de données de la source winget ({0}, signature « {1} » vérifiée avant installation)" -f $SourceRepair.PackageUrl, $SourceRepair.ExpectedSigner) }
+    try {
+        [void](Save-RemoteFile -Url $SourceRepair.PackageUrl -Destination $path -Log $Log)
+        Assert-TrustedExecutable -Path $path -ExpectedSigner ([string]$SourceRepair.ExpectedSigner)
+        Add-AppxPackage -Path $path -ErrorAction Stop
+    } finally {
+        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    }
 }

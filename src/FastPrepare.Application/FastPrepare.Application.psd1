@@ -8,6 +8,7 @@
     FunctionsToExport = @(
         'New-AppContext',
         'Get-BackgroundModulePath',
+        'Get-WingetSourceRepair',
         'Get-MachineSnapshot',
         'Start-MachineSnapshot',
         'Export-MachineInventory',

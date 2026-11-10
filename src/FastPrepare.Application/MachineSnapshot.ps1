@@ -61,7 +61,7 @@ function Get-MachineSnapshot {
     # dès le démarrage plutôt que découvert pendant un test ou une installation.
     if ($snapshot.WingetAvailable) {
         Invoke-SnapshotPart -Log $log -Name 'source winget' -Action {
-            $source = Test-WingetSource -Source 'winget' -Log $log
+            $source = Test-WingetSource -Source 'winget' -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $log
             $snapshot.WingetSourceReady = $source.Ready
             if ($source.Ready) { Write-RunLog -Log $log -Level OK -Message 'Source winget accessible' }
             else { Write-RunLog -Log $log -Level ATTN -Message ('Installations winget impossibles en l''état : {0}' -f $source.Error) }

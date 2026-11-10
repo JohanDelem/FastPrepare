@@ -952,6 +952,13 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - Tests ; recette « Itération 11 ».
 - **Sortie** : sur un compte où la source winget est absente ou abîmée, l'outil la répare seul (journalisé) au démarrage, sans aucune commande à taper.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-11`). Précisions :
+
+- **Signature vérifiée sur le vrai fichier** : `source.msix` téléchargé dans un dossier temporaire du poste de développement, puis supprimé sans être installé : 20,5 Mo, signature `Valid`, signataire `CN=Microsoft Corporation, O=Microsoft Corporation, …` ; `Get-AuthenticodeSignature` vérifie donc bien un paquet `.msix`, et l'éditeur attendu est fixé à `CN=Microsoft Corporation` (plus strict que « Microsoft »).
+- **Fichier jamais conservé** : retéléchargé à chaque réparation (le paquet de la source change chaque jour) et supprimé dans un `finally`, signature refusée comprise.
+- **Non exécuté sur le poste de développement** : l'installation elle-même (la source de la session de développement est saine, et le mode « test seulement » demandé exclut d'installer) ; couverte par des tests à winget et `Add-AppxPackage` simulés, et par la recette « Itération 11 », qui reproduit le défaut.
+- **Vérifié** : 1259 tests Pester verts, PSScriptAnalyzer sans avertissement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |

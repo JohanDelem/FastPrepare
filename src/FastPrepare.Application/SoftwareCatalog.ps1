@@ -75,7 +75,7 @@ function Test-SoftwareCatalogEntry {
         try {
             if ($install.Type -eq 'winget') {
                 if (-not (Test-Winget)) { throw "winget indisponible sur ce poste : test impossible (l'installation réelle tentera de le réenregistrer)" }
-                $info = Get-WingetPackageInfo -Id $install.Id -Source $install.Source -Log $Context.Log
+                $info = Get-WingetPackageInfo -Id $install.Id -Source $install.Source -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $Context.Log
                 $name = if ($info.Name) { $info.Name } else { $install.Id }
                 & $add 'OK' ('Paquet trouvé : {0}, version {1} (source {2})' -f $name, $info.Version, $install.Source)
                 if ($install.Override) { & $add 'ATTN' "Options d'installation (--override) : vérifiées seulement à l'installation réelle" }

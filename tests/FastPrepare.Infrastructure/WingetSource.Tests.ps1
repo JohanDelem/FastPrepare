@@ -96,6 +96,66 @@ Describe 'Source winget inutilisable' {
     }
 }
 
+Describe 'Seconde réparation : paquet de données de la source (DEC21)' {
+    BeforeEach {
+        $script:calls = New-Object System.Collections.Generic.List[string]
+        Mock @m Get-Command { [pscustomobject]@{ Source = 'C:\winget.exe' } } -ParameterFilter { $Name -eq 'winget.exe' }
+        Mock @m Save-RemoteFile { Set-Content -LiteralPath $Destination -Value 'paquet'; $Destination }
+        Mock @m Assert-TrustedExecutable { }
+        Mock @m Add-AppxPackage { $script:installed = $true }
+        $script:installed = $false
+        $repair = [pscustomobject]@{ PackageUrl = 'https://cdn.exemple.test/cache/source.msix'; ExpectedSigner = 'CN=Microsoft Corporation'; Folder = (Join-Path $TestDrive 'winget-source') }
+        $log = New-RunLog -Folder (Join-Path $TestDrive 'logs') -FallbackFolder (Join-Path $TestDrive 'repli') -HostName 'PC-TEST' -Stamp ([guid]::NewGuid().ToString('N'))
+        # winget : source inutilisable tant que le paquet n'est pas installé ; « source update » sans effet.
+        Mock @m Invoke-ExternalProcess {
+            $script:calls.Add($ArgumentList)
+            if ($ArgumentList -like 'source update*') { return [pscustomobject]@{ ExitCode = 0; Output = '' } }
+            if ($script:installed) { return [pscustomobject]@{ ExitCode = 0; Output = $showOutput } }
+            [pscustomobject]@{ ExitCode = $sourceDataMissing; Output = '' }
+        }
+    }
+
+    It 'mise à jour sans effet : paquet téléchargé, signature exigée, installé, supprimé, puis nouvel essai réussi' {
+        (Get-WingetPackageInfo -Id 'Microsoft.VisualStudioCode' -Source 'winget' -SourceRepair $repair -Log $log).Version | Should -Be '1.143.1'
+        Should -Invoke @m Save-RemoteFile -Times 1 -ParameterFilter { $Url -eq 'https://cdn.exemple.test/cache/source.msix' -and $Destination -like '*\winget-source\source.msix' }
+        Should -Invoke @m Assert-TrustedExecutable -Times 1 -ParameterFilter { $ExpectedSigner -eq 'CN=Microsoft Corporation' }
+        Should -Invoke @m Add-AppxPackage -Times 1
+        Join-Path $repair.Folder 'source.msix' | Should -Not -Exist
+        $text = (Receive-RunLogEntry -Log $log).Line -join "`n"
+        $text | Should -Match 'Installation du paquet de données de la source winget'
+        $text | Should -Match 'Source winget réparée par l''installation de son paquet de données'
+        @(Get-Calls | Where-Object { $_ -like 'source reset*' }).Count | Should -Be 0
+    }
+
+    It 'signature refusée : rien n''est installé, fichier supprimé, message lisible' {
+        Mock @m Assert-TrustedExecutable { throw 'source.msix est signé par « CN=Inconnu », et non par « CN=Microsoft Corporation »' }
+        $message = try { [void](Get-WingetPackageInfo -Id 'Microsoft.VisualStudioCode' -Source 'winget' -SourceRepair $repair -Log $log); '' } catch { $_.Exception.Message }
+        Should -Invoke @m Add-AppxPackage -Times 0
+        Join-Path $repair.Folder 'source.msix' | Should -Not -Exist
+        $message | Should -Match 'CN=Inconnu'
+        $message | Should -Match 'winget source reset --force'
+    }
+
+    It 'éditeur attendu absent : installation refusée' {
+        $repair.ExpectedSigner = ''
+        { Get-WingetPackageInfo -Id 'Microsoft.VisualStudioCode' -Source 'winget' -SourceRepair $repair -Log $log } | Should -Throw '*éditeur attendu*'
+        Should -Invoke @m Save-RemoteFile -Times 0
+    }
+
+    It 'sans paramètres de réparation : seconde tentative sautée, et le message le dit' {
+        { Get-WingetPackageInfo -Id 'Microsoft.VisualStudioCode' -Source 'winget' -Log $log } | Should -Throw '*non tentée*SourcePackage*'
+        Should -Invoke @m Save-RemoteFile -Times 0
+    }
+
+    It 'installation réelle et vérification au démarrage : même réparation' {
+        $script:installed = $false
+        [void](Install-WingetPackage -Id '7zip.7zip' -Source 'winget' -SourceRepair $repair -Log $log)
+        Should -Invoke @m Add-AppxPackage -Times 1
+        $script:installed = $false
+        (Test-WingetSource -SourceRepair $repair -Log $log).Ready | Should -BeTrue
+    }
+}
+
 Describe 'Test-WingetSource' {
     BeforeEach { Mock @m Get-Command { [pscustomobject]@{ Source = 'C:\winget.exe' } } -ParameterFilter { $Name -eq 'winget.exe' } }
 

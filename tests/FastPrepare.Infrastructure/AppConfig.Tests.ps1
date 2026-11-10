@@ -41,6 +41,18 @@ Describe 'Assert-AppConfig' {
         Get-ConfigError $config | Should -Match 'Software : la liste des logiciels est désormais'
     }
 
+    It 'Winget.SourcePackage : facultatif, lien https et éditeur exigés s''il est présent' {
+        $config = Get-TestConfig
+        $config.Winget.PSObject.Properties.Remove('SourcePackage')
+        { Assert-AppConfig -Config $config } | Should -Not -Throw
+        $config = Get-TestConfig
+        $config.Winget.SourcePackage.Url = 'http://cdn.exemple.test/source.msix'
+        Get-ConfigError $config | Should -Match 'Winget.SourcePackage.Url : lien https'
+        $config = Get-TestConfig
+        $config.Winget.SourcePackage.ExpectedSigner = ''
+        Get-ConfigError $config | Should -Match 'Winget.SourcePackage.ExpectedSigner'
+    }
+
     It 'SoftwareCatalog absent : erreur' {
         $config = Get-TestConfig
         $config.PSObject.Properties.Remove('SoftwareCatalog')
