@@ -1,0 +1,9 @@
+# Journaux et inventaires d'exécution (N/S, MAC, noms de comptes)
+logs/
+*.log
+
+# Paquets hors ligne (winget .msixbundle), trop volumineux pour Git
+packages/
+
+# Fichiers produits par l'outillage
+tools/out/

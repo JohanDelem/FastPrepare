@@ -1,0 +1,56 @@
+{
+  "InternetTestUrl": "http://www.msftconnecttest.com/connecttest.txt",
+  "InternetTestExpected": "Microsoft Connect Test",
+  "InternetTestIntervalSeconds": 5,
+
+  "Utilities": {
+    "dell": {
+      "Brand": "Dell",
+      "Tool": "Dell Command Update",
+      "WingetId": "Dell.CommandUpdate.Universal",
+      "WingetSource": "winget",
+      "UpdateCommand": "\"%ProgramFiles%\\Dell\\CommandUpdate\\dcu-cli.exe\" /applyUpdates -reboot=disable",
+      "DotNet": [
+        { "DcuVersion": "5.7.0", "WingetId": "Microsoft.DotNet.DesktopRuntime.8", "Version": "8.0.25" },
+        { "DcuVersion": "5.7.1", "WingetId": "Microsoft.DotNet.DesktopRuntime.10", "Version": "" }
+      ]
+    },
+    "hp": {
+      "Brand": "HP",
+      "Tool": "HP Image Assistant",
+      "WingetId": "HP.ImageAssistant",
+      "WingetSource": "winget",
+      "UpdateCommand": "HPImageAssistant.exe /Operation:Analyze /Action:Install /Silent"
+    },
+    "lenovo": {
+      "Brand": "Lenovo",
+      "Tool": "Commercial Vantage + Thin Installer",
+      "WingetId": "9NR5B8GVVM13",
+      "WingetSource": "msstore",
+      "ThinInstallerUrl": "",
+      "UpdateCommand": "ThinInstaller.exe /CM -search A -action INSTALL -noicon -includerebootpackages 1,3,4 -noreboot"
+    },
+    "fujitsu": {
+      "Brand": "Fujitsu",
+      "Tool": "DeskUpdate",
+      "WingetId": "FujitsuClientComputingLimited.DeskUpdate",
+      "WingetSource": "winget",
+      "UpdateCommand": "ducmd.exe /WEB /DRV /BIOS"
+    }
+  },
+
+  "Adobe": {
+    "WingetId": "Adobe.Acrobat.Reader.64-bit",
+    "WingetSource": "winget"
+  },
+
+  "Office": {
+    "OdtSetupUrl": "https://officecdn.microsoft.com/pr/wsus/setup.exe",
+    "OdtFolder": "C:\\ODT"
+  },
+
+  "Power": {
+    "MonitorTimeoutMinutes": 5,
+    "StandbyTimeoutMinutes": 15
+  }
+}
