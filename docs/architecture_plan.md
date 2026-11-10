@@ -855,6 +855,16 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - `docs/recette.md` : section « Itération 8 ».
 - **Sortie** : en mode réel, la session cochée est créée avec ses groupes et ses options ; le journal ne contient jamais le mot de passe ; une saisie invalide grise Lancer avec son motif.
 
+**État : ✅ livrée le 2026-11-10** (branche `iteration-8`). Écarts et précisions :
+
+- **`Format-LocalAccountSummary`** (Core) ajoutée : seule fabrique du libellé de la session (journal, confirmation). Elle ne reçoit pas le mot de passe, elle ne peut donc pas l'écrire.
+- **SecureString libérée** : PowerShell masque l'exception d'une `SecureString` libérée (sa longueur devient `$null`) ; `Get-LocalAccountPasswordError` le détecte et l'étape échoue avec « mot de passe indisponible (déjà libéré) » au lieu de transmettre un objet inutilisable.
+- **Groupes** : le membre est ajouté par son SID (`Add-LocalGroupMember -SID <groupe> -Member <SID du compte>`), sans dépendre de la langue de Windows ni du type d'objet renvoyé par `New-LocalUser`.
+- **Nom du poste** : le plan transmet à l'action le nom actuel et le futur nom ; `Invoke` revalide avec les comptes relus sur le poste (`Get-LocalAccount`).
+- **Fenêtre** : `Update-UiState` libère le mot de passe de chaque sélection instantanée ; `Invoke-Launch` garde la sélection lancée jusqu'à la fin de l'exécution, puis la libère (`Complete-Launch`), y compris en cas d'abandon ou d'erreur de construction du plan. `Validate` compare les deux saisies sur des copies libérées aussitôt.
+- **Règles d'architecture ajoutées** : `New-LocalUser` et `Add-LocalGroupMember` réservés à `Infrastructure` ; aucune conversion de `SecureString` en texte (ni lecture de `PasswordBox.Password`) hors de `Core/LocalAccountCreation.ps1`, où chaque copie non managée est effacée.
+- **Vérifié** : 1062 tests Pester verts, PSScriptAnalyzer sans avertissement ; essai de la fenêtre en simulation (saisies refusées puis acceptées, lancement, journal relu : mot de passe absent). Aucune session créée sur le poste de développement.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |

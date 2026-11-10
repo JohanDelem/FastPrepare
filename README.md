@@ -5,7 +5,8 @@ réinitialisation : le technicien coche les actions dans une fenêtre, clique su
 lit le journal, puis redémarre lui-même le poste. Applicable à n'importe quel parc :
 tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 
-> **État : itération 7, toutes les étapes du cahier disponibles en mode réel.** La simulation
+> **État : itération 8, toutes les étapes du cahier disponibles en mode réel, plus la création
+> d'une session locale (section 11).** La simulation
 > reste le mode par défaut jusqu'à la recette complète sur postes de test
 > ([`docs/recette.md`](docs/recette.md)) ; ensuite, `Execution.DefaultMode` = `"Real"` dans `config.json`.
 > Feuille de route : [`docs/architecture_plan.md`](docs/architecture_plan.md) §9.
@@ -20,6 +21,10 @@ tout ce qui varie d'un parc à l'autre se règle dans `config.json`.
 Options : `Lancer.cmd -Simulation` (force la simulation), `Lancer.cmd -Real` (modifie le poste,
 après confirmation ; bandeau rouge « MODE RÉEL »). Pendant l'exécution, la barre sous **Lancer**
 indique l'action en cours ; la fenêtre ne redémarre jamais le poste.
+
+Session locale (section 11) : nom, nom complet, mot de passe saisi deux fois, administrateur ou
+non, mot de passe qui n'expire jamais ou à changer à la première ouverture. Le mot de passe
+n'est jamais écrit dans le journal ; une session existante n'est jamais modifiée.
 
 **Rien n'est fait automatiquement hors outil** : réinitialisation de Windows, RMM, antivirus,
 BitLocker, activation d'Office, redémarrage (liste dans `config.json`, `ManualReminders`).
@@ -36,6 +41,7 @@ Tout se fait dans `config.json` (validé au démarrage, avec un message qui indi
 | Ajouter une édition Office | `Office.Editions[]` |
 | Durées d'alimentation, batterie incluse ou non | `Power` |
 | Rappels des actions manuelles | `ManualReminders` |
+| Options proposées par défaut pour la session à créer (section 11) | `NewLocalAccount` (facultatif) |
 
 ## Pour le développeur
 

@@ -133,6 +133,24 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Clé protégée en écriture au démarrage, déprotégée avant la fin : journal et inventaire recopiés sur la clé (ligne « copiés sur la clé ») ; restée protégée : consigne de copie manuelle.
 - [ ] `tools\Build-Usb.ps1 -Destination E:\FastPrepare` : avertissements de `config.json` affichés ; la clé ne contient que `Lancer.cmd`, `Preparation.ps1`, `config.json`, `src\`, `logos\`, `packages\`, `logs\`, `VERSION.txt` ; les anciens journaux de la clé sont conservés.
 
+## Itération 8 — création d'une session locale (poste de test uniquement)
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+Mot de passe d'essai à choisir pour la recette, **jamais** celui d'un vrai utilisateur.
+
+- [ ] Section 11 décochée au démarrage ; cochée sans saisie : Lancer grisé (« nom de session vide »).
+- [ ] Nom d'une session existante, nom du poste (actuel ou futur nom de la section 1), nom de 21 caractères, nom avec `/` ou `@`, nom terminé par un point : refusés avec leur motif sous le formulaire et sous Lancer.
+- [ ] Nom d'une session cochée en section 4 : accepté (elle est supprimée avant d'être recréée).
+- [ ] Confirmation différente : Lancer grisé ; identique : Lancer actif.
+- [ ] « N'expire jamais » et « Changer à la première ouverture » ne peuvent pas être cochés ensemble.
+- [ ] Simulation : ligne `[SIMU] [ETAPE 14/14 · section 11] Session locale : New-LocalUser '<nom>' …` ; le mot de passe n'apparaît **nulle part** dans le fichier journal (recherche du texte saisi).
+- [ ] Réel, utilisateur standard : session créée, membre du groupe Utilisateurs seulement (`net localgroup Utilisateurs`), ouverture de session possible avec le mot de passe saisi.
+- [ ] Réel, administrateur + « changer à la première ouverture » : membre de Utilisateurs et Administrateurs ; Windows demande un nouveau mot de passe à la première ouverture.
+- [ ] Mot de passe refusé par la stratégie du poste (ex. trop court si une longueur minimale est imposée) : action en rouge avec le motif de Windows, **aucune** session créée.
+- [ ] Deuxième exécution avec la même saisie, sans relancer l'outil : action en échec « existe déjà », la session existante n'est pas modifiée.
+- [ ] Le mot de passe n'apparaît pas dans le journal de l'exécution réelle.
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :
