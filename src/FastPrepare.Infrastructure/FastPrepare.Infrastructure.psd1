@@ -59,7 +59,10 @@
         'ConvertFrom-WingetShowOutput',
         'Get-DotNetDesktopRuntimeVersion',
         'Find-InstalledExecutable',
-        'Get-OfficeClickToRunProduct'
+        'Get-OfficeClickToRunProduct',
+        'Invoke-WindowsUpdatePass',
+        'Publish-RunProgress',
+        'Copy-RunLogToDrive'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
