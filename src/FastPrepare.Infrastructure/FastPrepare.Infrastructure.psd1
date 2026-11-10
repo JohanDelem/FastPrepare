@@ -39,7 +39,22 @@
         'Set-PowerTimeout',
         'Get-PowerTimeoutSetting',
         'Disable-AdapterIpv6',
-        'Rename-LocalComputer'
+        'Rename-LocalComputer',
+        'Invoke-CmdLine',
+        'Get-ProfileLocation',
+        'Remove-GuardedFolder',
+        'Stop-ProcessByName',
+        'Remove-LocalAccountWithProfile',
+        'Remove-AppxEverywhere',
+        'Initialize-OdtFolder',
+        'Invoke-Odt',
+        'Get-OneDriveSetupPath',
+        'Uninstall-OneDrive',
+        'Remove-DefaultProfileOneDriveRun',
+        'Get-MsiProductCodeByName',
+        'Uninstall-MsiProduct',
+        'Invoke-UninstallCommand',
+        'Wait-UninstallEntryRemoval'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

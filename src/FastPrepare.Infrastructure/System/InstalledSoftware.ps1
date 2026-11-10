@@ -59,3 +59,81 @@ function Get-ExecutableProbe {
     }
     return $result
 }
+
+function Get-MsiProductCodeByName {
+    <# Codes produit MSI des entrées de désinstallation dont le nom affiché est exactement -DisplayName. #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([Parameter(Mandatory)][string]$DisplayName)
+    $codes = foreach ($entry in (Get-ItemProperty -Path $script:UninstallRegistryPaths -ErrorAction SilentlyContinue)) {
+        if ([string]$entry.DisplayName -ne $DisplayName) { continue }
+        $code = Get-UninstallMsiProductCode -Entry $entry
+        if ($code) { $code }
+    }
+    return @($codes | Sort-Object -Unique)
+}
+
+function Uninstall-MsiProduct {
+    <# msiexec /x {GUID} /qn /norestart ; produit déjà absent (1605) = succès. Renvoie { RebootRequired }. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][ValidatePattern('^\{[0-9A-Fa-f-]{36}\}$')][string]$ProductCode,
+        $Log
+    )
+    $result = Invoke-ExternalProcess -FilePath (Get-SystemExecutablePath -Name 'msiexec.exe') -ArgumentList ('/x {0} /qn /norestart' -f $ProductCode) `
+        -SuccessExitCode 0, 1605 -TimeoutMinutes 60 -Log $Log
+    return [pscustomobject]@{ RebootRequired = $result.RebootRequired }
+}
+
+function Invoke-UninstallCommand {
+    <#
+        Exécute la commande de désinstallation choisie par Resolve-UninstallStrategy (FastPrepare.Core).
+        msiexec est toujours pris dans System32 ; une commande non analysable passe par cmd.exe /c
+        (tracé, décision DEC8). -Interactive : l'assistant de l'application est affiché et attendu.
+        Renvoie { RebootRequired }.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Command,
+        [switch]$Interactive,
+        $Log
+    )
+    $timeout = if ($Interactive) { 120 } else { 60 }
+    try {
+        $parsed = Split-CommandLine -CommandLine $Command
+    } catch {
+        $result = Invoke-CmdLine -CommandLine $Command -Interactive:$Interactive -TimeoutMinutes $timeout -Log $Log
+        return [pscustomobject]@{ RebootRequired = $result.RebootRequired }
+    }
+
+    $filePath = $parsed.FilePath
+    $successCodes = @(0)
+    if ([System.IO.Path]::GetFileName($filePath) -match '^(?i)msiexec(\.exe)?$') {
+        $filePath = Get-SystemExecutablePath -Name 'msiexec.exe'
+        $successCodes = @(0, 1605)
+    }
+    $result = Invoke-ExternalProcess -FilePath $filePath -ArgumentList $parsed.Arguments -SuccessExitCode $successCodes -Interactive:$Interactive -TimeoutMinutes $timeout -Log $Log
+    return [pscustomobject]@{ RebootRequired = $result.RebootRequired }
+}
+
+function Wait-UninstallEntryRemoval {
+    <#
+        Attend que le logiciel disparaisse de la liste des programmes installés (certains
+        désinstalleurs, NSIS notamment, rendent la main avant d'avoir fini). Vrai s'il a disparu.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string]$DisplayName,
+        [AllowEmptyString()][string]$DisplayVersion = '',
+        [int]$TimeoutSeconds = 120,
+        [int]$PollSeconds = 2
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $present = @(Get-UninstallEntry | Where-Object { $_.DisplayName -eq $DisplayName -and (-not $DisplayVersion -or [string]$_.DisplayVersion -eq $DisplayVersion) })
+        if ($present.Count -eq 0) { return $true }
+        if ((Get-Date) -ge $deadline) { return $false }
+        Start-Sleep -Seconds $PollSeconds
+    } while ($true)
+}

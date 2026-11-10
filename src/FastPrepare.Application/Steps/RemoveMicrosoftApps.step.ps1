@@ -37,4 +37,40 @@ Register-Step -Id 'remove-microsoft-apps' -Section 3 -Title 'Désinstallation de
         New-StepAction -Label 'Nouveau Teams : Remove-AppxPackage -AllUsers + Remove-AppxProvisionedPackage (MSTeams)' -Parameters @{ Kind = 'AppxRemove'; Package = 'MSTeams' }
         New-StepAction -Label 'Teams personnel : Remove-AppxPackage -AllUsers + Remove-AppxProvisionedPackage (MicrosoftTeams)' -Parameters @{ Kind = 'AppxRemove'; Package = 'MicrosoftTeams' }
     }
+} -Invoke {
+    param($Action, $Context)
+    $log = $Context.Log
+    $p = $Action.Parameters
+    switch ($p.Kind) {
+        'OdtRemove' {
+            $setup = Initialize-OdtFolder -Folder $Context.Paths.OdtFolder -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
+            $result = Invoke-Odt -SetupPath $setup -Xml $p.Xml -Name 'suppression' -Log $log
+            [pscustomobject]@{ RebootRequired = $result.RebootRequired }
+        }
+        'AppxRemove' {
+            # Applications fermées avant le retrait du paquet (nouvel Outlook, nouveau Teams).
+            [void](Stop-ProcessByName -Name @('olk', 'ms-teams', 'msteams'))
+            $result = Remove-AppxEverywhere -Name $p.Package -Log $log
+            if (@($result.Installed).Count + @($result.Provisioned).Count -eq 0) {
+                Write-RunLog -Log $log -Message ('{0} : déjà absent' -f $p.Package)
+            }
+        }
+        'MsiRemoveByName' {
+            $codes = @(Get-MsiProductCodeByName -DisplayName $p.DisplayName)
+            if ($codes.Count -eq 0) { Write-RunLog -Log $log -Message ('{0} : déjà absent' -f $p.DisplayName); return }
+            [void](Stop-ProcessByName -Name 'Teams')
+            $reboot = $false
+            foreach ($code in $codes) { if ((Uninstall-MsiProduct -ProductCode $code -Log $log).RebootRequired) { $reboot = $true } }
+            [pscustomobject]@{ RebootRequired = $reboot }
+        }
+        'TeamsClassicFolder' {
+            # Profil du compte connecté seulement (question ouverte QO2 : autres profils).
+            [void](Stop-ProcessByName -Name 'Teams')
+            $profiles = Get-ProfileLocation
+            $folder = Join-Path $profiles.Current 'AppData\Local\Microsoft\Teams'
+            $result = Remove-GuardedFolder -Path $folder -ProfilesRoot $profiles.Root -CurrentProfile $profiles.Current -AllowInsideProfile
+            if (-not $result.Changed) { Write-RunLog -Log $log -Message "Dossier Teams classique déjà absent : $folder" }
+        }
+        default { throw "action inconnue : $($p.Kind)" }
+    }
 }

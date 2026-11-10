@@ -39,6 +39,7 @@ function Get-MachineSnapshot {
         LocalAccounts       = [pscustomobject]@{ Removable = @(); Excluded = @() }
         Adapters            = @()
         OneDrive            = [pscustomobject]@{ Path = ''; Exists = $false; FileCount = 0 }
+        Profiles            = $null
         SuggestedUtilityKey = $null
         InventoryText       = ''
         InventoryExport     = $null
@@ -67,6 +68,10 @@ function Get-MachineSnapshot {
 
     Invoke-SnapshotPart -Log $log -Name 'liste des cartes réseau' -Action {
         $snapshot.Adapters = @(Get-PhysicalAdapter)
+    }
+
+    Invoke-SnapshotPart -Log $log -Name 'emplacement des profils' -Action {
+        $snapshot.Profiles = Get-ProfileLocation
     }
 
     Invoke-SnapshotPart -Log $log -Name 'dossier OneDrive' -Action {

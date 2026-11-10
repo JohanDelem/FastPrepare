@@ -37,6 +37,7 @@ function New-TestSnapshot {
             [pscustomobject]@{ Name = 'Wi-Fi'; Description = 'Carte sans fil'; Mac = '66-77-88-99-AA-BB'; Ipv6Enabled = $false }
         )
         OneDrive            = [pscustomobject]@{ Path = 'C:\Users\technicien\OneDrive'; Exists = $true; FileCount = 42 }
+        Profiles            = [pscustomobject]@{ Root = 'C:\Users'; Current = 'C:\Users\technicien'; Default = 'C:\Users\Default' }
         SuggestedUtilityKey = 'dell'
         InventoryText       = 'N/S SN0000TEST'
         InventoryExport     = $export

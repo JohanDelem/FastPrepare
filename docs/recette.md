@@ -77,3 +77,21 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Actions des étapes non disponibles : lignes `[ATTN] … ignorée`, rien de modifié (Office, Teams, OneDrive toujours présents).
 - [ ] Une action en échec (ex. carte réseau débranchée puis renommée) : ligne rouge, les actions suivantes s'exécutent.
 - [ ] Noter les codes de sortie de winget observés (journal, lignes `[DEBUG]`).
+
+## Itération 4 — désinstallations réelles (poste de test uniquement)
+
+> **Actions destructives.** Poste de test réinitialisé, sans aucune donnée à conserver.
+> Préparer : Office Click-to-Run, Office MSI 2016, Teams classique (Machine-Wide Installer) et nouveau Teams,
+> nouvel Outlook, OneDrive avec des fichiers synchronisés, deux comptes locaux supplémentaires
+> (dont un avec une session ouverte), un logiciel MSI, un logiciel Inno Setup, un logiciel NSIS, un logiciel à assistant.
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Sessions locales : compte et dossier de profil supprimés ; le compte à session ouverte est refusé (« profil chargé »), les autres actions continuent.
+- [ ] Office : un seul passage ODT ; Click-to-Run et MSI désinstallés ; XML présent dans `C:\ODT` et dans le journal.
+- [ ] Nouvel Outlook, OneNote (Store), nouveau Teams, Teams personnel : absents pour tous les utilisateurs **et** pour un nouveau profil créé ensuite (paquets provisionnés retirés).
+- [ ] Teams classique : Machine-Wide Installer désinstallé, dossier `%LocalAppData%\Microsoft\Teams` du compte connecté supprimé.
+- [ ] OneDrive : désinstallé ; un nouveau profil ne le réinstalle pas (clé `Run` du profil Default retirée).
+- [ ] Dossier OneDrive : supprimé seulement si sa case est cochée ; jamais le profil entier.
+- [ ] Logiciels : silencieux d'abord (MSI, Inno, NSIS : plus listés à la fin), assistant ensuite (l'outil attend sa fermeture) ; assistant **annulé** : action en échec « toujours présent ».
+- [ ] Relancer l'outil sur le même poste : tout est « déjà absent », aucune erreur.

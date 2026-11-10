@@ -89,6 +89,22 @@ function Invoke-ExternalProcess {
     return [pscustomobject]@{ ExitCode = $exitCode; RebootRequired = $reboot; Duration = $duration; Output = $output }
 }
 
+function Invoke-CmdLine {
+    <#
+        Repli pour une ligne de commande que Split-CommandLine ne sait pas découper (désinstalleurs
+        aux chaînes atypiques) : cmd.exe /c, journalisé en ATTN. Jamais Invoke-Expression (DEC8).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CommandLine,
+        [switch]$Interactive,
+        [int]$TimeoutMinutes = 60,
+        $Log
+    )
+    if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Commande non analysable, exécutée par cmd.exe /c : $CommandLine" }
+    return (Invoke-ExternalProcess -FilePath (Get-SystemExecutablePath -Name 'cmd.exe') -ArgumentList ('/d /c "{0}"' -f $CommandLine) -Interactive:$Interactive -TimeoutMinutes $TimeoutMinutes -Log $Log)
+}
+
 function Get-SystemExecutablePath {
     <# Chemin absolu d'un exécutable de System32 (jamais résolu par le PATH). #>
     [CmdletBinding()]
