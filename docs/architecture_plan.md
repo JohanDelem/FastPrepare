@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 1.2 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; recette sur postes de test en attente
+- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; recette sur postes de test en attente
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -446,6 +446,8 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Install-WingetPackage -Id -Source -Version -Override -Log` — `winget install --id <Id> --exact --source <Source> --silent --accept-package-agreements --accept-source-agreements [--version] [--override]` via `Invoke-ExternalProcess` ; code « déjà installé » traité comme un succès.
 - `Get-WingetPackageVersion -Id -Source` — version proposée par winget (`winget show --id … --exact`), nécessaire au choix du runtime .NET de Dell ; analyse tolérante à la langue de sortie (recherche de la ligne par motif `Version`/`Version :`).
 - `Get-WingetPackageInfo -Id -Source` (it. 9) — `{ Name, Version }` du paquet par `winget show` : **ne télécharge ni n'installe rien**. Paquet introuvable (`0x8A150014`) → erreur « paquet introuvable dans la source <source> ». Utilisée par le test du catalogue.
+- (it. 10) **Tous les appels à winget** (`show`, `install`) passent par une fonction privée `Invoke-Winget` : si winget répond `0x8A15000F` (« données requises par la source manquantes », source jamais initialisée ou abîmée pour le compte qui exécute l'outil), elle lance **une fois** `winget source update`, puis réessaie ; si l'erreur persiste, message lisible qui nomme le compte et donne les commandes de réparation (`winget source reset --force`, `winget source update`), **sans les lancer** (DEC20).
+- `Test-WingetSource -Source` (it. 10) — la source s'ouvre-t-elle ? Recherche d'un terme qui ne correspond à aucun paquet (`winget search`) : « aucun résultat » prouve que la source répond, sans télécharger d'installateur. Même réparation automatique unique que ci-dessus. Renvoie `{ Ready, Error }`.
 - `Save-WingetPackage -Id -Source -Destination` — `winget download` vers le cache (téléchargement anticipé ; non disponible pour la source `msstore`, cf. DEC11).
 
 **`System/Hardware.ps1`** 🆕
@@ -673,6 +675,7 @@ Une règle n'est écrite qu'une fois ; les autres fichiers l'**appellent**. Tout
 | Codes de sortie MSI / outils constructeur | `Process.ps1` (MSI) + `Update.SuccessExitCodes` (outils) | étapes | `Process.Tests` |
 | Téléchargement et vérification | `Infrastructure/System/Download.ps1` | `Odt`, `InstallVendorUtility.step`, `Prefetch` | `Download.Tests` (empreinte fausse → refus ; signature invalide → refus) |
 | winget présent (contraintes du cahier) | `Infrastructure/System/Winget.ps1` (`Assert-Winget`) | étapes 06 et 08, `Prefetch` | `Winget.Tests` (mocks des trois cas) ; recette sur poste sans winget |
+| Source winget utilisable, réparée une fois (it. 10) | `Infrastructure/System/Winget.ps1` (`Invoke-Winget`, `Test-WingetSource`) | tous les appels à winget ; `MachineSnapshot` (vérification au démarrage) | `WingetSource.Tests` ; recette « autre compte administrateur » |
 | Format du journal | `Infrastructure/Logging/RunLog.ps1` | tous | `RunLog.Tests` |
 | Format et nom de l'inventaire | `Core/Inventory.ps1` | `MachineSnapshot`, `ExportInventory.step`, `InventorySection` | `Inventory.Tests` |
 | Rappels des actions manuelles | `config.ManualReminders` | mémo de la fenêtre, `FinalReport` | `FinalReport.Tests` |
@@ -921,6 +924,23 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - **Règles d'architecture ajoutées** : `AppConfig.ps1` n'écrit jamais ; seul `Application/SoftwareCatalog.ps1` appelle `Save-SoftwareCatalog`.
 - **Vérifié** : 1240 tests Pester verts, PSScriptAnalyzer sans avertissement ; essai de la fenêtre en simulation sur une copie du catalogue, avec le vrai winget et de vraies requêtes d'en-têtes (lecture seule) : paquet trouvé (7-Zip), paquet inexistant refusé, lien direct valide (1,6 Mo, après redirection), lien vers une page web refusé, enregistrement visible en section 8. Rien n'a été téléchargé ni installé sur le poste de développement.
 
+### Itération 10 — Source winget vérifiée et réparée (correctif)
+
+**Constat** (recette de l'itération 9, poste de développement) : lancé par `Lancer.cmd` avec les identifiants d'un **autre compte administrateur**, l'outil utilise le winget de ce compte. Sa source était inutilisable : `winget show` répondait `0x8A15000F` (« données requises par la source manquantes ») ; le test du catalogue affichait « code de sortie -1978335217 », illisible. `winget source update` lancé à la main ne suffisait pas. Une exécution réelle aurait échoué de la même façon sur **toutes** les installations winget (sections 5 et 8, runtime .NET de Dell). L'entrée testée était correcte : le même test passait dans la session du technicien.
+
+- `Invoke-Winget` (privée) : point de passage unique vers winget ; sur `0x8A15000F`, `winget source update` une fois puis nouvel essai ; sinon message lisible avec les commandes de réparation.
+- `Test-WingetSource` : vérification que la source s'ouvre, sans télécharger d'installateur.
+- `MachineSnapshot` : après « winget détecté », vérification de la source (`WingetSourceReady`) ; `ATTN` explicite au démarrage si elle reste inutilisable, au lieu de le découvrir pendant un test ou une installation.
+- Tests (`WingetSource.Tests`) ; recette : outil lancé avec un autre compte administrateur.
+- **Sortie** : un problème de source winget est signalé dès le démarrage, réparé automatiquement quand une mise à jour suffit, et sinon expliqué avec les commandes à lancer.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-10`). Précisions :
+
+- **Sonde** : `winget search --query fastprepare-sonde-source --source winget` ; mesurée sur le poste de développement avec une source saine : « aucun paquet » (`0x8A150014`) en 0,8 s, sans téléchargement. Le relevé du poste complet reste d'environ 5 s.
+- **Tests indépendants du catalogue du dépôt** : `New-TestContext` lit désormais `tests/Fixtures/software.test.json` ; les tests échouaient dès qu'un logiciel était ajouté à `software.json`. La validité du `software.json` du dépôt reste testée à part.
+- **Non reproduit sur le poste de développement** : la réparation elle-même (le compte administrateur concerné n'est pas accessible depuis la session de développement) ; elle est couverte par des tests à winget simulé et par la recette « Itération 10 ».
+- **Vérifié** : 1250 tests Pester verts, PSScriptAnalyzer sans avertissement ; relevé réel (`Source winget accessible`) et test réel des trois logiciels du catalogue (Adobe Acrobat Reader, Microsoft Teams, Visual Studio Code : paquets trouvés), en simulation, sans téléchargement ni installation.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -933,6 +953,7 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 | 7 | 7 (WU), 14 | E1, E7, E10 | WindowsUpdate, livraison |
 | 8 | 11 (hors cahier) | F1 | LocalAccountCreation, CreateLocalAccount.step, NewLocalAccountSection |
 | 9 | 8 + onglet Réglages (hors cahier) | F2 | SoftwareCatalog (Core, Infrastructure, Application), onglet Réglages |
+| 10 | 5, 8 (winget) | — (correctif, DEC20) | Winget (Infrastructure), MachineSnapshot |
 
 ---
 
@@ -1009,6 +1030,7 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC17 | Catalogue des logiciels modifiable depuis l'interface : où le stocker ? | **Fichier dédié `software.json`**, désigné par `config.SoftwareCatalog` (révise DEC7 pour ce seul cas). `config.json` reste un fichier écrit à la main, jamais réécrit par l'outil : sa mise en forme, son ordre et ses blocs ne risquent rien. Le catalogue, lui, est réécrit par l'outil (écriture atomique, `.bak`). Même modèle d'élément `Install` que les utilitaires constructeurs (winget ou lien direct). `ConfigVersion` passe à 3 pour que l'ancienne clé `Software` soit refusée avec une consigne plutôt qu'ignorée. | 9 |
 | DEC18 | « Tester sans télécharger ni installer » : que vérifier ? | **winget** : winget présent, `winget show --id <id> --exact --source <source>` trouve le paquet (nom et version affichés). **Lien direct** : requête d'en-têtes (`HEAD`, repli `GET` interrompu après les en-têtes) : réponse 200 après redirections, en `https`, type de contenu qui n'est pas une page web (`text/html` = lien vers une page de téléchargement, refusé), taille annoncée. **Non vérifiable sans télécharger**, et donc rappelé dans le résultat : signature et éditeur, empreinte, options silencieuses (elles le sont à l'installation, et une erreur y est explicite). Le test est journalisé. | 9 |
 | DEC19 | Modifier le catalogue : dans quel mode, à quel moment ? | **Dans les deux modes** : le catalogue est sur la clé, pas sur le poste préparé ; la simulation garantit « aucune modification du poste », pas « aucune écriture sur la clé » (le journal y est déjà écrit). **Jamais pendant une exécution** (onglet désactivé, comme le formulaire). Enregistrer une entrée **non testée** (ou modifiée depuis son dernier test) est permis — un technicien hors ligne doit pouvoir préparer sa clé — mais demande confirmation. | 9 |
+| DEC20 | Source winget inutilisable (`0x8A15000F`) : que fait l'outil ? | **Une réparation automatique, la plus légère** : `winget source update` puis un nouvel essai, au démarrage comme à chaque appel (elle ne fait que rafraîchir le catalogue de winget). **Jamais `winget source reset --force` automatiquement** : il supprime aussi les sources ajoutées par une organisation ; c'est au technicien de le décider, le message lui donne les commandes. Constat qui justifie de ne pas s'arrêter à la mise à jour dans le message : sur le poste de développement, `source update` seul n'a pas suffi. | 10 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 

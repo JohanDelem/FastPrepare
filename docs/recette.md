@@ -168,6 +168,15 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Relancer l'outil : les logiciels ajoutés sont toujours là ; `software.json` modifié à la main avec une erreur → refus au démarrage avec l'entrée fautive.
 - [ ] `tools\Build-Usb.ps1` sur une clé déjà préparée : catalogue de la clé conservé (message) ; avec `-ReplaceSoftwareCatalog` : remplacé.
 
+## Itération 10 — source winget (outil lancé avec un autre compte administrateur)
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Lancer `Lancer.cmd` en donnant les identifiants d'un **autre** compte administrateur que la session ouverte : au démarrage, ligne `[OK] Source winget accessible`, ou bien `[ATTN] Installations winget impossibles en l'état : …` avec le nom du compte et les commandes de réparation.
+- [ ] Source inutilisable réparée par la mise à jour : lignes `[ATTN] Source winget inutilisable … mise à jour des sources` puis `[OK] Source winget réparée par la mise à jour`.
+- [ ] Source irréparable automatiquement : le test d'un logiciel winget (onglet Réglages) affiche le message lisible (compte, `winget source reset --force`, `winget source update`), jamais « code de sortie -1978335217 » ; après ces deux commandes lancées à la main dans une invite administrateur de ce compte, puis redémarrage de l'outil : `[OK] Source winget accessible` et test réussi.
+- [ ] L'outil ne lance jamais `winget source reset` de lui-même (journal, niveau `DEBUG` : seules des commandes `source update`).
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :

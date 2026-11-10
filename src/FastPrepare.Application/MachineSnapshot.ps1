@@ -24,7 +24,7 @@ function Start-MachineSnapshot {
 
 function Get-MachineSnapshot {
     <#
-        Renvoie { Identity, WingetAvailable, Software, LocalAccounts { Removable, Excluded, Names },
+        Renvoie { Identity, WingetAvailable, WingetSourceReady, Software, LocalAccounts { Removable, Excluded, Names },
         Adapters, OneDrive, SuggestedUtilityKey, InventoryText }.
     #>
     [CmdletBinding()]
@@ -35,6 +35,7 @@ function Get-MachineSnapshot {
         PSTypeName          = 'FastPrepare.MachineSnapshot'
         Identity            = [pscustomobject]@{ Manufacturer = ''; Model = ''; Serial = ''; OsLabel = ''; HostName = $env:COMPUTERNAME }
         WingetAvailable     = $false
+        WingetSourceReady   = $false
         Software            = @()
         LocalAccounts       = [pscustomobject]@{ Removable = @(); Excluded = @(); Names = @() }
         Adapters            = @()
@@ -54,6 +55,17 @@ function Get-MachineSnapshot {
         $snapshot.WingetAvailable = Test-Winget
         if ($snapshot.WingetAvailable) { Write-RunLog -Log $log -Level OK -Message 'Winget détecté' }
         else { Write-RunLog -Log $log -Level ATTN -Message 'Winget introuvable : il sera réenregistré avant les installations' }
+    }
+
+    # Source utilisable pour le compte qui exécute l'outil (itération 10) : un problème est signalé
+    # dès le démarrage plutôt que découvert pendant un test ou une installation.
+    if ($snapshot.WingetAvailable) {
+        Invoke-SnapshotPart -Log $log -Name 'source winget' -Action {
+            $source = Test-WingetSource -Source 'winget' -Log $log
+            $snapshot.WingetSourceReady = $source.Ready
+            if ($source.Ready) { Write-RunLog -Log $log -Level OK -Message 'Source winget accessible' }
+            else { Write-RunLog -Log $log -Level ATTN -Message ('Installations winget impossibles en l''état : {0}' -f $source.Error) }
+        }
     }
 
     Invoke-SnapshotPart -Log $log -Name 'liste des logiciels' -Action {
