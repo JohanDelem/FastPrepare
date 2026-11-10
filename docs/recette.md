@@ -48,3 +48,15 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Une card constructeur cliquée pendant la détection reste sélectionnée après le relevé (pas d'écrasement par la présélection).
 - [ ] À la fin du relevé, toutes les sections sont remplies comme à l'itération 0 ; aucune ligne `[ERREUR]` dans le journal.
 - [ ] Fermer la fenêtre pendant la détection : l'outil se ferme sans message d'erreur.
+
+## Itération 2 — plan d'exécution unique (simulation)
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] Lancer : chaque action cochée apparaît avec le préfixe `[ETAPE nn/13 · section s]`, dans l'ordre du cahier (2 → 13), quel que soit l'ordre de saisie.
+- [ ] Office Click-to-Run + MSI cochés : une seule ligne ODT de suppression, suivie du XML (`Remove All`, `RemoveMSI`).
+- [ ] « Outlook classique » seul (Office décoché) : avertissement `[ATTN]`, aucune action.
+- [ ] Désinstallations : silencieuses d'abord, assistants en dernier, en `[ATTN]`.
+- [ ] Carte réseau dont IPv6 est déjà désactivé cochée : aucune action pour elle.
+- [ ] Pendant l'exécution : colonnes grisées, « Exécution en cours… » ; à la fin, formulaire de nouveau utilisable.
+- [ ] Rapport final : nombre d'actions, emplacement de l'inventaire et du journal, rappels manuels.

@@ -7,6 +7,7 @@
 $script:Context = $null
 $script:Shell = $null
 $script:Snapshot = $null
+$script:Running = $false
 
 function Start-MainWindow {
     <# Construit et affiche la fenêtre ; rend la main à sa fermeture. #>
@@ -43,6 +44,17 @@ function Start-MainWindow {
     # Le relevé démarre une fois la fenêtre affichée et tourne en arrière-plan : la fenêtre reste réactive.
     $window.Add_ContentRendered({
             Invoke-UiAction -Name 'relevé du poste' -Action { Start-MachineView }
+        })
+    # Fermeture pendant une exécution : confirmation (l'action en cours irait à son terme).
+    $window.Add_Closing({
+            param($source, $closingArgs)
+            if ($script:Running) {
+                $answer = [System.Windows.MessageBox]::Show(
+                    "Une exécution est en cours.`nFermer quand même ? L'action en cours ne sera pas annulée proprement.",
+                    'Préparation de poste', 'YesNo', 'Warning')
+                if ($answer -ne 'Yes') { $closingArgs.Cancel = $true }
+                else { Write-RunLog -Log $script:Context.Log -Level ATTN -Message 'Fenêtre fermée pendant l''exécution : exécution interrompue.' }
+            }
         })
     $window.Add_Closed({
             Stop-UiPump
@@ -111,7 +123,8 @@ function Update-LaunchState {
     <# Lancer est actif si le relevé est prêt et qu'aucune section ne le bloque ; sinon le premier motif est affiché. #>
     $shell = $script:Shell.Controls
     $reason = $null
-    if (-not $script:Snapshot) { $reason = 'Grisé : détection du poste en cours' }
+    if ($script:Running) { $reason = 'Exécution en cours…' }
+    elseif (-not $script:Snapshot) { $reason = 'Grisé : détection du poste en cours' }
     else {
         foreach ($section in (Get-UiSection)) {
             $reason = Invoke-UiSectionCallback -Section $section -Name Validate
@@ -126,9 +139,40 @@ function Update-LaunchState {
 }
 
 function Invoke-Launch {
-    <# Bouton Lancer : construit la sélection et la transmet au moteur (simulation à l'itération 0). #>
-    $selection = Get-CurrentSelection
-    [void](Invoke-SelectionSimulation -Selection $selection -Snapshot $script:Snapshot -Context $script:Context)
+    <#
+        Bouton Lancer : sélection → plan d'exécution (le même pour la simulation et le réel) →
+        confirmation en mode réel → exécution en arrière-plan, formulaire verrouillé jusqu'à la fin.
+    #>
+    $context = $script:Context
+    $plan = New-ExecutionPlan -Selection (Get-CurrentSelection) -Snapshot $script:Snapshot -Context $context
+
+    if ($context.Mode -ne 'Simulation') {
+        $answer = [System.Windows.MessageBox]::Show(
+            ("Lancer la préparation du poste ?`n`n{0}`n`nAucun redémarrage automatique." -f (Format-ExecutionPlanSummary -Plan $plan)),
+            'Préparation de poste', 'YesNo', 'Question')
+        if ($answer -ne 'Yes') { return }
+    }
+
+    Set-ExecutionLock -Locked $true
+    $work = Start-ExecutionPlan -Plan $plan -Context $context
+    Register-UiBackgroundWork -Work $work -OnCompleted {
+        param($result)
+        Set-ExecutionLock -Locked $false
+    } -OnFailed {
+        param($message)
+        Write-RunLog -Log $script:Context.Log -Level ERREUR -Message "Exécution interrompue : $message"
+        Set-ExecutionLock -Locked $false
+    }
+}
+
+function Set-ExecutionLock {
+    <# Verrouille (ou libère) le formulaire pendant une exécution ; le journal reste lisible. #>
+    param([bool]$Locked)
+    $script:Running = $Locked
+    $shell = $script:Shell.Controls
+    $shell.ColLeft.IsEnabled = -not $Locked
+    $shell.ColRight.IsEnabled = -not $Locked
+    Update-UiState
 }
 
 function Invoke-UiAction {

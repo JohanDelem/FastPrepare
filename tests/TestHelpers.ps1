@@ -18,3 +18,35 @@ function Get-TestConfig {
     <# Copie modifiable de config.json (chaque test part d'une configuration valide). #>
     return (Get-Content -LiteralPath (Join-Path $script:RepoRoot 'config.json') -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
+
+function New-TestSnapshot {
+    <# Relevé de poste fictif (aucune donnée réelle). #>
+    param([switch]$InventoryExportFailed)
+    $export = if ($InventoryExportFailed) { [pscustomobject]@{ Path = $null; Error = 'clé retirée' } } else { [pscustomobject]@{ Path = 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt'; Error = $null } }
+    return [pscustomobject]@{
+        PSTypeName          = 'FastPrepare.MachineSnapshot'
+        Identity            = [pscustomobject]@{ Manufacturer = 'Dell Inc.'; Model = 'Latitude'; Serial = 'SN0000TEST'; OsLabel = 'Windows 11'; HostName = 'PC-TEST' }
+        WingetAvailable     = $true
+        Software            = @()
+        LocalAccounts       = [pscustomobject]@{
+            Removable = @([pscustomobject]@{ Name = 'ancien'; Sid = 'S-1-5-21-1-2-3-1002'; ProfilePath = 'C:\Users\ancien' })
+            Excluded  = @('Administrateur', 'technicien (connecté)')
+        }
+        Adapters            = @(
+            [pscustomobject]@{ Name = 'Ethernet'; Description = 'Carte filaire'; Mac = '00-11-22-33-44-55'; Ipv6Enabled = $true }
+            [pscustomobject]@{ Name = 'Wi-Fi'; Description = 'Carte sans fil'; Mac = '66-77-88-99-AA-BB'; Ipv6Enabled = $false }
+        )
+        OneDrive            = [pscustomobject]@{ Path = 'C:\Users\technicien\OneDrive'; Exists = $true; FileCount = 42 }
+        SuggestedUtilityKey = 'dell'
+        InventoryText       = 'N/S SN0000TEST'
+        InventoryExport     = $export
+    }
+}
+
+function New-TestContext {
+    <# Contexte de test : configuration du dépôt, journal dans un dossier de test. #>
+    param([Parameter(Mandatory)][string]$Folder, [string]$Mode = 'Simulation', $Config)
+    if (-not $Config) { $Config = Get-TestConfig }
+    $log = New-RunLog -Folder (Join-Path $Folder 'logs') -FallbackFolder (Join-Path $Folder 'repli') -HostName 'PC-TEST' -Stamp ([guid]::NewGuid().ToString('N'))
+    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = [pscustomobject]@{ Logs = $log.Folder }; ModulePaths = @() }
+}
