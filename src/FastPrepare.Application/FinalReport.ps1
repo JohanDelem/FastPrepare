@@ -36,4 +36,14 @@ function Write-FinalReport {
     if ($Plan.InventoryPath) { Write-RunLog -Log $log -Message "Inventaire N/S + MAC : $($Plan.InventoryPath)" }
     Write-RunLog -Log $log -Message "Journal : $($log.FilePath)"
     Write-RunLog -Log $log -Level ATTN -Message ('À faire à la main : {0}' -f (@($Context.Config.ManualReminders) -join ' · '))
+
+    # Clé en lecture seule au démarrage (journal en %TEMP%) : nouvel essai de copie sur la clé (E7).
+    if ($log.IsFallback) {
+        $copy = Copy-RunLogToDrive -Log $log -AdditionalFile @($Plan.InventoryPath)
+        if ($copy.Error) {
+            Write-RunLog -Log $log -Level ATTN -Message ("Journal resté dans {0} (copie sur la clé impossible : {1}) : copiez-le à la main." -f $log.Folder, $copy.Error)
+        } else {
+            Write-RunLog -Log $log -Level OK -Message ("Journal et inventaire copiés sur la clé : {0} (les lignes qui suivent ne figurent que dans {1})" -f $copy.Destination, $log.FilePath)
+        }
+    }
 }

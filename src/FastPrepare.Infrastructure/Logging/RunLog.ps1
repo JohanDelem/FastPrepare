@@ -22,6 +22,7 @@ function New-RunLog {
     )
 
     $isFallback = $false
+    $requestedFolder = $Folder
     if (-not (Test-FolderWritable -Path $Folder)) {
         $isFallback = $true
         $Folder = $FallbackFolder
@@ -33,6 +34,8 @@ function New-RunLog {
         PSTypeName = 'FastPrepare.RunLog'
         FilePath   = Join-Path $Folder $fileName
         Folder     = $Folder
+        # Dossier demandé (sur la clé) : en cas de repli, journal et inventaire y sont recopiés à la fin.
+        RequestedFolder = $requestedFolder
         Queue      = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'
         IsFallback = $isFallback
         FileFailed = $false
@@ -99,4 +102,47 @@ function Test-FolderWritable {
     } catch {
         return $false
     }
+}
+
+function Publish-RunProgress {
+    <#
+        Publie l'avancement de l'exécution pour la fenêtre (« étape n / N »). N'est pas écrit dans
+        le fichier : le journal contient déjà une ligne par action.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Log,
+        [Parameter(Mandatory)][int]$Current,
+        [Parameter(Mandatory)][int]$Total,
+        [AllowEmptyString()][string]$Label = ''
+    )
+    $Log.Queue.Enqueue([pscustomobject]@{ Level = 'PROGRESS'; Line = $Label; Current = $Current; Total = $Total })
+}
+
+function Copy-RunLogToDrive {
+    <#
+        Journal écrit en repli (%TEMP%) parce que la clé était en lecture seule au démarrage :
+        nouvel essai de copie du journal et des fichiers associés (inventaire) vers la clé.
+        Renvoie { Copied, Destination, Error } ; ne lève pas d'erreur. Sans effet hors repli.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Log,
+        [AllowEmptyCollection()][string[]]$AdditionalFile = @()
+    )
+    $result = [pscustomobject]@{ Copied = @(); Destination = $Log.RequestedFolder; Error = $null }
+    if (-not $Log.IsFallback) { return $result }
+    try {
+        if (-not (Test-FolderWritable -Path $Log.RequestedFolder)) { throw "dossier toujours en lecture seule : $($Log.RequestedFolder)" }
+        foreach ($file in @($Log.FilePath) + @($AdditionalFile)) {
+            if (-not $file -or -not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+            [System.Threading.Monitor]::Enter($Log.SyncRoot)
+            try { Copy-Item -LiteralPath $file -Destination $Log.RequestedFolder -Force -ErrorAction Stop }
+            finally { [System.Threading.Monitor]::Exit($Log.SyncRoot) }
+            $result.Copied += (Join-Path $Log.RequestedFolder (Split-Path -Path $file -Leaf))
+        }
+    } catch {
+        $result.Error = $_.Exception.Message
+    }
+    return $result
 }

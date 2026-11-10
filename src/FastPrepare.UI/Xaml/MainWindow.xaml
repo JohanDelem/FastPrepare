@@ -42,6 +42,7 @@
                      FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="6" VerticalScrollBarVisibility="Auto"/>
         <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
           <Button Name="BtnGo" Content="Lancer" Height="44" FontSize="15" FontWeight="SemiBold" IsEnabled="False" Style="{StaticResource Primary}"/>
+          <ProgressBar Name="PbRun" Height="4" Margin="0,6,0,0" Minimum="0" Maximum="1" Foreground="{StaticResource AccentBrush}" Visibility="Collapsed"/>
           <TextBlock Name="TxtGoHint" Style="{StaticResource Hint}" TextAlignment="Center" Margin="0,6,0,0" Text="Grisé : détection du poste en cours"/>
         </StackPanel>
       </Grid>

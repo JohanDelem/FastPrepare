@@ -27,6 +27,7 @@ function Add-LogLine {
     param([Parameter(Mandatory)]$Entry)
 
     if (-not $script:LogView) { return }
+    if ([string]$Entry.Level -eq 'PROGRESS') { return }
     $brushKey = $script:LogLevelBrushKeys[[string]$Entry.Level]
     if (-not $brushKey) { $brushKey = 'LogInfoBrush' }
 

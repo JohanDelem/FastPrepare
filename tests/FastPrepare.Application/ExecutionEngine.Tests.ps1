@@ -38,7 +38,7 @@ Describe 'Invoke-ExecutionPlan — simulation' {
         @($results | Where-Object Outcome -EQ 'Simulated').Count | Should -Be 4
         $entries = Get-Lines $context
         @($entries | Where-Object { $_.Line -match '\[ETAPE \d\d/13 · section 2\]' }).Count | Should -Be 4
-        ($entries | Where-Object { $_.Line -match 'troisième' }).Level | Should -Be 'ATTN'
+        ($entries | Where-Object { $_.Level -ne 'PROGRESS' -and $_.Line -match 'troisième' }).Level | Should -Be 'ATTN'
         ($entries.Line -join "`n") | Should -Match 'avertissement de test'
         ($entries.Line -join "`n") | Should -Match 'simulation terminée : 4 action\(s\)'
     }

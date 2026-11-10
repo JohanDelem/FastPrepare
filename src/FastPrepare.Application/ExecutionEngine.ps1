@@ -31,6 +31,7 @@ function Invoke-ExecutionPlan {
     $results = New-Object System.Collections.Generic.List[object]
     foreach ($action in $actions) {
         $prefix = Format-ActionPrefix -Action $action -StepCount $Plan.StepCount
+        Publish-RunProgress -Log $log -Current $action.Index -Total $actions.Count -Label $action.Label
         $started = Get-Date
         $result = [pscustomobject]@{ Action = $action; Outcome = $null; Error = $null; RebootRequired = $false; Duration = [TimeSpan]::Zero }
 
