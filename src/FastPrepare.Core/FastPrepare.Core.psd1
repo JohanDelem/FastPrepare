@@ -25,7 +25,13 @@
         'Format-InventoryText',
         'Format-InventoryExport',
         'ConvertTo-SafeFileName',
-        'New-Selection'
+        'New-Selection',
+        'Test-SafeChildPath',
+        'Test-SafeProfilePath',
+        'Split-CommandLine',
+        'Expand-ConfigPath',
+        'Test-VersionInRange',
+        'Select-DotNetRequirement'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
