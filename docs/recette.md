@@ -60,3 +60,20 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Carte réseau dont IPv6 est déjà désactivé cochée : aucune action pour elle.
 - [ ] Pendant l'exécution : colonnes grisées, « Exécution en cours… » ; à la fin, formulaire de nouveau utilisable.
 - [ ] Rapport final : nombre d'actions, emplacement de l'inventaire et du journal, rappels manuels.
+
+## Itération 3 — premier mode réel (poste de test uniquement)
+
+> À dérouler sur un **poste de test réinitialisé**, jamais sur un poste en service.
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+- [ ] `Lancer.cmd -Real` : bandeau rouge « MODE RÉEL — le poste sera modifié ».
+- [ ] Lancer : boîte de confirmation avec le nombre d'actions et le nombre d'actions ignorées (étapes pas encore disponibles en réel) ; « Non » n'exécute rien.
+- [ ] Alimentation : après exécution, `powercfg /query` montre 5 min (écran) et 15 min (veille), sur secteur et sur batterie.
+- [ ] IPv6 : désactivé sur les cartes cochées (`Get-NetAdapterBinding -ComponentID ms_tcpip6`), inchangé sur les autres.
+- [ ] Adobe Acrobat Reader installé (64 bits) ; relancer : ligne « déjà installé », pas d'erreur.
+- [ ] winget absent (désinstaller le « Programme d'installation d'application » sur un poste de test) : réenregistrement, sinon installation depuis `packages\`.
+- [ ] Nom d'hôte : appliqué après redémarrage manuel ; ligne « Redémarrage nécessaire » dans le rapport final ; aucun redémarrage automatique.
+- [ ] Actions des étapes non disponibles : lignes `[ATTN] … ignorée`, rien de modifié (Office, Teams, OneDrive toujours présents).
+- [ ] Une action en échec (ex. carte réseau débranchée puis renommée) : ligne rouge, les actions suivantes s'exécutent.
+- [ ] Noter les codes de sortie de winget observés (journal, lignes `[DEBUG]`).
