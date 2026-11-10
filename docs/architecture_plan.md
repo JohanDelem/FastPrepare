@@ -1,6 +1,6 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 0.1 — cible, aucune itération livrée
+- **Version** : 0.2 — itération 0 livrée (branche `iteration-0`), itérations 1 à 7 à venir
 - **Date** : 2026-11-10
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
 - **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
@@ -138,7 +138,7 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┣ 📜architecture_plan.md 🆕 (ce document)
  ┃ ┣ 📜CONTRIBUTING.md 🆕
  ┃ ┣ 📜recette.md 🆕
- ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf 🚚
+ ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf (local, non versionné : *.pdf ignoré par Git)
  ┣ 📂src 🆕
  ┃ ┣ 📂FastPrepare.Core                      (pur : ni système, ni WPF)
  ┃ ┃ ┣ 📂Public
@@ -196,8 +196,10 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┣ 📜ExecutionEngine.ps1
  ┃ ┃ ┣ 📜ExecutionPlan.ps1
  ┃ ┃ ┣ 📜FinalReport.ps1
+ ┃ ┃ ┣ 📜InventoryExport.ps1 (repris par ExportInventory.step à l'it. 2)
  ┃ ┃ ┣ 📜MachineSnapshot.ps1
  ┃ ┃ ┣ 📜Prefetch.ps1
+ ┃ ┃ ┣ 📜SelectionSimulation.ps1 🗑️ (transitoire, supprimé à l'it. 2)
  ┃ ┃ ┣ 📜StepOrder.ps1
  ┃ ┃ ┣ 📜StepRegistry.ps1
  ┃ ┃ ┣ 📜FastPrepare.Application.psd1
@@ -236,7 +238,8 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┣ 📜config.valid.json
  ┃ ┃ ┣ 📜registry-uninstall-entries.json
  ┃ ┃ ┗ 📜selection.full.json
- ┃ ┗ 📜Architecture.Tests.ps1
+ ┃ ┣ 📜Architecture.Tests.ps1
+ ┃ ┗ 📜TestHelpers.ps1
  ┣ 📂tools 🆕
  ┃ ┣ 📜Build-Usb.ps1
  ┃ ┣ 📜Invoke-Lint.ps1
@@ -330,7 +333,7 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 **`Public/UninstallStrategy.ps1`** 🆕 — Tableau « Désinstallation silencieuse » du cahier. *Pur* : reçoit l'entrée de registre **et** le résultat de la sonde de fichier, ne lit rien lui-même.
 - `Resolve-UninstallStrategy -Entry -ExecutableProbe` — renvoie `{ Silent, Method, FilePath, Arguments, RawCommand }` selon l'ordre : `QuietUninstallString` → MSI (GUID de `PSChildName` ou de la chaîne) → `msiexec.exe /x {GUID} /qn /norestart` → Inno Setup (`unins###.exe`) → `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` → NSIS (`ExecutableProbe.IsNsis`) → `/S` → sinon assistant (`Silent = $false`).
 - `Get-UninstallExecutable -UninstallString` — extrait le chemin de l'exécutable (guillemets ou premier `.exe`) ; utilisé par la sonde d'`Infrastructure` pour savoir quel fichier examiner.
-- `Sort-UninstallOrder -Software` — silencieux d'abord, assistants en dernier, ordre alphabétique stable dans chaque groupe (cahier, ordre d'exécution n° 5).
+- `Get-UninstallOrder -Software` — silencieux d'abord, assistants en dernier, ordre alphabétique stable dans chaque groupe (cahier, ordre d'exécution n° 5).
 
 **`Public/CommandLine.ps1`** 🆕 — Découpe une ligne de commande Windows. *Pur.*
 - `Split-CommandLine -CommandLine` — renvoie `{ FilePath, Arguments }` en respectant les guillemets ; échec explicite si la ligne n'est pas analysable (la ligne est alors exécutée par `cmd.exe /c`, journalisée comme telle — §11, DEC8).
@@ -338,7 +341,7 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 
 **`Public/LocalAccountPolicy.ps1`** 🆕 — Comptes que l'outil ne supprime jamais (cahier, section 4). *Pur.*
 - `Test-ProtectedAccount -Sid -CurrentSid` — vrai pour les RID 500 (Administrateur intégré), 501 (Invité), 503 (DefaultAccount), 504 (WDAGUtilityAccount) et pour le compte connecté.
-- `Split-LocalAccounts -Accounts -CurrentSid` — renvoie `{ Removable, Excluded }` ; `Excluded` porte le motif (« connecté », « intégré »).
+- `Split-LocalAccount -Account -CurrentSid` — renvoie `{ Removable, Excluded }` ; `Excluded` porte le motif (« connecté », « intégré »).
 
 **`Public/PathGuard.ps1`** 🆕 — Garde avant toute suppression récursive. *Pur.*
 - `Test-SafeProfilePath -Path -ProfilesRoot -CurrentProfile` — vrai seulement si le chemin est **strictement sous** le dossier des profils (`C:\Users`), n'est ni ce dossier lui-même, ni `Default`, `Default User`, `Public`, `All Users`, ni le profil connecté. Utilisée pour les profils supprimés (section 4) et pour le dossier OneDrive (section 3).
@@ -348,7 +351,7 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 - `Get-OfficeProductId -Edition -WithoutTeams` — `ProductId` ou `NoTeamsProductId` de l'édition ; erreur si « sans Teams » est demandé pour une édition qui ne le propose pas.
 - `New-OdtInstallXml -Edition -WithoutTeams -ExcludedApps -Architecture -Language` — XML universel du cahier : `OfficeClientEdition`, `Channel`, `Product ID`, `Language ID="MatchOS"`, un `ExcludeApp` par application décochée, `Updates Enabled`, `Display Level="None" AcceptEULA="TRUE"`, `FORCEAPPSHUTDOWN`. **Aucune ligne Teams, aucune clé, aucun nom d'organisation.** Construit par `System.Xml` (échappement garanti), pas par concaténation.
 - `New-OdtRemoveXml -RemoveClickToRun -RemoveMsi -Products` — `<Remove All="TRUE"/>` et/ou `<RemoveMSI/>`, ou suppression ciblée d'un produit (OneNote seul).
-- `Get-ExcludedOfficeApps -OptionalApps -Included` — liste des `ExcludeApp` à partir des cases cochées.
+- `Get-ExcludedOfficeApp -OptionalApp -IncludedId` — liste des `ExcludeApp` à partir des cases cochées.
 
 **`Public/DotNetRequirement.ps1`** 🆕 — Correspondance version DCU → runtime .NET (cahier, « Dell et .NET »). *Pur.*
 - `Select-DotNetRequirement -ToolVersion -Requirements` — renvoie l'entrée dont `DcuVersion` correspond (égalité de version, ou plus grande version connue inférieure ou égale si la version exacte est absente, avec avertissement), ou `$null`.
@@ -410,16 +413,16 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Get-MachineIdentity` — constructeur, modèle (`Win32_ComputerSystem`), numéro de série (`Win32_BIOS`), libellé et `DisplayVersion` de Windows, nom d'hôte actuel.
 
 **`System/InstalledSoftware.ps1`** 🆕
-- `Get-UninstallEntries` — lecture des trois ruches avec les filtres existants (`SystemComponent`, `ParentKeyName`, `ReleaseType`, dédoublonnage) ; renvoie les entrées brutes (pas de décision).
+- `Get-UninstallEntry` — lecture des trois ruches avec les filtres existants (`SystemComponent`, `ParentKeyName`, `ReleaseType`, dédoublonnage) ; renvoie les entrées brutes (pas de décision).
 - `Get-ExecutableProbe -Path` — `{ Exists, IsNsis }` : `IsNsis` cherche « Nullsoft » dans les **512 premiers Ko** du fichier (et non le fichier entier jusqu'à 10 Mo).
 - `Get-MsiProductCodeByName -DisplayNamePattern` — GUID d'un produit MSI par son nom (Teams Machine-Wide Installer).
 
 **`System/LocalAccounts.ps1`** 🆕
-- `Get-LocalAccounts` — `{ Name, Sid, ProfilePath }` via `Get-LocalUser` + `Win32_UserProfile`, repli `Win32_UserAccount` (existant).
+- `Get-LocalAccount` — `{ Name, Sid, ProfilePath }` via `Get-LocalUser` + `Win32_UserProfile`, repli `Win32_UserAccount` (existant).
 - `Remove-LocalAccountWithProfile -Sid -ProfilePath` — supprime le profil par l'instance `Win32_UserProfile` (`Remove-CimInstance`, qui nettoie aussi la clé `ProfileList`), puis le compte (`Remove-LocalUser`) ; idempotent (compte déjà absent = succès).
 
 **`System/Network.ps1`** 🆕
-- `Get-PhysicalAdapters` — `{ Name, Description, Mac, Ipv6Enabled }` (existant).
+- `Get-PhysicalAdapter` — `{ Name, Description, Mac, Ipv6Enabled }` (existant).
 - `Disable-AdapterIpv6 -Name` — `Disable-NetAdapterBinding -ComponentID ms_tcpip6`.
 - `New-ConnectivityProbe -Url -Expected -TimeoutSeconds` / `Start-ConnectivityCheck` / `Read-ConnectivityResult` — encapsulent le `HttpClient` asynchrone existant ; aucun minuteur ici (le minuteur appartient à l'interface).
 
@@ -436,7 +439,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Remove-DefaultProfileOneDriveRun` — charge la ruche du profil `Default` (`reg load`), retire la valeur `Run\OneDriveSetup`, décharge **toujours** la ruche (bloc `finally`).
 
 **`System/Power.ps1`** 🆕
-- `Set-PowerTimeouts -MonitorMinutes -StandbyMinutes -IncludeBattery` — `powercfg /change monitor-timeout-ac|dc`, `standby-timeout-ac|dc`.
+- `Set-PowerTimeout -MonitorMinutes -StandbyMinutes -IncludeBattery` — `powercfg /change monitor-timeout-ac|dc`, `standby-timeout-ac|dc`.
 
 **`System/WindowsUpdate.ps1`** 🆕
 - `Invoke-WindowsUpdatePass -Log` — une passe complète par l'API `Microsoft.Update.Session` (recherche `IsInstalled=0 and IsHidden=0`, téléchargement, installation) ; journalise chaque mise à jour et le drapeau « redémarrage requis » ; **ne redémarre jamais**.
@@ -447,13 +450,13 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `New-AppContext -Root -Config -Mode` — renvoie `{ Root, Config, Mode ('Simulation'|'Real'), Paths { Logs, Logos, Packages, OdtFolder, Cache }, Log, Stamp, ModulePaths }`. Résout le mode : paramètre de ligne de commande > `Execution.DefaultMode`. Le mode est **lu par le moteur seul** (règle §6).
 
 **`MachineSnapshot.ps1`** 🆕 — Tout ce que la fenêtre affiche sur le poste, calculé une fois en arrière-plan.
-- `Get-MachineSnapshot -Context` — assemble `Identity` (`Get-MachineIdentity`), `WingetAvailable`, `Software` (entrées + `Resolve-UninstallStrategy` par entrée), `LocalAccounts` (`Split-LocalAccounts`), `Adapters`, `OneDrive` (`Get-OneDriveFolderInfo`), `SuggestedUtilityKey` (`Resolve-UtilityKey`), `InventoryText` ; journalise les mêmes lignes qu'aujourd'hui (« 32 logiciels détectés, dont 11 sans désinstallation silencieuse »). Chaque partie est protégée séparément : un échec WMI ne vide pas la liste des logiciels.
+- `Get-MachineSnapshot -Context` — assemble `Identity` (`Get-MachineIdentity`), `WingetAvailable`, `Software` (entrées + `Resolve-UninstallStrategy` par entrée), `LocalAccounts` (`Split-LocalAccount`), `Adapters`, `OneDrive` (`Get-OneDriveFolderInfo`), `SuggestedUtilityKey` (`Resolve-UtilityKey`), `InventoryText` ; journalise les mêmes lignes qu'aujourd'hui (« 32 logiciels détectés, dont 11 sans désinstallation silencieuse »). Chaque partie est protégée séparément : un échec WMI ne vide pas la liste des logiciels.
 
 **`StepRegistry.ps1`** 🆕 — Catalogue des étapes.
 - `Register-Step -Id -Section -Title -Plan -Invoke` — enregistre un descripteur. **Contrat d'une étape** :
   - `Plan` : bloc `param($Selection, $Snapshot, $Context)` qui renvoie zéro, une ou plusieurs **actions** `{ StepId, Label, Parameters, Interactive }` ; aucun effet de bord ; zéro action = étape non cochée.
   - `Invoke` : bloc `param($Action, $Context)` qui exécute **une** action par les fonctions d'`Infrastructure` ; lève une erreur en cas d'échec ; ne teste jamais le mode simulation.
-- `Get-RegisteredSteps` — descripteurs dans l'ordre de `StepOrder.ps1`.
+- `Get-RegisteredStep` — descripteurs dans l'ordre de `StepOrder.ps1`.
 - `Assert-StepCatalog` — chaque étape enregistrée figure exactement une fois dans `StepOrder`, et réciproquement ; appelé au chargement du module (une étape oubliée échoue au démarrage, pas en production).
 
 **`StepOrder.ps1`** 🆕 — **Ordre d'exécution du cahier, à un seul endroit.**
@@ -487,12 +490,12 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 | `RemoveLocalAccounts.step.ps1` | 4 | Une action par SID coché (libellé : nom + chemin du profil). | Revérifie `Test-ProtectedAccount` **et** `Test-SafeProfilePath`, puis `Remove-LocalAccountWithProfile`. |
 | `RemoveMicrosoftApps.step.ps1` | 3 | Une action ODT de suppression (C2R et/ou MSI réunis dans un même XML) ; une action par Appx (nouvel Outlook, OneNote, MSTeams, MicrosoftTeams) ; une action Teams classique (MSI Machine-Wide + dossiers locaux). « Outlook classique » seul : action d'information (retiré avec la suite, QO1 au §11). | `Initialize-OdtFolder` + `Invoke-Odt` (`New-OdtRemoveXml`) ; `Remove-AppxEverywhere` ; `Get-MsiProductCodeByName` + `Invoke-ExternalProcess msiexec /x`. |
 | `RemoveOneDrive.step.ps1` | 3 | Désinstallation ; retrait de la clé `Run` du profil Default ; suppression du dossier si cochée (libellé : nombre de fichiers). | `Uninstall-OneDrive`, `Remove-DefaultProfileOneDriveRun`, `Test-SafeProfilePath` puis `Remove-Item -Recurse`. |
-| `UninstallSoftware.step.ps1` | 2 | Une action par logiciel coché, triées par `Sort-UninstallOrder` ; `Interactive = $true` pour les assistants. | `Invoke-ExternalProcess` (silencieux) ; assistant : lancement et attente de sa fermeture, avertissement `ATTN` préalable dans le journal. |
+| `UninstallSoftware.step.ps1` | 2 | Une action par logiciel coché, triées par `Get-UninstallOrder` ; `Interactive = $true` pour les assistants. | `Invoke-ExternalProcess` (silencieux) ; assistant : lancement et attente de sa fermeture, avertissement `ATTN` préalable dans le journal. |
 | `InstallVendorUtility.step.ps1` | 5 | Dépendance .NET si requise (`Select-DotNetRequirement` sur la version annoncée par winget), puis un élément par entrée `Install`. | `Assert-Winget` ; `Install-WingetPackage` ; `Get-PrefetchedItem` ou `Save-RemoteFile` + `Assert-TrustedExecutable` + `Invoke-ExternalProcess`. |
 | `InstallOffice.step.ps1` | 6 | Une action (libellé : édition, ID produit, exclusions ; XML complet en paramètre). | `Initialize-OdtFolder`, `Invoke-Odt` (`New-OdtInstallXml`). |
 | `InstallSoftware.step.ps1` | 8 | Une action par logiciel coché du catalogue `config.Software`. | `Assert-Winget`, `Install-WingetPackage` (avec `Override`). |
 | `DisableIpv6.step.ps1` | 9 | Une action par carte cochée **dont IPv6 est encore actif**. | `Disable-AdapterIpv6`. |
-| `SetPowerPlan.step.ps1` | 9 | Une action si cochée (libellé calculé depuis `config.Power`). | `Set-PowerTimeouts`. |
+| `SetPowerPlan.step.ps1` | 9 | Une action si cochée (libellé calculé depuis `config.Power`). | `Set-PowerTimeout`. |
 | `UpdateVendorUtility.step.ps1` | 7 | Une action si une card est choisie et la case cochée. | `Expand-ConfigPath` sur `Update.FilePath`, `Invoke-ExternalProcess` avec `SuccessExitCodes`. |
 | `RunWindowsUpdate.step.ps1` | 7 | Une action si cochée. | `Invoke-WindowsUpdatePass`. |
 | `RenameComputer.step.ps1` | 1 | Une action si cochée (revalidée par `Test-HostName`). | `Rename-Computer -NewName -Force` **sans** `-Restart` ; marque « redémarrage requis ». |
@@ -521,7 +524,7 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
   - `OnSnapshot(Controls, Snapshot)` : remplit les listes quand les détections sont terminées ;
   - `GetSelection(Controls, Selection)` : écrit **sa** partie de la `Selection` ;
   - `Validate(Controls)` : `$null` ou un motif qui bloque Lancer (« nom d'hôte invalide »).
-- `Get-UiSections` — sections triées par colonne puis numéro.
+- `Get-UiSection [-Id]` — une section, ou toutes triées par numéro.
 
 **`Sections/*.ps1`** 🆕 — Une section du cahier par fichier, chacun n'appelant que `Register-UiSection` :
 
@@ -542,7 +545,7 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 **`LogView.ps1`** 🆕
 - `Add-LogLine -RichTextBox -Entry` — ajoute la ligne colorée selon le niveau (couleurs du thème), défile en bas ; limite l'affichage aux 5 000 dernières lignes (le fichier, lui, garde tout).
 
-**`UiPump.ps1`** 🆕 — Le seul `DispatcherTimer` de l'application (hors sonde réseau).
+**`UiPump.ps1`** 🆕 — Le seul `DispatcherTimer` de l'application (la sonde réseau de la section 0 s'y enregistre par `Register-UiTickHandler`).
 - `Start-UiPump -Context -Handlers` — toutes les 200 ms : vide la file du journal vers `LogView`, met à jour la progression, détecte la fin des travaux d'arrière-plan et appelle leur rappel (`OnSnapshot`, fin de préchargement, fin d'exécution).
 - `Stop-UiPump`.
 
@@ -569,7 +572,7 @@ Tests Pester sous `tests/`, en miroir de `src/`. `Core` est testé **sans mock**
 | Fichier de test | Ce qu'il prouve |
 |---|---|
 | `Core/HostName.Tests.ps1` | 15 caractères acceptés, 16 refusés ; `123` refusé, `PC-123` accepté ; tiret initial/final refusé ; accents et `_` refusés ; message de `Get-HostNameError` pour chaque cas. |
-| `Core/UninstallStrategy.Tests.ps1` | Les quatre lignes du tableau du cahier à partir de `Fixtures/registry-uninstall-entries.json` (QuietUninstallString prioritaire, MSI par `PSChildName` puis par chaîne `/I{GUID}`, `unins000.exe`, NSIS, assistant) ; `Sort-UninstallOrder` met les assistants en dernier. |
+| `Core/UninstallStrategy.Tests.ps1` | Les quatre lignes du tableau du cahier à partir de `Fixtures/registry-uninstall-entries.json` (QuietUninstallString prioritaire, MSI par `PSChildName` puis par chaîne `/I{GUID}`, `unins000.exe`, NSIS, assistant) ; `Get-UninstallOrder` met les assistants en dernier. |
 | `Core/OdtConfiguration.Tests.ps1` | XML valide pour chaque édition de `config.valid.json` ; aucune balise contenant « Teams », « PIDKEY » ou « CompanyName » ; « Sans Teams » → `O365BusinessEEANoTeamsRetail` ; refus de « Sans Teams » pour LTSC ; une `ExcludeApp` par case décochée. |
 | `Core/DotNetRequirement.Tests.ps1` | DCU 5.7.0 → .NET 8 dans [8.0.8 ; 8.0.25] ; 5.7.1 → .NET 10 ≥ 10.0.8 ; comparaison numérique (`8.0.9 < 8.0.25`). |
 | `Core/LocalAccountPolicy.Tests.ps1` | RID 500/501/503/504 et compte connecté exclus ; RID 1001 supprimable. |
@@ -595,7 +598,7 @@ Une règle n'est écrite qu'une fois ; les autres fichiers l'**appellent**. Tout
 | Mode simulation | `AppContext` (résolution) + `ExecutionEngine` (seul lecteur) | — | `ExecutionEngine.Tests` ; `Architecture.Tests` (aucune étape ne lit `Context.Mode`) |
 | Nom d'hôte valide (section 1) | `Core/HostName.ps1` | `HostNameSection` (affichage), `RenameComputer.step` (revalidation) | `HostName.Tests` |
 | Stratégie de désinstallation (tableau « Désinstallation silencieuse ») | `Core/UninstallStrategy.ps1` (`Resolve-UninstallStrategy`) | `MachineSnapshot` | `UninstallStrategy.Tests` |
-| Silencieux d'abord, assistants en dernier | `Core/UninstallStrategy.ps1` (`Sort-UninstallOrder`) | `UninstallSoftware.step` | `UninstallStrategy.Tests` |
+| Silencieux d'abord, assistants en dernier | `Core/UninstallStrategy.ps1` (`Get-UninstallOrder`) | `UninstallSoftware.step` | `UninstallStrategy.Tests` |
 | Comptes exclus d'office (section 4) | `Core/LocalAccountPolicy.ps1` | `MachineSnapshot`, `RemoveLocalAccounts.step` (revalidation) | `LocalAccountPolicy.Tests` |
 | Suppression récursive sûre | `Core/PathGuard.ps1` | `RemoveLocalAccounts.step`, `RemoveOneDrive.step` | `PathGuard.Tests` ; tests des deux étapes |
 | XML ODT (section 6) et suppression ODT (section 3) | `Core/OdtConfiguration.ps1` | `InstallOffice.step`, `RemoveMicrosoftApps.step`, `OfficeSection` (résumé) | `OdtConfiguration.Tests` |
@@ -685,6 +688,19 @@ L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à
 - XAML extrait : `Theme.xaml`, `MainWindow.xaml`, un fragment par section ; `SectionRegistry` et les onze fichiers de section **à comportement identique** ; cards constructeur, Office et logiciels générées depuis la configuration.
 - `tests/Architecture.Tests.ps1`.
 - **Sortie** : la fenêtre est visuellement identique à la maquette validée ; aucune règle métier n'a changé.
+
+**État : ✅ livrée le 2026-11-10** (branche `iteration-0`). Écarts avec le contenu prévu, tous assumés :
+
+- **Règles déplacées dès cette itération** : `Core` contient déjà `HostName`, `UninstallStrategy`, `LocalAccountPolicy`, `OdtConfiguration`, `ManufacturerMatch`, `Inventory`, `Selection` et leurs tests. Les sections ne pouvaient pas garder les règles du prototype sans les recopier dans l'interface, ce qui aurait contredit le §1. Restent pour l'itération 1 : `CommandLine`, `PathGuard`, `DotNetRequirement` (sans utilisateur avant les itérations 4 et 5).
+- **Fichiers transitoires dans `Application`** : `SelectionSimulation.ps1` (`Invoke-SelectionSimulation`) reproduit la simulation du prototype à partir de la `Selection` seule, sans contrôle WPF ; il disparaît à l'itération 2 au profit du plan unique. `InventoryExport.ps1` (`Export-MachineInventory`) sera repris par l'étape `ExportInventory.step.ps1`.
+- **Relevé du poste encore synchrone** : `Get-MachineSnapshot` tourne sur le fil de l'interface, après l'affichage de la fenêtre (même ressenti que le prototype). Passage en arrière-plan : itération 1.
+- **Noms au singulier** (convention du §1) : `Get-LocalAccount`, `Split-LocalAccount`, `Get-PhysicalAdapter`, `Get-UninstallEntry`, `Get-ExcludedOfficeApp`, `Get-UninstallOrder` (le verbe `Sort` n'est pas approuvé).
+- **`Selection`** : `LocalAccounts.Items` et `Software.Items` portent les objets du relevé (pas seulement les SID) ; la case « MàJ utilitaire » est `Updates.VendorUtility`.
+- **Contrat de section** : en plus de ceux du §5.8, deux rappels facultatifs, `Refresh` (réagir à la `Selection`, ex. section 7 qui suit la section 5) et `Dispose` (libérer la sonde réseau). Les gestionnaires d'événements retrouvent leur section par `Get-UiSection -Id` plutôt que par une fermeture (`GetNewClosure` perd l'accès aux fonctions privées du module) ; ils passent tous par `Invoke-UiAction`, qui journalise une erreur au lieu de fermer la fenêtre.
+- **Mode réel** refusé au démarrage avec un message clair (`New-AppContext`) tant que le moteur n'existe pas.
+- **Pester 5** : `tools/Invoke-Tests.ps1 -PesterPath` permet de l'utiliser sans l'installer (paquet extrait de la PowerShell Gallery).
+- **`Architecture.Tests.ps1`** analyse les commandes réellement appelées (arbre syntaxique) et non le texte : les messages de simulation qui citent `Remove-LocalUser` ne sont pas des appels.
+- **Vérifié** : 334 tests Pester verts, PSScriptAnalyzer sans avertissement ; fenêtre lancée sur un poste réel (Lenovo 20NR) avec clics simulés : présélection, sélection exclusive, licence sans Teams, blocage de Lancer par un nom d'hôte invalide, simulation dans l'ordre du cahier.
 
 ### Itération 1 — Règles pures et détections en arrière-plan
 

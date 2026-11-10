@@ -1,0 +1,9 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="7 · MàJ"/>
+    <CheckBox Name="ChkWU" IsChecked="True" Content="Lancer Windows Update"/>
+    <CheckBox Name="ChkUtilUpdate" IsEnabled="False" Content="Lancer la MàJ de l'utilitaire constructeur (pilotes, BIOS)"/>
+  </StackPanel>
+</Border>

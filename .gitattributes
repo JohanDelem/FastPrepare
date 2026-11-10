@@ -1,0 +1,10 @@
+# Outil Windows uniquement : fichiers texte en CRLF dans la copie de travail.
+# Un .cmd en LF peut mal interpréter ses étiquettes et blocs.
+* text=auto eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.msixbundle binary
+*.appx binary

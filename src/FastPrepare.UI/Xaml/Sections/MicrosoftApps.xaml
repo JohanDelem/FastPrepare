@@ -1,0 +1,32 @@
+<Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Section}">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H2}" Text="3 · Désinstallation des programmes Microsoft"/>
+    <CheckBox Name="ChkOfficeC2R" IsChecked="True" Content="Office Click-to-Run — toutes éditions et langues"/>
+    <TextBlock Style="{StaticResource Tech}" Text="ODT /configure → &lt;Remove All=&quot;TRUE&quot;/&gt;"/>
+    <CheckBox Name="ChkOfficeMsi" IsChecked="True" Content="Office MSI — 2010, 2013, 2016"/>
+    <TextBlock Style="{StaticResource Tech}" Text="ODT /configure → &lt;RemoveMSI/&gt;"/>
+    <CheckBox Name="ChkOutlookClassic" IsChecked="True" Content="Outlook classique"/>
+    <TextBlock Style="{StaticResource Tech}" Text="composant C2R / MSI → retiré avec la suite Office"/>
+    <CheckBox Name="ChkOutlookNew" IsChecked="True" Content="Nouvel Outlook"/>
+    <TextBlock Style="{StaticResource Tech}" Text="Appx Microsoft.OutlookForWindows → Remove-AppxPackage -AllUsers + Remove-AppxProvisionedPackage"/>
+    <CheckBox Name="ChkOneNote" IsChecked="True" Content="OneNote"/>
+    <TextBlock Style="{StaticResource Tech}" Text="OneNote C2R (Remove All) + Appx Microsoft.Office.OneNote"/>
+    <CheckBox Name="ChkTeams" IsChecked="True" Content="Teams — classique, nouveau, personnel"/>
+    <TextBlock Style="{StaticResource Tech}" Text="MSI Teams Machine-Wide Installer + %LocalAppData%\Microsoft\Teams · Appx MSTeams · Appx MicrosoftTeams"/>
+    <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Margin="0,4,0,0" Padding="0,8,0,0">
+      <StackPanel>
+        <CheckBox Name="ChkOneDrive" IsChecked="True" Content="OneDrive"/>
+        <TextBlock Style="{StaticResource Tech}" Text="OneDriveSetup.exe /uninstall (+ /allusers) · clé Run OneDriveSetup retirée du profil Default"/>
+        <StackPanel Orientation="Horizontal" Margin="22,0,0,0">
+          <CheckBox Name="ChkOneDriveFolder" Content="Dossier OneDrive"/>
+          <Border Background="{StaticResource WarningLightBrush}" CornerRadius="9" Padding="8,1" Margin="10,0,0,0" VerticalAlignment="Center">
+            <TextBlock Name="TxtOneDriveCount" FontSize="11.5" Foreground="{StaticResource WarningBrush}" Text="détection…"/>
+          </Border>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Tech}" Margin="44,0,0,0" Text="Remove-Item %UserProfile%\OneDrive -Recurse"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</Border>

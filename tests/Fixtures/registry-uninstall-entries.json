@@ -1,0 +1,9 @@
+[
+  { "Case": "quiet", "DisplayName": "Outil A", "PSChildName": "OutilA", "QuietUninstallString": "\"C:\\A\\uninst.exe\" /quiet", "UninstallString": "\"C:\\A\\uninst.exe\"" },
+  { "Case": "msi-key", "DisplayName": "Outil B", "PSChildName": "{11111111-2222-3333-4444-555555555555}", "WindowsInstaller": 1, "UninstallString": "MsiExec.exe /X{11111111-2222-3333-4444-555555555555}" },
+  { "Case": "msi-string", "DisplayName": "Outil C", "PSChildName": "OutilC", "UninstallString": "MsiExec.exe /I{AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE}" },
+  { "Case": "inno", "DisplayName": "Outil D", "PSChildName": "OutilD_is1", "UninstallString": "\"C:\\D\\unins000.exe\"" },
+  { "Case": "nsis", "DisplayName": "Outil E", "PSChildName": "OutilE", "UninstallString": "\"C:\\E\\uninstall.exe\"" },
+  { "Case": "wizard", "DisplayName": "Outil F", "PSChildName": "OutilF", "UninstallString": "C:\\F\\setup.exe /remove" },
+  { "Case": "none", "DisplayName": "Outil G", "PSChildName": "OutilG" }
+]
