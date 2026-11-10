@@ -40,7 +40,8 @@
       "Update": {
         "FilePath": "%ProgramFiles%\\Dell\\CommandUpdate\\dcu-cli.exe",
         "Arguments": "/applyUpdates -reboot=disable",
-        "SuccessExitCodes": [0]
+        "SuccessExitCodes": [0, 500],
+        "RebootExitCodes": [1, 5]
       }
     },
     "hp": {
@@ -55,7 +56,8 @@
       "Update": {
         "FilePath": "HPImageAssistant.exe",
         "Arguments": "/Operation:Analyze /Action:Install /Silent",
-        "SuccessExitCodes": [0]
+        "SuccessExitCodes": [0, 256, 257],
+        "RebootExitCodes": [3010]
       }
     },
     "lenovo": {
@@ -66,12 +68,13 @@
       "ManufacturerPattern": "Lenovo",
       "Install": [
         { "Type": "winget", "Id": "9NR5B8GVVM13", "Source": "msstore" },
-        { "Type": "download", "Url": "", "FileName": "ThinInstaller.exe", "Arguments": "", "Sha256": "", "ExpectedSigner": "Lenovo" }
+        { "Type": "download", "Url": "", "FileName": "ThinInstallerSetup.exe", "Arguments": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART", "Sha256": "", "ExpectedSigner": "Lenovo" }
       ],
       "Update": {
-        "FilePath": "ThinInstaller.exe",
+        "FilePath": "%ProgramFiles(x86)%\\Lenovo\\ThinInstaller\\ThinInstaller.exe",
         "Arguments": "/CM -search A -action INSTALL -noicon -includerebootpackages 1,3,4 -noreboot",
-        "SuccessExitCodes": [0]
+        "SuccessExitCodes": [0],
+        "RebootExitCodes": [3010]
       }
     },
     "fujitsu": {

@@ -66,11 +66,12 @@ function Install-WingetPackage {
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
         [AllowEmptyString()][string]$Override,
+        [AllowEmptyString()][string]$Version,
         [int]$TimeoutMinutes = 60,
         $Log
     )
 
-    $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override
+    $arguments = Get-WingetInstallArgument -Id $Id -Source $Source -Override $Override -Version $Version
     $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
     $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList $arguments -TimeoutMinutes $TimeoutMinutes `
         -SuccessExitCode (@(0) + $script:WingetAlreadyInstalledCodes) -RebootExitCode $script:WingetRebootCodes -Log $Log
@@ -87,13 +88,45 @@ function Get-WingetInstallArgument {
     param(
         [Parameter(Mandatory)][string]$Id,
         [Parameter(Mandatory)][string]$Source,
-        [AllowEmptyString()][string]$Override
+        [AllowEmptyString()][string]$Override,
+        [AllowEmptyString()][string]$Version
     )
     if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
+    if ($Version -and $Version -notmatch '^[0-9][0-9A-Za-z.\-]*$') { throw "Version winget invalide : '$Version'." }
     $arguments = 'install --id {0} --exact --source {1} --silent --accept-package-agreements --accept-source-agreements --disable-interactivity' -f $Id, $Source
+    if ($Version) { $arguments += " --version $Version" }
     if ($Override) {
         if ($Override.Contains('"')) { throw "Option --override invalide (guillemet) : $Override" }
         $arguments += ' --override "{0}"' -f $Override
     }
     return $arguments
+}
+
+function Get-WingetPackageVersion {
+    <#
+        Version qu'installerait winget pour ce paquet (winget show). Nécessaire pour choisir le runtime
+        .NET de Dell Command Update avant de l'installer. Analyse tolérante à la langue de winget.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$Id,
+        [Parameter(Mandatory)][string]$Source,
+        $Log
+    )
+    if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
+    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
+    $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
+        -CaptureOutput -TimeoutMinutes 5 -Log $Log
+    return (ConvertFrom-WingetShowOutput -Output $result.Output)
+}
+
+function ConvertFrom-WingetShowOutput {
+    <# Extrait la version de la sortie de « winget show » (« Version: 5.7.0 » ou « Version : 5.7.0 »). #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([AllowEmptyString()][string]$Output)
+    $match = [regex]::Match([string]$Output, '(?m)^\s*Version\s*:\s*([0-9][0-9A-Za-z.\-]*)\s*$')
+    if (-not $match.Success) { throw 'Version introuvable dans la sortie de « winget show ».' }
+    return $match.Groups[1].Value
 }
