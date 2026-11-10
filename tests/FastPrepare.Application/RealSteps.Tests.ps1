@@ -40,13 +40,13 @@ Describe 'Mode réel — étapes de l''itération 3' {
 
     It 'étapes pas encore disponibles en réel : ignorées et signalées, rien d''exécuté' {
         $selection = New-Selection
-        $selection.MicrosoftApps.Teams = $true
+        $selection.Office.EditionKey = 'O365'
         $selection.Updates.WindowsUpdate = $true
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
-        Format-ExecutionPlanSummary -Plan $plan | Should -Match '5 non disponible\(s\) en mode réel'
+        Format-ExecutionPlanSummary -Plan $plan | Should -Match '2 non disponible\(s\) en mode réel'
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
         @($results | Where-Object Outcome -NE 'Skipped').Count | Should -Be 0
-        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match '5 ignorée\(s\)'
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match '2 ignorée\(s\)'
     }
 
     It 'un échec (winget) n''empêche pas les actions suivantes' {

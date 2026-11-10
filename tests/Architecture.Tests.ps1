@@ -42,7 +42,7 @@ Describe 'Couches' {
     }
 
     It '<Name> : aucun accès système direct hors de FastPrepare.Infrastructure' -ForEach $notInfrastructure {
-        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Disable-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'Get-AppxPackage', 'Add-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer', 'Start-BitsTransfer', 'Get-AuthenticodeSignature')
+        $forbidden = @('Get-CimInstance', 'Get-WmiObject', 'Start-Process', 'Get-NetAdapter', 'Get-NetAdapterBinding', 'Disable-NetAdapterBinding', 'Get-LocalUser', 'Remove-LocalUser', 'Get-AppxPackage', 'Add-AppxPackage', 'Remove-AppxPackage', 'Rename-Computer', 'Start-BitsTransfer', 'Get-AuthenticodeSignature', 'Remove-CimInstance', 'Get-AppxProvisionedPackage', 'Remove-AppxProvisionedPackage', 'Stop-Process', 'Remove-ItemProperty')
         @(Get-InvokedCommand $Path | Where-Object { $forbidden -contains $_ }) | Should -BeNullOrEmpty
         Get-CodeText $Path | Should -Not -Match "['`"](HKLM|HKCU):"
 
