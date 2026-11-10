@@ -177,6 +177,19 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Source irréparable automatiquement : le test d'un logiciel winget (onglet Réglages) affiche le message lisible (compte, `winget source reset --force`, `winget source update`), jamais « code de sortie -1978335217 » ; après ces deux commandes lancées à la main dans une invite administrateur de ce compte, puis redémarrage de l'outil : `[OK] Source winget accessible` et test réussi.
 - [ ] L'outil ne lance jamais `winget source reset` de lui-même (journal, niveau `DEBUG` : seules des commandes `source update`).
 
+## Itération 11 — réparation de la source winget sans intervention
+
+Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
+
+Reproduire le défaut constaté : dans une invite administrateur ouverte avec le compte qui lancera l'outil,
+`powershell -NoProfile -Command "Get-AppxPackage -Name Microsoft.Winget.Source | Remove-AppxPackage"`,
+puis vérifier que `winget show --id Microsoft.VisualStudioCode --exact --source winget` échoue (`0x8a15000f`).
+
+- [ ] Lancer l'outil avec ce compte : au démarrage, `[ATTN] Source winget inutilisable …`, `[ATTN] Installation du paquet de données de la source winget (… signature « CN=Microsoft Corporation » vérifiée …)`, puis `[OK] Source winget réparée par l'installation de son paquet de données` et `[OK] Source winget accessible`. Aucune commande tapée.
+- [ ] Test d'un logiciel winget dans l'onglet Réglages : réussi.
+- [ ] `Get-AppxPackage -Name Microsoft.Winget.Source` : présent ; `%ProgramData%\FastPrepare\cache\winget-source` ne contient plus `source.msix`.
+- [ ] Sans réseau au démarrage : message « malgré la mise à jour des sources (installation de son paquet de données : …) », aucune erreur bloquante.
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :

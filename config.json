@@ -20,7 +20,11 @@
 
   "Winget": {
     "FamilyName": "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe",
-    "OfflineBundle": "packages\\Microsoft.DesktopAppInstaller.msixbundle"
+    "OfflineBundle": "packages\\Microsoft.DesktopAppInstaller.msixbundle",
+    "SourcePackage": {
+      "Url": "https://cdn.winget.microsoft.com/cache/source.msix",
+      "ExpectedSigner": "CN=Microsoft Corporation"
+    }
   },
 
   "Utilities": {

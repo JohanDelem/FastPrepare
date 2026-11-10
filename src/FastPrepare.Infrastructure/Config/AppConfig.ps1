@@ -79,6 +79,11 @@ function Assert-AppConfig {
     if (Test-ConfigField $report $Config 'Winget' '' Object) {
         [void](Test-ConfigField $report $Config.Winget 'FamilyName' 'Winget' NonEmptyString)
         [void](Test-ConfigField $report $Config.Winget 'OfflineBundle' 'Winget' NonEmptyString)
+        # Paquet de données de la source winget (itération 11) : facultatif, réparation automatique.
+        if (Test-ConfigField $report $Config.Winget 'SourcePackage' 'Winget' Object -Optional) {
+            [void](Test-ConfigField $report $Config.Winget.SourcePackage 'Url' 'Winget.SourcePackage' HttpsUrl)
+            [void](Test-ConfigField $report $Config.Winget.SourcePackage 'ExpectedSigner' 'Winget.SourcePackage' NonEmptyString)
+        }
     }
 
     # Utilities

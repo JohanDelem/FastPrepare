@@ -51,7 +51,7 @@ Register-Step -Id 'install-vendor-utility' -Section 5 -Title 'Installation de l'
             $item = @($utility.Install)[$Action.Parameters.ItemIndex]
             if ($item.Type -eq 'winget') {
                 Assert-WingetAvailable -FamilyName $Context.Config.Winget.FamilyName -OfflineBundle $Context.Paths.WingetBundle -Log $log
-                $result = Install-WingetPackage -Id $item.Id -Source $item.Source -Log $log
+                $result = Install-WingetPackage -Id $item.Id -Source $item.Source -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $log
                 if ($result.AlreadyInstalled) { Write-RunLog -Log $log -Message ('{0} : déjà installé' -f $item.Id) }
                 return [pscustomobject]@{ RebootRequired = $result.RebootRequired }
             }
@@ -92,7 +92,7 @@ function Install-DotNetRequirement {
     }
 
     Assert-WingetAvailable -FamilyName $Context.Config.Winget.FamilyName -OfflineBundle $Context.Paths.WingetBundle -Log $log
-    $result = Install-WingetPackage -Id $Requirement.WingetId -Source 'winget' -Version $max -Log $log
+    $result = Install-WingetPackage -Id $Requirement.WingetId -Source 'winget' -Version $max -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $log
     $after = @(Get-DotNetDesktopRuntimeVersion | Where-Object { Test-VersionInRange -Version $_ -MinVersion $min -MaxVersion $max })
     if ($after.Count -eq 0) {
         throw ('runtime .NET installé hors de la plage requise ({0} à {1}) pour {2}' -f $min, $(if ($max) { $max } else { '…' }), $ToolLabel)

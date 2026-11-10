@@ -75,6 +75,23 @@ function New-AppContext {
     return $context
 }
 
+function Get-WingetSourceRepair {
+    <#
+        Paramètres de la réparation automatique de la source winget (itération 11, DEC21), passés
+        explicitement aux fonctions winget (-SourceRepair) : un runspace d'arrière-plan n'hérite
+        d'aucun état de module. $null si config.Winget.SourcePackage est absent.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Context)
+    $winget = $Context.Config.Winget
+    if (-not $winget.PSObject.Properties['SourcePackage'] -or -not $winget.SourcePackage) { return $null }
+    return [pscustomobject]@{
+        PackageUrl     = [string]$winget.SourcePackage.Url
+        ExpectedSigner = [string]$winget.SourcePackage.ExpectedSigner
+        Folder         = Join-Path $Context.Paths.Cache 'winget-source'
+    }
+}
+
 function Get-BackgroundModulePath {
     <# Chemins absolus des manifestes des modules non graphiques, dans l'ordre de dépendance. #>
     [CmdletBinding()]

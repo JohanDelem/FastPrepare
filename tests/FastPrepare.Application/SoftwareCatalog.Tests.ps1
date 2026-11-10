@@ -154,3 +154,25 @@ Describe 'Installation d''un logiciel par lien direct (mode réel, simulacres)' 
         $results[0].Outcome | Should -Be 'Succeeded'
     }
 }
+
+Describe 'Get-WingetSourceRepair' {
+    It 'paramètres lus dans config.json, dossier dans le cache' {
+        $context = New-TestContext -Folder $TestDrive
+        $repair = Get-WingetSourceRepair -Context $context
+        $repair.PackageUrl | Should -Be 'https://cdn.winget.microsoft.com/cache/source.msix'
+        $repair.ExpectedSigner | Should -Be 'CN=Microsoft Corporation'
+        $repair.Folder | Should -Be (Join-Path $context.Paths.Cache 'winget-source')
+    }
+    It 'bloc absent : $null (seconde tentative sautée)' {
+        $config = Get-TestConfig
+        $config.Winget.PSObject.Properties.Remove('SourcePackage')
+        Get-WingetSourceRepair -Context (New-TestContext -Folder $TestDrive -Config $config) | Should -BeNullOrEmpty
+    }
+    It 'le test du catalogue transmet la réparation à winget' {
+        $context = New-TestContext -Folder $TestDrive
+        Mock -ModuleName FastPrepare.Application Test-Winget { $true }
+        Mock -ModuleName FastPrepare.Application Get-WingetPackageInfo { [pscustomobject]@{ Name = 'x'; Version = '1' } }
+        [void](Test-SoftwareCatalogEntry -Entry $context.SoftwareCatalog[0] -Context $context)
+        Should -Invoke -ModuleName FastPrepare.Application Get-WingetPackageInfo -Times 1 -ParameterFilter { $SourceRepair.ExpectedSigner -eq 'CN=Microsoft Corporation' }
+    }
+}

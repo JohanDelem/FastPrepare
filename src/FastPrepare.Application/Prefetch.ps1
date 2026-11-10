@@ -126,7 +126,7 @@ function Resolve-UtilityDotNetRequirement {
     $wingetItem = @($utility.Install) | Where-Object { $_.Type -eq 'winget' } | Select-Object -First 1
     if (-not $wingetItem) { throw "aucun paquet winget pour $($utility.Tool) : version introuvable" }
     Assert-WingetAvailable -FamilyName $Context.Config.Winget.FamilyName -OfflineBundle $Context.Paths.WingetBundle -Log $Context.Log
-    $toolVersion = Get-WingetPackageVersion -Id $wingetItem.Id -Source $wingetItem.Source -Log $Context.Log
+    $toolVersion = Get-WingetPackageVersion -Id $wingetItem.Id -Source $wingetItem.Source -SourceRepair (Get-WingetSourceRepair -Context $Context) -Log $Context.Log
     $selection = Select-DotNetRequirement -ToolVersion $toolVersion -Requirement @($utility.DotNet)
     return [pscustomobject]@{
         ToolVersion  = $toolVersion
