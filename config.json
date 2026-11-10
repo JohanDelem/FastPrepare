@@ -1,5 +1,5 @@
 {
-  "ConfigVersion": 2,
+  "ConfigVersion": 3,
 
   "Execution": {
     "DefaultMode": "Simulation",
@@ -112,9 +112,7 @@
     ]
   },
 
-  "Software": [
-    { "Id": "adobe-reader", "Label": "Adobe Acrobat Reader (64 bits)", "WingetId": "Adobe.Acrobat.Reader.64-bit", "Source": "winget", "Override": "-sfx_nu /sAll /rs /msi", "DefaultChecked": true }
-  ],
+  "SoftwareCatalog": "software.json",
 
   "Power": {
     "MonitorTimeoutMinutes": 5,

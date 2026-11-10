@@ -25,8 +25,26 @@ Describe 'Assert-AppConfig' {
 
     It 'version non prise en charge : refus' {
         $config = Get-TestConfig
-        $config.ConfigVersion = 3
-        Get-ConfigError $config | Should -Match 'ConfigVersion 3'
+        $config.ConfigVersion = 4
+        Get-ConfigError $config | Should -Match 'ConfigVersion 4'
+    }
+
+    It 'version 2 (catalogue dans config.json) : refus avec la consigne de migration' {
+        $config = Get-TestConfig
+        $config.ConfigVersion = 2
+        Get-ConfigError $config | Should -Match 'software.json'
+    }
+
+    It 'ancienne liste Software restée dans config.json : erreur explicite' {
+        $config = Get-TestConfig
+        $config | Add-Member -NotePropertyName Software -NotePropertyValue @()
+        Get-ConfigError $config | Should -Match 'Software : la liste des logiciels est désormais'
+    }
+
+    It 'SoftwareCatalog absent : erreur' {
+        $config = Get-TestConfig
+        $config.PSObject.Properties.Remove('SoftwareCatalog')
+        Get-ConfigError $config | Should -Match 'SoftwareCatalog : absent'
     }
 
     It 'clé obligatoire absente : erreur qui cite son chemin (<Path>)' -ForEach @(

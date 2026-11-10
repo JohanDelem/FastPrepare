@@ -1,10 +1,11 @@
 ﻿<#
-    Lecture et validation de config.json (version 2).
+    Lecture et validation de config.json (version 3 ; le catalogue des logiciels de la section 8
+    est dans un fichier à part, software.json, lu par SoftwareCatalog.ps1).
     Une configuration invalide est refusée au démarrage, avec la liste complète des problèmes
     et le chemin de chacun, plutôt que découverte au milieu d'une exécution.
 #>
 
-$script:SupportedConfigVersion = 2
+$script:SupportedConfigVersion = 3
 
 function Read-AppConfig {
     <# Lit config.json (UTF-8) et le valide. Renvoie { Config, Warnings, Path }. #>
@@ -40,6 +41,11 @@ function Assert-AppConfig {
     if (-not $Config.PSObject.Properties['ConfigVersion']) {
         throw ("config.json : format non reconnu (clé 'ConfigVersion' absente). " +
             "Cette version de l'outil attend 'ConfigVersion': $script:SupportedConfigVersion.")
+    }
+    if ($Config.ConfigVersion -eq 2) {
+        throw ("config.json : ConfigVersion 2 n'est plus prise en charge. Passez 'ConfigVersion' à 3, " +
+            "déplacez la liste 'Software' dans software.json (format : docs/architecture_plan.md, C11) " +
+            'et ajoutez "SoftwareCatalog": "software.json".')
     }
     if ($Config.ConfigVersion -ne $script:SupportedConfigVersion) {
         throw ("config.json : ConfigVersion $($Config.ConfigVersion) non prise en charge, " +
@@ -89,23 +95,10 @@ function Assert-AppConfig {
         Test-OfficeConfig -Report $report -Office $Config.Office
     }
 
-    # Software (section 8)
-    if (Test-ConfigField $report $Config 'Software' '' Array) {
-        $ids = @{}
-        $i = 0
-        foreach ($software in @($Config.Software)) {
-            $path = "Software[$i]"
-            if (Test-ConfigField $report $software 'Id' $path NonEmptyString) {
-                if ($ids.ContainsKey($software.Id)) { $report.Errors.Add("$path.Id : '$($software.Id)' en double") }
-                $ids[$software.Id] = $true
-            }
-            [void](Test-ConfigField $report $software 'Label' $path NonEmptyString)
-            [void](Test-ConfigField $report $software 'WingetId' $path NonEmptyString)
-            [void](Test-ConfigField $report $software 'Source' $path NonEmptyString)
-            [void](Test-ConfigField $report $software 'Override' $path String -Optional)
-            [void](Test-ConfigField $report $software 'DefaultChecked' $path Bool)
-            $i++
-        }
+    # Catalogue des logiciels de la section 8 : fichier à part (itération 9, DEC17).
+    [void](Test-ConfigField $report $Config 'SoftwareCatalog' '' NonEmptyString)
+    if ($Config.PSObject.Properties['Software']) {
+        $report.Errors.Add("Software : la liste des logiciels est désormais dans le fichier désigné par 'SoftwareCatalog' (software.json)")
     }
 
     # Power

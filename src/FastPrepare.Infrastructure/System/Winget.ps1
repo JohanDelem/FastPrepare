@@ -130,3 +130,39 @@ function ConvertFrom-WingetShowOutput {
     if (-not $match.Success) { throw 'Version introuvable dans la sortie de « winget show ».' }
     return $match.Groups[1].Value
 }
+
+# « Aucun paquet ne correspond » (APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND, 0x8A150014).
+$script:WingetNoPackageFound = -1978335212
+
+function Get-WingetPackageInfo {
+    <#
+        Nom et version d'un paquet par « winget show » : ne télécharge ni n'installe rien
+        (test du catalogue des logiciels, DEC18). Renvoie { Name, Version }.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Id,
+        [Parameter(Mandatory)][string]$Source,
+        $Log
+    )
+    if ($Id -match '[\s"]' -or $Source -match '[\s"]') { throw "Identifiant ou source winget invalide : '$Id' / '$Source'." }
+    $wingetPath = (Get-Command -Name 'winget.exe' -ErrorAction Stop).Source
+    $result = Invoke-ExternalProcess -FilePath $wingetPath -ArgumentList ('show --id {0} --exact --source {1} --accept-source-agreements --disable-interactivity' -f $Id, $Source) `
+        -SuccessExitCode @(0, $script:WingetNoPackageFound) -CaptureOutput -TimeoutMinutes 5 -Log $Log
+    if ($result.ExitCode -eq $script:WingetNoPackageFound) { throw "paquet « $Id » introuvable dans la source « $Source »" }
+    return (ConvertFrom-WingetShowDetail -Output $result.Output -Id $Id)
+}
+
+function ConvertFrom-WingetShowDetail {
+    <#
+        Nom et version dans la sortie de « winget show » : première ligne « Trouvé <nom> [<id>] »
+        (« Found » en anglais) et ligne « Version: … ». Tolérant à la langue de winget.
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Output, [Parameter(Mandatory)][string]$Id)
+    $nameMatch = [regex]::Match([string]$Output, ('(?m)^\s*\S+\s+(.+?)\s+\[{0}\]\s*$' -f [regex]::Escape($Id)))
+    return [pscustomobject]@{
+        Name    = $(if ($nameMatch.Success) { $nameMatch.Groups[1].Value } else { '' })
+        Version = (ConvertFrom-WingetShowOutput -Output $Output)
+    }
+}
