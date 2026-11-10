@@ -33,7 +33,12 @@
         'Split-CommandLine',
         'Expand-ConfigPath',
         'Test-VersionInRange',
-        'Select-DotNetRequirement'
+        'Select-DotNetRequirement',
+        'Get-LocalAccountNameError',
+        'Get-LocalAccountPasswordError',
+        'Get-LocalAccountGroupSid',
+        'Format-LocalAccountSummary',
+        'Clear-SelectionSecret'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
