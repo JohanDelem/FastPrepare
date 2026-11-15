@@ -29,7 +29,7 @@ Describe 'Mode réel — étapes de l''itération 3' {
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
 
         @($results | Where-Object Outcome -NE 'Succeeded').Count | Should -Be 0
-        Should -Invoke @m Assert-WingetAvailable -Times 1 -ParameterFilter { $OfflineBundle -eq 'C:\Cle\packages\winget.msixbundle' }
+        Should -Invoke @m Assert-WingetAvailable -Times 1 -ParameterFilter { $OfflineBundle -eq 'C:\Outil\packages\winget.msixbundle' }
         Should -Invoke @m Install-WingetPackage -Times 1 -ParameterFilter { $Id -eq 'Adobe.Acrobat.Reader.64-bit' -and $Override -eq '-sfx_nu /sAll /rs /msi' }
         Should -Invoke @m Disable-AdapterIpv6 -Times 1 -ParameterFilter { $Name -eq 'Ethernet' }
         Should -Invoke @m Set-PowerTimeout -Times 1 -ParameterFilter { $MonitorMinutes -eq 5 -and $StandbyMinutes -eq 15 -and $IncludeBattery }

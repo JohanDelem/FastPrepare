@@ -43,7 +43,7 @@ Register-Step -Id 'remove-microsoft-apps' -Section 3 -Title 'Désinstallation de
     $p = $Action.Parameters
     switch ($p.Kind) {
         'OdtRemove' {
-            $setup = Initialize-OdtFolder -Folder $Context.Paths.OdtFolder -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
+            $setup = Initialize-OdtFolder -Folder $Context.Paths.Odt -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
             $result = Invoke-Odt -SetupPath $setup -Xml $p.Xml -Name 'suppression' -Log $log
             [pscustomobject]@{ RebootRequired = $result.RebootRequired }
         }

@@ -81,7 +81,7 @@ Describe 'Save-SoftwareCatalog' {
     It 'dossier protégé en écriture : message explicite' {
         Mock @m Test-Path { $false }
         Mock @m Move-Item { throw [System.UnauthorizedAccessException]::new('Accès refusé') }
-        { Save-SoftwareCatalog -Path (Join-Path $TestDrive 'protege.json') -Entries @(New-Entry) } | Should -Throw '*protégée en écriture*'
+        { Save-SoftwareCatalog -Path (Join-Path $TestDrive 'protege.json') -Entries @(New-Entry) } | Should -Throw '*protégé en écriture*'
     }
 }
 

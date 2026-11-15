@@ -4,14 +4,11 @@
     à chaque fonction qui en a besoin et ne contient aucun objet WPF.
 #>
 
-# Mode réel disponible depuis l'itération 3 ; les étapes pas encore implémentées en réel sont
-# ignorées (et signalées) par le moteur, jamais exécutées à moitié.
-$script:RealModeAvailable = $true
-
 function New-AppContext {
     <#
-        Crée le contexte et le journal. -RequestedMode (ligne de commande) prime sur
-        config.Execution.DefaultMode.
+        Crée le contexte et le journal. -Root : dossier de l'outil, quel que soit son support
+        (dossier local, téléchargé, partage réseau, support amovible). -RequestedMode (ligne de
+        commande) prime sur config.Execution.DefaultMode.
     #>
     [CmdletBinding()]
     param(
@@ -21,17 +18,22 @@ function New-AppContext {
     )
 
     $mode = if ($RequestedMode) { $RequestedMode } else { [string]$Config.Execution.DefaultMode }
-    if ($mode -eq 'Real' -and -not $script:RealModeAvailable) {
-        throw ("Le mode réel n'est pas encore disponible dans cette version de l'outil.`n" +
-            "Lancez l'outil en simulation (Lancer.cmd -Simulation, ou Execution.DefaultMode = 'Simulation' dans config.json).")
-    }
 
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $logFolder = [string]$Config.Logging.Folder
-    if (-not [System.IO.Path]::IsPathRooted($logFolder)) { $logFolder = Join-Path $Root $logFolder }
+    # Dossier de sortie (journal, inventaire) : relatif au dossier de l'outil, absolu ou réseau (DEC23).
+    $outputFolder = [string]$Config.Output.Folder
+    if (-not [System.IO.Path]::IsPathRooted($outputFolder)) { $outputFolder = Join-Path $Root $outputFolder }
 
     $variables = Get-ConfigPathVariable -Config $Config
-    $log = New-RunLog -Folder $logFolder -FallbackFolder (Join-Path $env:TEMP 'FastPrepare') -HostName $env:COMPUTERNAME -Stamp $stamp
+    $workFolder = $variables['WorkFolder']
+    $log = New-RunLog -Folder $outputFolder -FallbackFolder (Join-Path $workFolder 'sortie') -HostName $env:COMPUTERNAME -Stamp $stamp
+    $version = Read-ToolVersion -Path (Join-Path $Root 'VERSION')
+
+    $wingetBundle = ''
+    if ($Config.Winget.PSObject.Properties['OfflineBundle'] -and $Config.Winget.OfflineBundle) {
+        $wingetBundle = [string]$Config.Winget.OfflineBundle
+        if (-not [System.IO.Path]::IsPathRooted($wingetBundle)) { $wingetBundle = Join-Path $Root $wingetBundle }
+    }
 
     $catalogPath = [string]$Config.SoftwareCatalog
     if (-not [System.IO.Path]::IsPathRooted($catalogPath)) { $catalogPath = Join-Path $Root $catalogPath }
@@ -39,6 +41,7 @@ function New-AppContext {
     $context = [pscustomobject]@{
         PSTypeName = 'FastPrepare.AppContext'
         Root       = $Root
+        Version    = $version
         Config     = $Config
         # Catalogue de la section 8 (software.json) ; remplacé quand l'onglet Réglages enregistre.
         SoftwareCatalog = @()
@@ -48,23 +51,27 @@ function New-AppContext {
         # Modules chargés dans les runspaces d'arrière-plan (jamais FastPrepare.UI).
         ModulePaths = @(Get-BackgroundModulePath -Root $Root)
         Paths      = [pscustomobject]@{
-            Logs      = $log.Folder
+            # Dossier de l'outil (lecture seule possible) et dossier réellement utilisé pour la sortie.
+            Tool      = $Root
+            Output    = $log.Folder
             Logos     = Join-Path $Root 'logos'
-            Packages  = Join-Path $Root 'packages'
-            OdtFolder = [string]$Config.Office.OdtFolder
-            # Paquet winget hors ligne, relatif à la racine de la clé.
-            WingetBundle = Join-Path $Root ([string]$Config.Winget.OfflineBundle)
-            # Cache des téléchargements (préchargement des utilitaires constructeurs).
-            Cache        = $variables['CacheFolder']
+            # Dossier de travail local sur le poste : téléchargements et Office Deployment Tool,
+            # supprimés en fin d'exécution réussie (DEC28).
+            Work      = $workFolder
+            Cache     = Join-Path $workFolder 'cache'
+            Odt       = Join-Path $workFolder 'odt'
+            # Paquet winget hors ligne (facultatif) ; chaîne vide s'il n'est pas configuré.
+            WingetBundle = $wingetBundle
             # Variables acceptées dans les chemins de config.json (%ProgramFiles%…).
             Variables    = $variables
             SoftwareCatalog = $catalogPath
         }
     }
 
+    Write-RunLog -Log $log -Message ('FastPrepare {0} — dossier de l''outil : {1}' -f $(if ($version) { $version } else { '(version inconnue)' }), $Root)
     Write-RunLog -Log $log -Message "Journal : $($log.FilePath)"
     if ($log.IsFallback) {
-        Write-RunLog -Log $log -Level ATTN -Message "Dossier $logFolder non accessible en écriture : journal et inventaire écrits dans $($log.Folder)"
+        Write-RunLog -Log $log -Level ATTN -Message "Dossier de sortie $outputFolder non accessible en écriture : journal et inventaire écrits dans $($log.Folder)"
     }
     Write-RunLog -Log $log -Message ("Mode : {0}" -f $(if ($mode -eq 'Simulation') { 'simulation (aucune modification du poste)' } else { 'réel' }))
 
@@ -105,7 +112,7 @@ function Get-BackgroundModulePath {
 function Get-ConfigPathVariable {
     <#
         Table des variables autorisées dans les chemins de config.json (Expand-ConfigPath) :
-        ProgramFiles, ProgramFiles(x86), ProgramData, OdtFolder, CacheFolder.
+        ProgramFiles, ProgramFiles(x86), ProgramData, WorkFolder.
     #>
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -114,8 +121,7 @@ function Get-ConfigPathVariable {
         'ProgramFiles'      = [Environment]::GetFolderPath('ProgramFiles')
         'ProgramFiles(x86)' = [Environment]::GetFolderPath('ProgramFilesX86')
         'ProgramData'       = [Environment]::GetFolderPath('CommonApplicationData')
-        'OdtFolder'         = [string]$Config.Office.OdtFolder
     }
-    $variables['CacheFolder'] = Expand-ConfigPath -Path ([string]$Config.Execution.CacheFolder) -Variables $variables
+    $variables['WorkFolder'] = Expand-ConfigPath -Path ([string]$Config.Execution.WorkFolder) -Variables $variables
     return $variables
 }

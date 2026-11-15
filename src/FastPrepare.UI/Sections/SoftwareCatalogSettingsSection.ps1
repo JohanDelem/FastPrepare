@@ -15,7 +15,7 @@ Register-UiSection -Id 'software-catalog-settings' -Number 100 -Column Settings 
     $state.TestRunning = $false
     $state.Loading = $false       # remplissage du formulaire par le code : pas d'événement « modifié »
 
-    $c.TxtSwIntro.Text = ("Logiciels proposés dans la section 8. Enregistrés dans {0} sur la clé (ancienne version gardée en .bak) : " +
+    $c.TxtSwIntro.Text = ("Logiciels proposés dans la section 8. Enregistrés dans {0} (ancienne version gardée en .bak) : " +
         "cette page ne modifie jamais le poste, même en mode réel. Testez chaque entrée avant de l'enregistrer.") -f $Context.Paths.SoftwareCatalog
 
     $onEdit = { Invoke-UiAction -Name 'catalogue des logiciels' -Action { Update-SoftwareFormState -Changed } }

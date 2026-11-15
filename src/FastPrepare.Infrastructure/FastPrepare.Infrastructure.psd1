@@ -8,6 +8,7 @@
     FunctionsToExport = @(
         'Read-AppConfig',
         'Assert-AppConfig',
+        'Read-ToolVersion',
         'New-RunLog',
         'Write-RunLog',
         'Receive-RunLogEntry',
@@ -70,7 +71,7 @@
         'Get-OfficeClickToRunProduct',
         'Invoke-WindowsUpdatePass',
         'Publish-RunProgress',
-        'Copy-RunLogToDrive'
+        'Copy-RunLogToOutput'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

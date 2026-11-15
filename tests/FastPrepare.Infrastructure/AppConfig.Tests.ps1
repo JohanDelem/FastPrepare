@@ -25,8 +25,48 @@ Describe 'Assert-AppConfig' {
 
     It 'version non prise en charge : refus' {
         $config = Get-TestConfig
-        $config.ConfigVersion = 4
-        Get-ConfigError $config | Should -Match 'ConfigVersion 4'
+        $config.ConfigVersion = 5
+        Get-ConfigError $config | Should -Match 'ConfigVersion 5'
+    }
+
+    It 'version 3 (avant l''outil indépendant du support) : refus avec la consigne de migration' {
+        $config = Get-TestConfig
+        $config.ConfigVersion = 3
+        $message = Get-ConfigError $config
+        $message | Should -Match "'Output'"
+        $message | Should -Match 'Execution.WorkFolder'
+    }
+
+    It 'Output.Folder et Execution.WorkFolder : obligatoires' {
+        $config = Get-TestConfig
+        $config.PSObject.Properties.Remove('Output')
+        $config.Execution.PSObject.Properties.Remove('WorkFolder')
+        $message = Get-ConfigError $config
+        $message | Should -Match 'Output : absent'
+        $message | Should -Match 'Execution.WorkFolder : absent'
+    }
+
+    It 'Output.Folder : chemin relatif, absolu ou réseau accepté' -ForEach @(
+        @{ Folder = 'logs' }
+        @{ Folder = 'D:\Preparations\sortie' }
+        @{ Folder = '\\serveur\partage\preparations' }
+    ) {
+        $config = Get-TestConfig
+        $config.Output.Folder = $Folder
+        { Assert-AppConfig -Config $config } | Should -Not -Throw
+    }
+
+    It 'Office.OdtFolder resté dans config.json : erreur explicite' {
+        $config = Get-TestConfig
+        $config.Office | Add-Member -NotePropertyName OdtFolder -NotePropertyValue 'C:\ODT'
+        Get-ConfigError $config | Should -Match 'Office.OdtFolder : à retirer'
+    }
+
+    It 'Winget.OfflineBundle et ManualReminders : facultatifs' {
+        $config = Get-TestConfig
+        $config.Winget.PSObject.Properties.Remove('OfflineBundle')
+        $config.PSObject.Properties.Remove('ManualReminders')
+        { Assert-AppConfig -Config $config } | Should -Not -Throw
     }
 
     It 'version 2 (catalogue dans config.json) : refus avec la consigne de migration' {

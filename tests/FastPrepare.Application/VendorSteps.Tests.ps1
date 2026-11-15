@@ -22,10 +22,10 @@ BeforeAll {
 }
 
 Describe 'Variables de chemin de config.json' {
-    It 'ProgramFiles, ProgramFiles(x86), ProgramData, OdtFolder et CacheFolder développé' {
+    It 'ProgramFiles, ProgramFiles(x86), ProgramData et WorkFolder développé' {
         $variables = Get-ConfigPathVariable -Config (Get-TestConfig)
         $variables['ProgramFiles(x86)'] | Should -Be ([Environment]::GetFolderPath('ProgramFilesX86'))
-        $variables['CacheFolder'] | Should -Be (Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'FastPrepare\cache')
+        $variables['WorkFolder'] | Should -Be (Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'FastPrepare')
         Expand-ConfigPath -Path (Get-TestConfig).Utilities.lenovo.Update.FilePath -Variables $variables | Should -Match '^.+\\Lenovo\\ThinInstaller\\ThinInstaller\.exe$'
     }
 }

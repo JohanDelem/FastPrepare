@@ -1,12 +1,12 @@
 {
-  "ConfigVersion": 3,
+  "ConfigVersion": 4,
 
   "Execution": {
     "DefaultMode": "Simulation",
-    "CacheFolder": "%ProgramData%\\FastPrepare\\cache"
+    "WorkFolder": "%ProgramData%\\FastPrepare"
   },
 
-  "Logging": {
+  "Output": {
     "Folder": "logs"
   },
 
@@ -100,7 +100,6 @@
 
   "Office": {
     "OdtSetupUrl": "https://officecdn.microsoft.com/pr/wsus/setup.exe",
-    "OdtFolder": "C:\\ODT",
     "Architecture": "64",
     "Language": "MatchOS",
     "Editions": [

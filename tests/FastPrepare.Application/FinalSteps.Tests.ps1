@@ -57,20 +57,38 @@ Describe 'Avancement et copie du journal' {
         @($progress.Total | Sort-Object -Unique) | Should -Be @(2)
     }
     It 'journal en repli : copie tentée en fin de rapport, avec l''inventaire' {
-        Mock @m Copy-RunLogToDrive { [pscustomobject]@{ Copied = @('x'); Destination = 'E:\logs'; Error = $null } }
+        Mock @m Copy-RunLogToOutput { [pscustomobject]@{ Copied = @('x'); Destination = '\\serveur\partage\logs'; Error = $null } }
         $context = New-TestContext -Folder $TestDrive -Mode Simulation
         $context.Log.IsFallback = $true
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
-        Should -Invoke @m Copy-RunLogToDrive -Times 1 -ParameterFilter { $AdditionalFile -contains 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt' }
-        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'copiés sur la clé : E:\\logs'
+        Should -Invoke @m Copy-RunLogToOutput -Times 1 -ParameterFilter { $AdditionalFile -contains 'C:\Outil\logs\Inventaire_SN0000TEST_test.txt' }
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'copiés dans le dossier de sortie : \\\\serveur\\partage\\logs'
     }
     It 'copie impossible : consigne de copie manuelle' {
-        Mock @m Copy-RunLogToDrive { [pscustomobject]@{ Copied = @(); Destination = 'E:\logs'; Error = 'dossier toujours en lecture seule' } }
+        Mock @m Copy-RunLogToOutput { [pscustomobject]@{ Copied = @(); Destination = 'E:\logs'; Error = 'dossier toujours inaccessible en écriture' } }
         $context = New-TestContext -Folder $TestDrive -Mode Simulation
         $context.Log.IsFallback = $true
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
-        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'copiez-le à la main'
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'copiez-les à la main'
+    }
+}
+
+Describe 'Rappels des actions manuelles (facultatifs)' {
+    It 'sans ManualReminders : aucune ligne « À faire à la main »' {
+        $config = Get-TestConfig
+        $config.PSObject.Properties.Remove('ManualReminders')
+        $context = New-TestContext -Folder $TestDrive -Mode Simulation -Config $config
+        $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
+        [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Not -Match 'À faire à la main'
+        @(Get-ManualReminder -Config $config).Count | Should -Be 0
+    }
+    It 'avec ManualReminders : rappelés en fin de rapport' {
+        $context = New-TestContext -Folder $TestDrive -Mode Simulation
+        $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
+        [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'À faire à la main : '
     }
 }

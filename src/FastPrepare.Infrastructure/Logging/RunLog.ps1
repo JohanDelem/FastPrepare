@@ -9,9 +9,10 @@ $script:RunLogEncoding = New-Object System.Text.UTF8Encoding($true)
 
 function New-RunLog {
     <#
-        Choisit le dossier du journal (sonde d'écriture ; repli sur -FallbackFolder si la clé est
-        en lecture seule) et prépare le fichier Journal_<hôte>_<horodatage>.log.
-        Renvoie { FilePath, Folder, Queue, IsFallback, FileFailed }.
+        Choisit le dossier du journal (sonde d'écriture ; repli sur -FallbackFolder si le dossier
+        de sortie n'est pas accessible en écriture : support en lecture seule, partage réseau
+        injoignable…) et prépare le fichier Journal_<hôte>_<horodatage>.log.
+        Renvoie { FilePath, Folder, RequestedFolder, Queue, IsFallback, FileFailed }.
     #>
     [CmdletBinding()]
     param(
@@ -34,7 +35,7 @@ function New-RunLog {
         PSTypeName = 'FastPrepare.RunLog'
         FilePath   = Join-Path $Folder $fileName
         Folder     = $Folder
-        # Dossier demandé (sur la clé) : en cas de repli, journal et inventaire y sont recopiés à la fin.
+        # Dossier de sortie demandé : en cas de repli, journal et inventaire y sont recopiés à la fin.
         RequestedFolder = $requestedFolder
         Queue      = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'
         IsFallback = $isFallback
@@ -119,10 +120,10 @@ function Publish-RunProgress {
     $Log.Queue.Enqueue([pscustomobject]@{ Level = 'PROGRESS'; Line = $Label; Current = $Current; Total = $Total })
 }
 
-function Copy-RunLogToDrive {
+function Copy-RunLogToOutput {
     <#
-        Journal écrit en repli (%TEMP%) parce que la clé était en lecture seule au démarrage :
-        nouvel essai de copie du journal et des fichiers associés (inventaire) vers la clé.
+        Journal écrit en repli parce que le dossier de sortie était inaccessible au démarrage :
+        nouvel essai de copie du journal et des fichiers associés (inventaire) vers ce dossier.
         Renvoie { Copied, Destination, Error } ; ne lève pas d'erreur. Sans effet hors repli.
     #>
     [CmdletBinding()]
@@ -133,7 +134,7 @@ function Copy-RunLogToDrive {
     $result = [pscustomobject]@{ Copied = @(); Destination = $Log.RequestedFolder; Error = $null }
     if (-not $Log.IsFallback) { return $result }
     try {
-        if (-not (Test-FolderWritable -Path $Log.RequestedFolder)) { throw "dossier toujours en lecture seule : $($Log.RequestedFolder)" }
+        if (-not (Test-FolderWritable -Path $Log.RequestedFolder)) { throw "dossier toujours inaccessible en écriture : $($Log.RequestedFolder)" }
         foreach ($file in @($Log.FilePath) + @($AdditionalFile)) {
             if (-not $file -or -not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
             [System.Threading.Monitor]::Enter($Log.SyncRoot)

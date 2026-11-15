@@ -84,5 +84,5 @@ function Update-OfficeView {
     $included = @($section.State.IncludeChecks | Where-Object { $_.IsChecked } | ForEach-Object { [string]$_.Tag })
     $excluded = @(Get-ExcludedOfficeApp -OptionalApp @($office.OptionalApps) -IncludedId $included)
     $excludeText = if ($excluded.Count) { 'exclus : ' + ($excluded -join ', ') } else { 'aucune exclusion' }
-    $c.TxtOfficeInfo.Text = 'XML généré à la volée dans {0} · ID produit {1} · {2} · activation manuelle plus tard' -f $office.OdtFolder, $productId, $excludeText
+    $c.TxtOfficeInfo.Text = 'XML généré à la volée dans {0} · ID produit {1} · {2} · activation manuelle plus tard' -f $script:Context.Paths.Odt, $productId, $excludeText
 }

@@ -68,7 +68,7 @@ function Save-SoftwareCatalog {
     <#
         Écrit le catalogue : fichier temporaire dans le même dossier, puis remplacement atomique
         qui garde l'ancienne version en <fichier>.bak. JSON indenté sur deux espaces, UTF-8 sans BOM.
-        Clé protégée en écriture : erreur explicite, le catalogue existant reste intact.
+        Dossier protégé en écriture : erreur explicite, le catalogue existant reste intact.
     #>
     [CmdletBinding()]
     param(
@@ -89,7 +89,7 @@ function Save-SoftwareCatalog {
             try {
                 [System.IO.File]::Replace($temporary, $Path, $backup)
             } catch [System.IO.IOException], [System.PlatformNotSupportedException] {
-                # Systèmes de fichiers sans remplacement atomique (certaines clés FAT32) : copie de secours puis remplacement.
+                # Systèmes de fichiers sans remplacement atomique (FAT32, certains partages) : copie de secours puis remplacement.
                 Copy-Item -LiteralPath $Path -Destination $backup -Force -ErrorAction Stop
                 Move-Item -LiteralPath $temporary -Destination $Path -Force -ErrorAction Stop
             }
@@ -99,7 +99,7 @@ function Save-SoftwareCatalog {
     } catch {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
         if ($_.Exception -is [System.UnauthorizedAccessException] -or $_.Exception.InnerException -is [System.UnauthorizedAccessException]) {
-            throw "Catalogue non enregistré : la clé (ou le dossier $(Split-Path -Parent $Path)) est protégée en écriture."
+            throw "Catalogue non enregistré : le dossier $(Split-Path -Parent $Path) est protégé en écriture."
         }
         throw "Catalogue non enregistré ($Path) : $($_.Exception.Message)"
     }

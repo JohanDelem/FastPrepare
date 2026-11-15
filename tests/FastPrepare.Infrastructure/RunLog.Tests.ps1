@@ -47,3 +47,22 @@ Describe 'Journal d''exécution (contrat §8)' {
         @($entries | Where-Object Level -EQ 'INFO').Count | Should -Be 2
     }
 }
+
+Describe 'Version de l''outil (DEC24)' {
+    It 'lit la première ligne du fichier VERSION' {
+        $path = Join-Path $TestDrive 'VERSION'
+        Set-Content -LiteralPath $path -Value @('1.13.0 ', 'commentaire')
+        Read-ToolVersion -Path $path | Should -Be '1.13.0'
+    }
+    It 'fichier absent : chaîne vide, pas d''erreur' {
+        Read-ToolVersion -Path (Join-Path $TestDrive 'absent\VERSION') | Should -Be ''
+    }
+}
+
+Describe 'winget hors ligne facultatif' {
+    It 'winget absent et aucun paquet configuré : message qui cite le réglage' {
+        Mock -ModuleName FastPrepare.Infrastructure Test-Winget { $false }
+        Mock -ModuleName FastPrepare.Infrastructure Add-AppxPackage { throw 'refusé' }
+        { Assert-WingetAvailable -FamilyName 'Famille' -OfflineBundle '' } | Should -Throw '*Winget.OfflineBundle*'
+    }
+}

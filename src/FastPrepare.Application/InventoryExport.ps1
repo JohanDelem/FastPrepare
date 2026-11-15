@@ -12,7 +12,7 @@ function Export-MachineInventory {
     )
 
     $fileName = 'Inventaire_{0}_{1}.txt' -f (ConvertTo-SafeFileName -Value $Snapshot.Identity.Serial), $Context.Stamp
-    $path = Join-Path $Context.Paths.Logs $fileName
+    $path = Join-Path $Context.Paths.Output $fileName
     $content = Format-InventoryExport -Identity $Snapshot.Identity -InventoryText $Snapshot.InventoryText -Date (Get-Date)
     try {
         Set-Content -LiteralPath $path -Value $content -Encoding UTF8 -ErrorAction Stop

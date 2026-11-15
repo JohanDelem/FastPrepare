@@ -26,7 +26,10 @@ function Start-MainWindow {
     Initialize-LogView -RichTextBox $shell.RtbLog
     $shell.BdSimu.Visibility = if ($Context.Mode -eq 'Simulation') { 'Visible' } else { 'Collapsed' }
     $shell.BdReal.Visibility = if ($Context.Mode -eq 'Real') { 'Visible' } else { 'Collapsed' }
-    Set-MemoText -TextBlock $shell.TxtMemo -Reminder @($Context.Config.ManualReminders)
+    if ($Context.Version) { $window.Title = 'FastPrepare {0} — Préparation de poste' -f $Context.Version }
+    $reminders = @(Get-ManualReminder -Config $Context.Config)
+    if ($reminders.Count -gt 0) { Set-MemoText -TextBlock $shell.TxtMemo -Reminder $reminders }
+    else { $shell.BdMemo.Visibility = 'Collapsed' }
 
     foreach ($section in (Get-UiSection)) {
         if ($section.XamlFile) {

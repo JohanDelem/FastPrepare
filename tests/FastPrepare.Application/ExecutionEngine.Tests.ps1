@@ -16,7 +16,7 @@
             )
             Warnings      = @('Section 3 : avertissement de test')
             StepCount     = 13
-            InventoryPath = 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt'
+            InventoryPath = 'C:\Outil\logs\Inventaire_SN0000TEST_test.txt'
         }
     }
     $catalog = @{

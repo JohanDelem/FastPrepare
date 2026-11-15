@@ -19,6 +19,7 @@
         'Invoke-ExecutionPlan',
         'Start-ExecutionPlan',
         'Write-FinalReport',
+        'Get-ManualReminder',
         'Get-ConfigPathVariable',
         'Get-PrefetchCachePath',
         'Get-PrefetchedItem',

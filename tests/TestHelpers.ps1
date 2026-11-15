@@ -22,7 +22,7 @@ function Get-TestConfig {
 function New-TestSnapshot {
     <# Relevé de poste fictif (aucune donnée réelle). #>
     param([switch]$InventoryExportFailed)
-    $export = if ($InventoryExportFailed) { [pscustomobject]@{ Path = $null; Error = 'clé retirée' } } else { [pscustomobject]@{ Path = 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt'; Error = $null } }
+    $export = if ($InventoryExportFailed) { [pscustomobject]@{ Path = $null; Error = 'dossier de sortie inaccessible' } } else { [pscustomobject]@{ Path = 'C:\Outil\logs\Inventaire_SN0000TEST_test.txt'; Error = $null } }
     return [pscustomobject]@{
         PSTypeName          = 'FastPrepare.MachineSnapshot'
         Identity            = [pscustomobject]@{ Manufacturer = 'Dell Inc.'; Model = 'Latitude'; Serial = 'SN0000TEST'; OsLabel = 'Windows 11'; HostName = 'PC-TEST' }
@@ -53,15 +53,17 @@ function New-TestContext {
     $log = New-RunLog -Folder (Join-Path $Folder 'logs') -FallbackFolder (Join-Path $Folder 'repli') -HostName 'PC-TEST' -Stamp ([guid]::NewGuid().ToString('N'))
     $cache = Join-Path $Folder 'cache'
     $paths = [pscustomobject]@{
-        Logs         = $log.Folder
-        OdtFolder    = 'C:\ODT'
-        WingetBundle = 'C:\Cle\packages\winget.msixbundle'
+        Tool         = 'C:\Outil'
+        Output       = $log.Folder
+        Work         = $Folder
+        Odt          = 'C:\ODT'
+        WingetBundle = 'C:\Outil\packages\winget.msixbundle'
         Cache        = $cache
-        Variables    = @{ 'ProgramFiles' = 'C:\Program Files'; 'ProgramFiles(x86)' = 'C:\Program Files (x86)'; 'ProgramData' = 'C:\ProgramData'; 'OdtFolder' = 'C:\ODT'; 'CacheFolder' = $cache }
+        Variables    = @{ 'ProgramFiles' = 'C:\Program Files'; 'ProgramFiles(x86)' = 'C:\Program Files (x86)'; 'ProgramData' = 'C:\ProgramData'; 'WorkFolder' = $Folder }
     }
     $paths | Add-Member -NotePropertyName SoftwareCatalog -NotePropertyValue (Join-Path $Folder 'software.json')
     # Catalogue de test fixe : les tests ne dépendent pas du software.json du dépôt, que l'onglet
     # Réglages (ou un technicien) peut modifier ; sa validité est testée à part.
     $catalog = (Read-SoftwareCatalog -Path (Join-Path $script:RepoRoot 'tests\Fixtures\software.test.json')).Entries
-    return [pscustomobject]@{ Config = $Config; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @(); SoftwareCatalog = @($catalog) }
+    return [pscustomobject]@{ Config = $Config; Version = '0.0.0'; Mode = $Mode; Stamp = 'test'; Log = $log; Paths = $paths; ModulePaths = @(); SoftwareCatalog = @($catalog) }
 }

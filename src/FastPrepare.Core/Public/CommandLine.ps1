@@ -40,7 +40,7 @@ function Split-CommandLine {
 function Expand-ConfigPath {
     <#
         Remplace les variables %Nom% d'un chemin de config.json à partir de -Variables
-        (table fournie par l'appelant : ProgramFiles, OdtFolder, CacheFolder…).
+        (table fournie par l'appelant : ProgramFiles, ProgramData, WorkFolder…).
         Une variable inconnue est une erreur : une faute de frappe dans la configuration est
         signalée au lieu de produire un chemin faux.
     #>
