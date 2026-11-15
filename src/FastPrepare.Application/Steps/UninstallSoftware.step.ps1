@@ -1,9 +1,9 @@
 ﻿<#
-    Étape 5 — Désinstallation des logiciels cochés (section 2).
+    Étape 5 — Désinstallation des logiciels cochés.
     Silencieux d'abord, assistants en dernier (Get-UninstallOrder, FastPrepare.Core).
 #>
 
-Register-Step -Id 'uninstall-software' -Section 2 -Title 'Désinstallation des logiciels' -Plan {
+Register-Step -Id 'uninstall-software' -Title 'Désinstallation des logiciels' -Plan {
     param($Selection, $Snapshot, $Context)
     foreach ($app in (Get-UninstallOrder -Software @($Selection.Software.Items))) {
         $parameters = @{

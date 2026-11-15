@@ -4,7 +4,7 @@
 
     $script:invoked = New-Object System.Collections.Generic.List[string]
     function New-TestAction([string]$StepId, [int]$Number, [string]$Label, [switch]$Interactive) {
-        [pscustomobject]@{ PSTypeName = 'FastPrepare.StepAction'; Label = $Label; Parameters = @{}; Details = @('détail'); Interactive = [bool]$Interactive; StepId = $StepId; StepNumber = $Number; Section = 2; Index = $Number }
+        [pscustomobject]@{ PSTypeName = 'FastPrepare.StepAction'; Label = $Label; Parameters = @{}; Details = @('détail'); Interactive = [bool]$Interactive; StepId = $StepId; StepNumber = $Number; StepTitle = 'Étape de test'; Index = $Number }
     }
     function New-TestPlan {
         [pscustomobject]@{
@@ -14,9 +14,9 @@
                 (New-TestAction 'redemarrage' 3 'troisième' -Interactive)
                 (New-TestAction 'absente' 4 'quatrième')
             )
-            Warnings      = @('Section 3 : avertissement de test')
+            Warnings      = @('Étape de test : avertissement de test')
             StepCount     = 13
-            InventoryPath = 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt'
+            InventoryPath = 'C:\Outil\logs\Inventaire_SN0000TEST_test.txt'
         }
     }
     $catalog = @{
@@ -37,7 +37,7 @@ Describe 'Invoke-ExecutionPlan — simulation' {
         $script:invoked.Count | Should -Be 0
         @($results | Where-Object Outcome -EQ 'Simulated').Count | Should -Be 4
         $entries = Get-Lines $context
-        @($entries | Where-Object { $_.Line -match '\[ETAPE \d\d/13 · section 2\]' }).Count | Should -Be 4
+        @($entries | Where-Object { $_.Line -match '\[ETAPE \d\d/13\] ' }).Count | Should -Be 4
         ($entries | Where-Object { $_.Level -ne 'PROGRESS' -and $_.Line -match 'troisième' }).Level | Should -Be 'ATTN'
         ($entries.Line -join "`n") | Should -Match 'avertissement de test'
         ($entries.Line -join "`n") | Should -Match 'simulation terminée : 4 action\(s\)'
@@ -64,7 +64,7 @@ Describe 'Invoke-ExecutionPlan — réel' {
         [void](Invoke-ExecutionPlan -Plan (New-TestPlan) -Context $context -StepCatalog $catalog)
         $text = (Get-Lines $context).Line -join "`n"
         $text | Should -Match '2 action\(s\) réussie\(s\), 1 en échec, 1 ignorée\(s\)'
-        $text | Should -Match 'Échec : \[ETAPE 02/13 · section 2\] deuxième'
+        $text | Should -Match 'Échec : \[ETAPE 02/13\] deuxième'
         $text | Should -Match 'Redémarrage nécessaire'
         $text | Should -Match 'Inventaire_SN0000TEST'
         $text | Should -Match ([regex]::Escape((Get-TestConfig).ManualReminders[0]))
@@ -81,7 +81,7 @@ Describe 'Plan réel de bout en bout en simulation' {
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
         @($results).Count | Should -Be 2
         $text = (Get-Lines $context).Line -join "`n"
-        $text | Should -Match '\[ETAPE 12/14 · section 7\] Windows Update'
-        $text | Should -Match "\[ETAPE 13/14 · section 1\] Nom d'hôte : Rename-Computer -NewName 'PC-02'"
+        $text | Should -Match '\[ETAPE 10/12\] Windows Update'
+        $text | Should -Match "\[ETAPE 11/12\] Nom d'hôte : Rename-Computer -NewName 'PC-02'"
     }
 }

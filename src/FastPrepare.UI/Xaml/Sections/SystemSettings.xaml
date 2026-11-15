@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource Section}">
   <StackPanel>
-    <TextBlock Style="{StaticResource H2}" Text="9 · Configuration des paramètres système"/>
+    <TextBlock Name="TxtTitle" Style="{StaticResource H2}" Text="Configuration des paramètres système"/>
     <TextBlock Style="{StaticResource Sub}" Text="Désactivation IPv6 (interfaces NIC)"/>
     <StackPanel Name="PnlNics"/>
     <TextBlock Name="TxtNicsLoading" Style="{StaticResource Hint}" Text="Détection en cours…"/>

@@ -1,9 +1,9 @@
 ﻿<#
-    Section 2 — Désinstallation des logiciels installés.
+    Section « Désinstallation des logiciels installés ».
     Liste générée depuis le relevé du poste ; « ⚠ Non » = pas de désinstallation silencieuse.
 #>
 
-Register-UiSection -Id 'installed-software' -Number 2 -Column Left -XamlFile 'Sections\InstalledSoftware.xaml' -Initialize {
+Register-UiSection -Id 'installed-software' -Number 4 -Column Left -XamlFile 'Sections\InstalledSoftware.xaml' -Initialize {
     param($Section, $Context)
     $Section.State.Checks = New-Object System.Collections.Generic.List[object]
     $Section.Controls.ChkAllApps.Add_Click({

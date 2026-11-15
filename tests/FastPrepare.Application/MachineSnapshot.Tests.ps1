@@ -6,7 +6,7 @@
 Describe 'Relevé du poste en arrière-plan' -Tag 'Integration' {
     It 'relève le poste courant dans un runspace et exporte l''inventaire' {
         $config = Get-TestConfig
-        $config.Logging.Folder = Join-Path $TestDrive 'logs'
+        $config.Output.Folder = Join-Path $TestDrive 'logs'
         $context = New-AppContext -Root (Get-RepoRoot) -Config $config -RequestedMode Simulation
 
         $work = Start-MachineSnapshot -Context $context

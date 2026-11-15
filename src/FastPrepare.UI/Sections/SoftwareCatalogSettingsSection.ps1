@@ -1,5 +1,6 @@
 ﻿<#
-    Onglet Réglages — Catalogue des logiciels de la section 8 (itération 9, DEC17 à DEC19).
+    Onglet Réglages — Catalogue des logiciels proposés dans la section Installations, outils
+    constructeurs compris (DEC17 à DEC19, DEC25, DEC26).
     Affichage seulement : règles dans FastPrepare.Core (SoftwareCatalog.ps1), enregistrement et
     test dans FastPrepare.Application (SoftwareCatalog.ps1). Le test tourne en arrière-plan et
     ne télécharge ni n'installe rien.
@@ -15,11 +16,12 @@ Register-UiSection -Id 'software-catalog-settings' -Number 100 -Column Settings 
     $state.TestRunning = $false
     $state.Loading = $false       # remplissage du formulaire par le code : pas d'événement « modifié »
 
-    $c.TxtSwIntro.Text = ("Logiciels proposés dans la section 8. Enregistrés dans {0} sur la clé (ancienne version gardée en .bak) : " +
+    $c.TxtSwIntro.Text = ("Logiciels proposés dans la section Installations ; une entrée avec un constructeur n'est proposée que sur les postes de ce constructeur. " +
+        "Enregistrés dans {0} (ancienne version gardée en .bak) : " +
         "cette page ne modifie jamais le poste, même en mode réel. Testez chaque entrée avant de l'enregistrer.") -f $Context.Paths.SoftwareCatalog
 
     $onEdit = { Invoke-UiAction -Name 'catalogue des logiciels' -Action { Update-SoftwareFormState -Changed } }
-    foreach ($name in 'TxtSwLabel', 'TxtSwWingetId', 'TxtSwOverride', 'TxtSwUrl', 'TxtSwFileName', 'TxtSwArguments', 'TxtSwSigner', 'TxtSwSha256') {
+    foreach ($name in 'TxtSwLabel', 'TxtSwManufacturer', 'TxtSwWingetId', 'TxtSwOverride', 'TxtSwUrl', 'TxtSwFileName', 'TxtSwArguments', 'TxtSwSigner', 'TxtSwSha256') {
         $c[$name].Add_TextChanged($onEdit)
     }
     $c.ChkSwDefault.Add_Click($onEdit)
@@ -53,6 +55,7 @@ function Update-SoftwareCatalogList {
             $item = [System.Windows.Controls.ListBoxItem]::new()
             $detail = if ($entry.Install.Type -eq 'winget') { 'winget · {0}' -f $entry.Install.Id } else { 'lien direct · {0}' -f $entry.Install.FileName }
             $text = [System.Windows.Controls.TextBlock]::new()
+            if ($entry.ManufacturerPattern) { $detail += ' · constructeur : {0}' -f $entry.ManufacturerPattern }
             $text.Text = '{0}  —  {1}' -f $entry.Label, $detail
             $text.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
             $item.Content = $text
@@ -85,6 +88,13 @@ function Open-SoftwareForm {
         $isDownload = $install -and $install.Type -eq 'download'
         $c.TxtSwLabel.Text = if ($Entry) { $Entry.Label } else { '' }
         $c.ChkSwDefault.IsChecked = if ($Entry) { [bool]$Entry.DefaultChecked } else { $false }
+        $c.TxtSwManufacturer.Text = if ($Entry) { [string]$Entry.ManufacturerPattern } else { '' }
+        # Champs avancés : écrits à la main dans software.json, conservés à l'enregistrement.
+        $advanced = @()
+        if ($Entry -and @($Entry.DotNet).Count -gt 0) { $advanced += 'dépendance .NET selon la version ({0} règle(s))' -f @($Entry.DotNet).Count }
+        if ($Entry -and $Entry.Update) { $advanced += 'mise à jour des pilotes et du BIOS : {0} {1}' -f $Entry.Update.FilePath, $Entry.Update.Arguments }
+        $c.TxtSwAdvanced.Text = 'Conservés tels quels (modifiables dans software.json) : ' + ($advanced -join ' · ')
+        $c.TxtSwAdvanced.Visibility = if ($advanced.Count -gt 0) { 'Visible' } else { 'Collapsed' }
         $c.RbSwWinget.IsChecked = -not $isDownload
         $c.RbSwDownload.IsChecked = [bool]$isDownload
         $winget = $install -and $install.Type -eq 'winget'
@@ -119,7 +129,12 @@ function Get-SoftwareFormEntry {
     } else {
         [pscustomobject]@{ Type = 'winget'; Id = $c.TxtSwWingetId.Text; Source = [string]$c.CmbSwSource.SelectedItem.Content; Override = $c.TxtSwOverride.Text; Scope = [string]$c.CmbSwScope.SelectedItem.Tag }
     }
-    $entry = ConvertTo-SoftwareEntry -InputObject ([pscustomobject]@{ Id = $id; Label = $c.TxtSwLabel.Text; DefaultChecked = [bool]$c.ChkSwDefault.IsChecked; Install = $install })
+    # Les champs avancés de l'entrée modifiée (DotNet, Update) ne sont pas dans le formulaire : ils sont repris tels quels.
+    $existing = @($script:Context.SoftwareCatalog) | Where-Object { $section.State.EditingId -and $_.Id -eq $section.State.EditingId } | Select-Object -First 1
+    $entry = ConvertTo-SoftwareEntry -InputObject ([pscustomobject]@{
+            Id = $id; Label = $c.TxtSwLabel.Text; DefaultChecked = [bool]$c.ChkSwDefault.IsChecked; ManufacturerPattern = $c.TxtSwManufacturer.Text; Install = $install
+            DotNet = $(if ($existing) { @($existing.DotNet) } else { @() }); Update = $(if ($existing) { $existing.Update } else { $null })
+        })
     return [pscustomobject]@{ Entry = $entry; Problems = @(Get-SoftwareEntryError -Entry $entry -ExistingId $others) }
 }
 
@@ -221,7 +236,7 @@ function Save-SoftwareForm {
     Update-SoftwareCatalogList -Context $script:Context -SelectId $saved.Id
     Open-SoftwareForm -Entry $saved
     if ($tested) { $section.State.TestedRevision = $section.State.Revision }
-    [void]$section.Controls.PnlSwTest.Children.Add((New-SoftwareTestLine -Level 'OK' -Text ('Enregistré : « {0} » apparaît dans la section 8 de l''onglet Préparation.' -f $saved.Label)))
+    [void]$section.Controls.PnlSwTest.Children.Add((New-SoftwareTestLine -Level 'OK' -Text ('Enregistré : « {0} » est proposé dans la section Installations de l''onglet Préparation.' -f $saved.Label)))
     Publish-SettingsChanged
 }
 
@@ -231,7 +246,7 @@ function Remove-SoftwareFormEntry {
     $id = $section.State.EditingId
     if (-not $id) { return }
     $entry = @($script:Context.SoftwareCatalog) | Where-Object { $_.Id -eq $id } | Select-Object -First 1
-    $answer = [System.Windows.MessageBox]::Show(("Retirer « {0} » du catalogue ?`nIl ne sera plus proposé en section 8." -f $entry.Label), 'Catalogue des logiciels', 'YesNo', 'Question')
+    $answer = [System.Windows.MessageBox]::Show(("Retirer « {0} » du catalogue ?`nIl ne sera plus proposé dans la section Installations." -f $entry.Label), 'Catalogue des logiciels', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     try {
         Remove-SoftwareCatalogEntry -Context $script:Context -Id $id

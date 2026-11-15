@@ -97,35 +97,35 @@ Describe 'Invoke-WindowsUpdatePass (fausse session)' {
     }
 }
 
-Describe 'Copie du journal sur la clé (E7)' {
+Describe 'Copie du journal vers le dossier de sortie (E7, DEC23)' {
     It 'sans repli : rien à copier' {
-        $log = New-RunLog -Folder (Join-Path $TestDrive 'cle1') -FallbackFolder (Join-Path $TestDrive 'temp1') -HostName 'PC' -Stamp 's'
-        @((Copy-RunLogToDrive -Log $log).Copied).Count | Should -Be 0
+        $log = New-RunLog -Folder (Join-Path $TestDrive 'sortie1') -FallbackFolder (Join-Path $TestDrive 'temp1') -HostName 'PC' -Stamp 's'
+        @((Copy-RunLogToOutput -Log $log).Copied).Count | Should -Be 0
     }
-    It 'clé redevenue accessible : journal et inventaire recopiés' {
-        $blocked = Join-Path $TestDrive 'cle2'
+    It 'dossier de sortie redevenu accessible : journal et inventaire recopiés' {
+        $blocked = Join-Path $TestDrive 'sortie2'
         Set-Content -LiteralPath $blocked -Value 'un fichier à la place du dossier : écriture impossible'
         $log = New-RunLog -Folder $blocked -FallbackFolder (Join-Path $TestDrive 'temp2') -HostName 'PC' -Stamp 's'
         $log.IsFallback | Should -BeTrue
         Write-RunLog -Log $log -Message 'ligne'
         $inventory = Join-Path $log.Folder 'Inventaire_SN0000TEST_s.txt'
         Set-Content -LiteralPath $inventory -Value 'N/S'
-        Remove-Item -LiteralPath $blocked   # la clé redevient accessible
+        Remove-Item -LiteralPath $blocked   # le dossier de sortie redevient accessible
 
-        $copy = Copy-RunLogToDrive -Log $log -AdditionalFile @($inventory, $null)
+        $copy = Copy-RunLogToOutput -Log $log -AdditionalFile @($inventory, $null)
         $copy.Error | Should -BeNullOrEmpty
         @($copy.Copied).Count | Should -Be 2
         (Join-Path $blocked 'Journal_PC_s.log') | Should -Exist
         (Join-Path $blocked 'Inventaire_SN0000TEST_s.txt') | Should -Exist
     }
-    It 'clé toujours inaccessible : erreur rapportée, pas d''exception' {
-        $blocked = Join-Path $TestDrive 'cle3'
+    It 'dossier de sortie toujours inaccessible : erreur rapportée, pas d''exception' {
+        $blocked = Join-Path $TestDrive 'sortie3'
         Set-Content -LiteralPath $blocked -Value 'x'
         $log = New-RunLog -Folder $blocked -FallbackFolder (Join-Path $TestDrive 'temp3') -HostName 'PC' -Stamp 's'
-        (Copy-RunLogToDrive -Log $log).Error | Should -Match 'lecture seule'
+        (Copy-RunLogToOutput -Log $log).Error | Should -Match 'inaccessible en écriture'
     }
     It 'avancement publié pour la fenêtre, jamais écrit dans le fichier' {
-        $log = New-RunLog -Folder (Join-Path $TestDrive 'cle4') -FallbackFolder (Join-Path $TestDrive 'temp4') -HostName 'PC' -Stamp 's'
+        $log = New-RunLog -Folder (Join-Path $TestDrive 'sortie4') -FallbackFolder (Join-Path $TestDrive 'temp4') -HostName 'PC' -Stamp 's'
         Publish-RunProgress -Log $log -Current 2 -Total 5 -Label 'action'
         $entry = @(Receive-RunLogEntry -Log $log)[0]
         $entry.Level | Should -Be 'PROGRESS'

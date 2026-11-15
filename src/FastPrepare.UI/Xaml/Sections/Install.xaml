@@ -2,8 +2,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource Section}">
   <StackPanel>
-    <TextBlock Style="{StaticResource H2}" Text="6 · Installation Office 365 — Méthode ODT"/>
-    <!-- Cards générées depuis config.Office.Editions -->
+    <TextBlock Name="TxtTitle" Style="{StaticResource H2}" Text="Installations"/>
+
+    <!-- Catalogue : cases générées depuis software.json (onglet Réglages), limitées aux entrées
+         applicables au constructeur détecté -->
+    <TextBlock Style="{StaticResource Sub}" Text="Logiciels du catalogue"/>
+    <TextBlock Name="TxtVendorInfo" Style="{StaticResource Hint}" Margin="0,0,0,4" Text="Détection du constructeur en cours…"/>
+    <StackPanel Name="PnlSoftware"/>
+    <TextBlock Name="TxtSoftwareNone" Style="{StaticResource Hint}" Visibility="Collapsed"
+               Text="Aucun logiciel au catalogue pour ce poste : ajoutez-en dans l'onglet Réglages."/>
+
+    <!-- Office : cards générées depuis config.Office.Editions -->
+    <TextBlock Style="{StaticResource Sub}" Margin="0,14,0,4" Text="Microsoft Office (ODT)"/>
     <UniformGrid Name="PnlOfficeEditions" Rows="1"/>
     <StackPanel Name="PnlLicence" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed">
       <TextBlock Text="Licence :" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>

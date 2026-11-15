@@ -1,10 +1,10 @@
 ﻿<#
-    Section 10 — Numéro de série et adresses MAC.
+    Section « Numéro de série et adresses MAC ».
     Affichage, bouton Copier et emplacement de l'export (fait au démarrage par
     FastPrepare.Application, Export-MachineInventory).
 #>
 
-Register-UiSection -Id 'inventory' -Number 10 -Column Right -XamlFile 'Sections\Inventory.xaml' -Initialize {
+Register-UiSection -Id 'inventory' -Number 1 -Column Left -XamlFile 'Sections\Inventory.xaml' -Initialize {
     param($Section, $Context)
     $Section.Controls.BtnCopy.Add_Click({
             Invoke-UiAction -Name 'copie de l''inventaire' -Action {

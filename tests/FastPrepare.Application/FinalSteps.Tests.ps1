@@ -57,20 +57,100 @@ Describe 'Avancement et copie du journal' {
         @($progress.Total | Sort-Object -Unique) | Should -Be @(2)
     }
     It 'journal en repli : copie tentée en fin de rapport, avec l''inventaire' {
-        Mock @m Copy-RunLogToDrive { [pscustomobject]@{ Copied = @('x'); Destination = 'E:\logs'; Error = $null } }
+        Mock @m Copy-RunLogToOutput { [pscustomobject]@{ Copied = @('x'); Destination = '\\serveur\partage\logs'; Error = $null } }
         $context = New-TestContext -Folder $TestDrive -Mode Simulation
         $context.Log.IsFallback = $true
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
-        Should -Invoke @m Copy-RunLogToDrive -Times 1 -ParameterFilter { $AdditionalFile -contains 'C:\Cle\logs\Inventaire_SN0000TEST_test.txt' }
-        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'copiés sur la clé : E:\\logs'
+        Should -Invoke @m Copy-RunLogToOutput -Times 1 -ParameterFilter { $AdditionalFile -contains 'C:\Outil\logs\Inventaire_SN0000TEST_test.txt' }
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'copiés dans le dossier de sortie : \\\\serveur\\partage\\logs'
     }
     It 'copie impossible : consigne de copie manuelle' {
-        Mock @m Copy-RunLogToDrive { [pscustomobject]@{ Copied = @(); Destination = 'E:\logs'; Error = 'dossier toujours en lecture seule' } }
+        Mock @m Copy-RunLogToOutput { [pscustomobject]@{ Copied = @(); Destination = 'E:\logs'; Error = 'dossier toujours inaccessible en écriture' } }
         $context = New-TestContext -Folder $TestDrive -Mode Simulation
         $context.Log.IsFallback = $true
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
-        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'copiez-le à la main'
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'copiez-les à la main'
+    }
+}
+
+Describe 'Rappels des actions manuelles (facultatifs)' {
+    It 'sans ManualReminders : aucune ligne « À faire à la main »' {
+        $config = Get-TestConfig
+        $config.PSObject.Properties.Remove('ManualReminders')
+        $context = New-TestContext -Folder $TestDrive -Mode Simulation -Config $config
+        $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
+        [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Not -Match 'À faire à la main'
+        @(Get-ManualReminder -Config $config).Count | Should -Be 0
+    }
+    It 'avec ManualReminders : rappelés en fin de rapport' {
+        $context = New-TestContext -Folder $TestDrive -Mode Simulation
+        $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
+        [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'À faire à la main : '
+    }
+}
+
+Describe 'Nettoyage du dossier de travail en fin d''exécution (DEC28)' {
+    BeforeEach {
+        $m = @{ ModuleName = 'FastPrepare.Application' }
+        Mock @m Set-PowerTimeout { }
+        Mock @m Assert-WingetAvailable { }
+        function New-WorkContext([string]$Name, [string]$Mode) {
+            # Dossier de travail de test : <dossier>\cache et <dossier>\odt, comme sur un poste.
+            $work = Join-Path $TestDrive $Name
+            $context = New-TestContext -Folder $work -Mode $Mode
+            $context.Paths.Odt = Join-Path $work 'odt'
+            foreach ($folder in $context.Paths.Cache, $context.Paths.Odt) {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $folder 'fichier.bin') -Value 'x'
+            }
+            return $context
+        }
+        function Invoke-Run($Context, [string[]]$Catalog = @()) {
+            $selection = New-Selection
+            $selection.SystemSettings.Power = $true
+            $selection.Catalog.Ids = $Catalog
+            $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $Context
+            return (Invoke-ExecutionPlan -Plan $plan -Context $Context)
+        }
+    }
+
+    It 'exécution réelle sans échec d''installation : téléchargements et dossier ODT supprimés, journal conservé' {
+        Mock @m Install-WingetPackage { [pscustomobject]@{ RebootRequired = $false; AlreadyInstalled = $false } }
+        $context = New-WorkContext 'w1' 'Real'
+        [void](Invoke-Run $context 'adobe-reader')
+        $context.Paths.Cache | Should -Not -Exist
+        $context.Paths.Odt | Should -Not -Exist
+        $context.Log.FilePath | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'Fichiers de travail supprimés'
+    }
+
+    It 'une installation a échoué : fichiers conservés pour le diagnostic, et signalés' {
+        Mock @m Install-WingetPackage { throw 'code de sortie 1603' }
+        $context = New-WorkContext 'w2' 'Real'
+        [void](Invoke-Run $context 'adobe-reader')
+        $context.Paths.Cache | Should -Exist
+        $context.Paths.Odt | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'Fichiers de travail conservés pour le diagnostic'
+    }
+
+    It 'simulation : rien n''est supprimé (aucune modification du poste)' {
+        $context = New-WorkContext 'w3' 'Simulation'
+        [void](Invoke-Run $context)
+        $context.Paths.Cache | Should -Exist
+        $context.Paths.Odt | Should -Exist
+    }
+
+    It 'dossier hors du dossier de travail : suppression refusée par la garde de chemin, signalée' {
+        $context = New-WorkContext 'w4' 'Real'
+        $outside = Join-Path $TestDrive 'ailleurs'
+        New-Item -ItemType Directory -Path $outside -Force | Out-Null
+        $context.Paths.Odt = $outside
+        [void](Invoke-Run $context)
+        $outside | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'Fichiers de travail non supprimés'
     }
 }

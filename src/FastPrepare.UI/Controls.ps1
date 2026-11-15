@@ -5,17 +5,14 @@
 
 function New-SelectableCard {
     <#
-        Card sélectionnable (ToggleButton au style « Card ») : titre, sous-titre et logo facultatifs.
-        Le logo n'est affiché que si le fichier existe et se charge.
+        Card sélectionnable (ToggleButton au style « Card ») : titre et sous-titre facultatif.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Key,
         [Parameter(Mandatory)][string]$Title,
         [string]$Subtitle,
-        [string]$LogoPath,
-        [switch]$IsLast,
-        $Log
+        [switch]$IsLast
     )
 
     $card = [System.Windows.Controls.Primitives.ToggleButton]::new()
@@ -24,23 +21,6 @@ function New-SelectableCard {
     if ($IsLast) { $card.Margin = [System.Windows.Thickness]::new(0) }
 
     $panel = [System.Windows.Controls.StackPanel]::new()
-
-    if ($LogoPath -and (Test-Path -LiteralPath $LogoPath -PathType Leaf)) {
-        try {
-            $bitmap = [System.Windows.Media.Imaging.BitmapImage]::new()
-            $bitmap.BeginInit()
-            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-            $bitmap.UriSource = [System.Uri]::new($LogoPath)
-            $bitmap.EndInit()
-            $image = [System.Windows.Controls.Image]::new()
-            $image.Height = 40
-            $image.Margin = [System.Windows.Thickness]::new(0, 0, 0, 6)
-            $image.Source = $bitmap
-            [void]$panel.Children.Add($image)
-        } catch {
-            if ($Log) { Write-RunLog -Log $Log -Level DEBUG -Message "Logo non chargé ($LogoPath) : $($_.Exception.Message)" }
-        }
-    }
 
     $titleBlock = [System.Windows.Controls.TextBlock]::new()
     $titleBlock.Text = $Title

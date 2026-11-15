@@ -18,6 +18,8 @@ Describe 'Set-SoftwareCatalogEntry / Remove-SoftwareCatalogEntry' {
         # Un dossier par test : chaque test part du catalogue du dépôt, sans fichier écrit.
         $folder = New-Item -ItemType Directory -Path (Join-Path $TestDrive ([guid]::NewGuid().ToString('N')))
         $context = New-TestContext -Folder $folder.FullName
+        # Une seule entrée au départ : les outils constructeurs du catalogue de test sont traités à part.
+        $context.SoftwareCatalog = @($context.SoftwareCatalog | Where-Object Id -EQ 'adobe-reader')
     }
 
     It 'ajoute en fin de catalogue, écrit le fichier et met le contexte à jour' {
@@ -43,6 +45,40 @@ Describe 'Set-SoftwareCatalogEntry / Remove-SoftwareCatalogEntry' {
         Remove-SoftwareCatalogEntry -Context $context -Id 'adobe-reader'
         @($context.SoftwareCatalog).Count | Should -Be 0
         { Remove-SoftwareCatalogEntry -Context $context -Id 'inconnu' } | Should -Throw '*inconnu*'
+    }
+}
+
+Describe 'Champs propres aux outils constructeurs (DEC25, DEC26)' {
+    BeforeEach {
+        $folder = New-Item -ItemType Directory -Path (Join-Path $TestDrive ([guid]::NewGuid().ToString('N')))
+        $context = New-TestContext -Folder $folder.FullName
+    }
+
+    It 'constructeur enregistré avec l''entrée et relu' {
+        $entry = New-FormEntry
+        $entry | Add-Member -NotePropertyName ManufacturerPattern -NotePropertyValue 'Dynabook|Toshiba'
+        [void](Set-SoftwareCatalogEntry -Context $context -Entry $entry)
+        $read = @((Read-SoftwareCatalog -Path $context.Paths.SoftwareCatalog).Entries) | Where-Object Id -EQ '7-zip'
+        $read.ManufacturerPattern | Should -Be 'Dynabook|Toshiba'
+    }
+
+    It 'modifier une entrée conserve sa dépendance .NET et sa commande de mise à jour' {
+        $dell = $context.SoftwareCatalog | Where-Object Id -EQ 'dell-command-update'
+        $edited = [pscustomobject]@{ Id = $dell.Id; Label = 'Dell Command Update (renommé)'; DefaultChecked = $false; ManufacturerPattern = $dell.ManufacturerPattern; Install = $dell.Install; DotNet = $dell.DotNet; Update = $dell.Update }
+        [void](Set-SoftwareCatalogEntry -Context $context -Entry $edited -PreviousId $dell.Id)
+        $read = @((Read-SoftwareCatalog -Path $context.Paths.SoftwareCatalog).Entries) | Where-Object Id -EQ 'dell-command-update'
+        $read.Label | Should -Be 'Dell Command Update (renommé)'
+        @($read.DotNet).Count | Should -Be 2
+        $read.DotNet[0].ToolVersion | Should -Be '5.7.0'
+        $read.Update.FilePath | Should -Match 'dcu-cli\.exe$'
+        (@($read.Update.SuccessExitCodes) -join ',') | Should -Be '0,500'
+    }
+
+    It 'motif de constructeur invalide : refus, rien n''est écrit' {
+        $entry = New-FormEntry
+        $entry | Add-Member -NotePropertyName ManufacturerPattern -NotePropertyValue 'HP('
+        { Set-SoftwareCatalogEntry -Context $context -Entry $entry } | Should -Throw '*Constructeur*'
+        Test-Path -LiteralPath $context.Paths.SoftwareCatalog | Should -BeFalse
     }
 }
 
@@ -144,11 +180,11 @@ Describe 'Installation d''un logiciel par lien direct (mode réel, simulacres)' 
 
     It '.exe : téléchargé dans le cache, signature vérifiée, lancé avec ses arguments ; .msi par msiexec' {
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('outil', 'outil-msi')
+        $selection.Catalog.Ids = @('outil', 'outil-msi')
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
         @($results | Where-Object Outcome -NE 'Succeeded') | Should -BeNullOrEmpty
-        Should -Invoke @m Save-RemoteFile -Times 1 -ParameterFilter { $Destination -like '*\cache\software\outil\outil.exe' }
+        Should -Invoke @m Save-RemoteFile -Times 1 -ParameterFilter { $Destination -like '*\cache\outil\outil.exe' }
         Should -Invoke @m Assert-TrustedExecutable -Times 2 -ParameterFilter { $ExpectedSigner -eq 'Éditeur Exemple' }
         Should -Invoke @m Invoke-ExternalProcess -Times 1 -ParameterFilter { $FilePath -like '*outil.exe' -and $ArgumentList -eq '/S' }
         Should -Invoke @m Invoke-ExternalProcess -Times 1 -ParameterFilter { $FilePath -like '*\msiexec.exe' -and $ArgumentList -match '^/i ".*outil\.msi" /qn /norestart ALLUSERS=1$' }
@@ -157,7 +193,7 @@ Describe 'Installation d''un logiciel par lien direct (mode réel, simulacres)' 
     It 'signature refusée : rien n''est lancé' {
         Mock @m Assert-TrustedExecutable { throw 'signature invalide' }
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('outil')
+        $selection.Catalog.Ids = @('outil')
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
         $results[0].Outcome | Should -Be 'Failed'
@@ -166,7 +202,7 @@ Describe 'Installation d''un logiciel par lien direct (mode réel, simulacres)' 
 
     It 'le plan garde l''entrée : un changement ultérieur du catalogue ne modifie pas l''exécution' {
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('outil')
+        $selection.Catalog.Ids = @('outil')
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $context.SoftwareCatalog = @()
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
@@ -203,7 +239,7 @@ Describe 'Installation winget avec portée (mode réel, simulacres)' {
         Mock -ModuleName FastPrepare.Application Assert-WingetAvailable { }
         Mock -ModuleName FastPrepare.Application Install-WingetPackage { [pscustomobject]@{ RebootRequired = $false; AlreadyInstalled = $false } }
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('vscode')
+        $selection.Catalog.Ids = @('vscode')
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $plan.Actions[-1].Label | Should -Match '--scope machine'
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)

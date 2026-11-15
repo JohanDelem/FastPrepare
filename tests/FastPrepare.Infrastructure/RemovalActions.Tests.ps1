@@ -200,3 +200,28 @@ Describe 'Get-OfficeClickToRunProduct' {
         @(Get-OfficeClickToRunProduct).Count | Should -Be 0
     }
 }
+
+Describe 'Remove-WorkSubfolder (dossier de travail de l''outil, DEC28)' {
+    It 'sous-dossier du dossier de travail : supprimé' {
+        $work = Join-Path $TestDrive 'travail'
+        $cache = Join-Path $work 'cache\outil'
+        New-Item -ItemType Directory -Path $cache -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $cache 'setup.exe') -Value 'x'
+        (Remove-WorkSubfolder -Path (Join-Path $work 'cache') -WorkFolder $work).Changed | Should -BeTrue
+        Join-Path $work 'cache' | Should -Not -Exist
+        $work | Should -Exist
+    }
+    It 'dossier absent : sans effet' {
+        (Remove-WorkSubfolder -Path (Join-Path $TestDrive 'travail2\cache') -WorkFolder (Join-Path $TestDrive 'travail2')).Changed | Should -BeFalse
+    }
+    It 'refus : <Why>' -ForEach @(
+        @{ Why = 'le dossier de travail lui-même'; Path = 'travail3' }
+        @{ Why = 'un dossier voisin'; Path = 'autre' }
+        @{ Why = 'une évasion par « .. »'; Path = 'travail3\..\autre' }
+    ) {
+        $work = Join-Path $TestDrive 'travail3'
+        New-Item -ItemType Directory -Path $work, (Join-Path $TestDrive 'autre') -Force | Out-Null
+        { Remove-WorkSubfolder -Path (Join-Path $TestDrive $Path) -WorkFolder $work } | Should -Throw '*garde de chemin*'
+        Join-Path $TestDrive 'autre' | Should -Exist
+    }
+}

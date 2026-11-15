@@ -22,7 +22,6 @@
         'Get-ExcludedOfficeApp',
         'New-OdtInstallXml',
         'New-OdtRemoveXml',
-        'Resolve-UtilityKey',
         'Format-InventoryText',
         'Format-InventoryExport',
         'ConvertTo-SafeFileName',
@@ -42,7 +41,10 @@
         'ConvertTo-SoftwareEntry',
         'Get-SoftwareEntryError',
         'New-SoftwareId',
-        'Format-SoftwareInstallCommand'
+        'Format-SoftwareInstallCommand',
+        'ConvertTo-SoftwareDocumentEntry',
+        'Test-SoftwareApplicable',
+        'Select-ApplicableSoftware'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

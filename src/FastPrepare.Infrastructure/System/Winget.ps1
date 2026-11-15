@@ -1,7 +1,7 @@
 ﻿<#
     winget (« Programme d'installation d'application »).
     Cahier des charges : vérifié au démarrage, réenregistré si absent
-    (Add-AppxPackage -RegisterByFamilyName), sinon installé depuis un paquet .msixbundle de la clé.
+    (Add-AppxPackage -RegisterByFamilyName), sinon installé depuis un paquet .msixbundle fourni avec l'outil.
     Tous les appels à winget passent par Invoke-Winget, qui répare une fois une source inutilisable
     (itération 10, DEC20).
 #>
@@ -29,13 +29,13 @@ function Test-Winget {
 function Assert-WingetAvailable {
     <#
         Garantit la présence de winget : déjà présent → rien ; sinon réenregistrement du paquet
-        système (-FamilyName) ; sinon installation du paquet hors ligne (-OfflineBundle, avec les
-        dépendances .appx/.msix du même dossier). Erreur explicite si rien ne fonctionne.
+        système (-FamilyName) ; sinon installation du paquet hors ligne (-OfflineBundle, facultatif,
+        avec les dépendances .appx/.msix du même dossier). Erreur explicite si rien ne fonctionne.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$FamilyName,
-        [Parameter(Mandatory)][string]$OfflineBundle,
+        [AllowEmptyString()][string]$OfflineBundle = '',
         $Log
     )
     if (Test-Winget) { return }
@@ -51,10 +51,13 @@ function Assert-WingetAvailable {
         return
     }
 
+    if (-not $OfflineBundle) {
+        throw 'winget introuvable et aucun paquet hors ligne configuré (Winget.OfflineBundle dans config.json).'
+    }
     if (-not (Test-Path -LiteralPath $OfflineBundle -PathType Leaf)) {
         throw "winget introuvable et paquet hors ligne absent : $OfflineBundle"
     }
-    if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Installation de winget depuis la clé : $OfflineBundle" }
+    if ($Log) { Write-RunLog -Log $Log -Level ATTN -Message "Installation de winget depuis le paquet hors ligne : $OfflineBundle" }
     $dependencies = @(Get-ChildItem -LiteralPath (Split-Path -Path $OfflineBundle -Parent) -File |
             Where-Object { $_.Extension -in '.appx', '.msix' -and $_.FullName -ne $OfflineBundle } |
             ForEach-Object { $_.FullName })
@@ -62,7 +65,7 @@ function Assert-WingetAvailable {
     else { Add-AppxPackage -Path $OfflineBundle -ErrorAction Stop }
 
     if (-not (Test-Winget)) { throw 'winget toujours introuvable après installation du paquet hors ligne.' }
-    if ($Log) { Write-RunLog -Log $Log -Level OK -Message 'winget installé depuis la clé' }
+    if ($Log) { Write-RunLog -Log $Log -Level OK -Message 'winget installé depuis le paquet hors ligne' }
 }
 
 function Install-WingetPackage {

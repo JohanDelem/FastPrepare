@@ -1,5 +1,5 @@
 ﻿<#
-    Section 0 — Connexion internet (pastille de l'en-tête).
+    Connexion internet (pastille de l'en-tête).
     Test périodique, non bloquant ; tant que la connexion n'est pas validée, Lancer reste grisé.
     Seuls les changements d'état sont journalisés.
 #>

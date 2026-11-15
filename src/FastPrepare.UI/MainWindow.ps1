@@ -15,7 +15,23 @@ function Start-MainWindow {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Context)
 
+    $window = Initialize-MainWindow -Context $Context
+    Start-UiPump -Log $Context.Log
+    [void]$window.ShowDialog()
+}
+
+function Initialize-MainWindow {
+    <#
+        Construit la fenêtre sans l'afficher : coquille, sections dans leur colonne, titres
+        numérotés, événements. Renvoie la fenêtre. Séparée de l'affichage pour être vérifiable
+        par les tests (tests\FastPrepare.UI).
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Context)
+
     $script:Context = $Context
+    $script:Snapshot = $null
+    $script:Running = $false
     $xamlFolder = Join-Path $PSScriptRoot 'Xaml'
 
     Initialize-WpfApplication -ThemePath (Join-Path $xamlFolder 'Theme.xaml')
@@ -26,7 +42,10 @@ function Start-MainWindow {
     Initialize-LogView -RichTextBox $shell.RtbLog
     $shell.BdSimu.Visibility = if ($Context.Mode -eq 'Simulation') { 'Visible' } else { 'Collapsed' }
     $shell.BdReal.Visibility = if ($Context.Mode -eq 'Real') { 'Visible' } else { 'Collapsed' }
-    Set-MemoText -TextBlock $shell.TxtMemo -Reminder @($Context.Config.ManualReminders)
+    if ($Context.Version) { $window.Title = 'FastPrepare {0} — Préparation de poste' -f $Context.Version }
+    $reminders = @(Get-ManualReminder -Config $Context.Config)
+    if ($reminders.Count -gt 0) { Set-MemoText -TextBlock $shell.TxtMemo -Reminder $reminders }
+    else { $shell.BdMemo.Visibility = 'Collapsed' }
 
     foreach ($section in (Get-UiSection)) {
         if ($section.XamlFile) {
@@ -35,6 +54,11 @@ function Start-MainWindow {
             $section.Controls = $fragment.Controls
             $column = switch ($section.Column) { 'Left' { $shell.ColLeft } 'Settings' { $shell.ColSettings } default { $shell.ColRight } }
             [void]$column.Children.Add($fragment.Root)
+            # Titre numéroté selon la position de la section (jamais écrit dans le XAML).
+            $displayNumber = Get-UiSectionDisplayNumber -Section $section
+            if ($displayNumber -gt 0 -and $section.Controls.ContainsKey('TxtTitle')) {
+                $section.Controls.TxtTitle.Text = '{0} · {1}' -f $displayNumber, $section.Controls.TxtTitle.Text
+            }
         } else {
             $section.Controls = $shell
         }
@@ -64,9 +88,7 @@ function Start-MainWindow {
                 try { Invoke-UiSectionCallback -Section $section -Name Dispose | Out-Null } catch { Write-Verbose $_.Exception.Message }
             }
         })
-
-    Start-UiPump -Log $Context.Log
-    [void]$window.ShowDialog()
+    return $window
 }
 
 function Start-MachineView {
@@ -97,7 +119,7 @@ function Complete-MachineView {
         try {
             Invoke-UiSectionCallback -Section $section -Name OnSnapshot -Arguments @($Snapshot, $context) | Out-Null
         } catch {
-            Write-RunLog -Log $context.Log -Level ERREUR -Message ("Affichage de la section {0} impossible : {1}" -f $section.Number, $_.Exception.Message)
+            Write-RunLog -Log $context.Log -Level ERREUR -Message ("Affichage de la section {0} impossible : {1}" -f $section.Id, $_.Exception.Message)
         }
     }
     Update-UiState
@@ -191,7 +213,7 @@ function Publish-SettingsChanged {
         try {
             Invoke-UiSectionCallback -Section $section -Name OnSettingsChanged -Arguments @($script:Context) | Out-Null
         } catch {
-            Write-RunLog -Log $script:Context.Log -Level ERREUR -Message ("Mise à jour de la section {0} impossible : {1}" -f $section.Number, $_.Exception.Message)
+            Write-RunLog -Log $script:Context.Log -Level ERREUR -Message ("Mise à jour de la section {0} impossible : {1}" -f $section.Id, $_.Exception.Message)
         }
     }
     Update-UiState

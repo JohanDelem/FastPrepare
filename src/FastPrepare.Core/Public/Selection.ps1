@@ -24,12 +24,13 @@ function New-Selection {
             OneDriveFolder   = $false
         }
         LocalAccounts  = [pscustomobject]@{ Items = @() }
-        VendorUtility  = [pscustomobject]@{ Key = $null }
+        # Entrées cochées du catalogue (software.json), outil du constructeur compris (DEC26).
+        Catalog        = [pscustomobject]@{ Ids = @() }
         Office         = [pscustomobject]@{ EditionKey = $null; WithoutTeams = $false; IncludedApps = @() }
-        Updates        = [pscustomobject]@{ WindowsUpdate = $false; VendorUtility = $false }
-        ExtraSoftware  = [pscustomobject]@{ Ids = @() }
+        # Drivers : commande Update des entrées cochées qui en portent une (pilotes, BIOS).
+        Updates        = [pscustomobject]@{ WindowsUpdate = $false; Drivers = $false }
         SystemSettings = [pscustomobject]@{ Ipv6Adapters = @(); Power = $false }
-        # Session à créer (section 11). Password : SecureString, jamais une chaîne (DEC15).
+        # Session à créer. Password : SecureString, jamais une chaîne (DEC15).
         NewLocalAccount = [pscustomobject]@{
             Enabled              = $false
             Name                 = ''
@@ -55,7 +56,7 @@ function Test-Selection {
         [Parameter(Mandatory)]$Selection,
         [Parameter(Mandatory)]$Config,
         [Parameter(Mandatory)]$Snapshot,
-        # Catalogue des logiciels de la section 8 (software.json, itération 9).
+        # Catalogue des logiciels (software.json).
         [AllowEmptyCollection()][object[]]$SoftwareCatalog = @()
     )
 
@@ -78,14 +79,6 @@ function Test-Selection {
 
     foreach ($problem in @(Get-NewLocalAccountProblem -Selection $Selection -Snapshot $Snapshot)) { $problems.Add($problem) }
 
-    $utilityKey = $Selection.VendorUtility.Key
-    if ($utilityKey -and -not $Config.Utilities.PSObject.Properties[$utilityKey]) {
-        $problems.Add("Utilitaire constructeur inconnu : '$utilityKey'")
-    }
-    if ($Selection.Updates.VendorUtility -and -not $utilityKey) {
-        $problems.Add("Mise à jour de l'utilitaire constructeur demandée sans utilitaire choisi")
-    }
-
     $editionKey = $Selection.Office.EditionKey
     if ($editionKey) {
         $edition = @($Config.Office.Editions) | Where-Object { $_.Key -eq $editionKey } | Select-Object -First 1
@@ -99,9 +92,20 @@ function Test-Selection {
         }
     }
 
-    $knownSoftware = @(@($SoftwareCatalog) | ForEach-Object { [string]$_.Id })
-    foreach ($id in @($Selection.ExtraSoftware.Ids)) {
-        if ($knownSoftware -notcontains $id) { $problems.Add("Logiciel inconnu (section 8) : '$id'") }
+    # Catalogue : entrée connue, et proposée sur ce constructeur (DEC25 : l'outil d'un autre
+    # constructeur n'est jamais installé, même si une sélection le demande).
+    $manufacturer = [string]$Snapshot.Identity.Manufacturer
+    $hasUpdate = $false
+    foreach ($id in @($Selection.Catalog.Ids)) {
+        $entry = @($SoftwareCatalog) | Where-Object { [string]$_.Id -eq $id } | Select-Object -First 1
+        if (-not $entry) { $problems.Add("Logiciel inconnu du catalogue : '$id'"); continue }
+        if (-not (Test-SoftwareApplicable -Entry $entry -Manufacturer $manufacturer)) {
+            $problems.Add(("« {0} » est réservé à un autre constructeur que celui du poste ({1})" -f $entry.Label, $(if ($manufacturer) { $manufacturer } else { 'constructeur non détecté' })))
+        }
+        if ($entry.Update) { $hasUpdate = $true }
+    }
+    if ($Selection.Updates.Drivers -and -not $hasUpdate) {
+        $problems.Add('Mise à jour des pilotes et du BIOS demandée sans outil constructeur coché')
     }
 
     return $problems.ToArray()

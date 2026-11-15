@@ -4,6 +4,28 @@ L'interface WPF et les effets sur le système ne se testent qu'à la main. Cette
 à la fin de chaque itération sur un poste de test, puis complétée par l'itération suivante.
 Cocher, dater, noter le modèle de poste et joindre le journal (`logs\Journal_*.log`).
 
+> **Numérotation.** Les listes des itérations 0 à 12 sont conservées telles qu'elles ont été
+> déroulées : elles citent les sections 1 à 11 et les étapes 1 à 14 du cahier des charges, la
+> « clé » et `Build-Usb.ps1`. Depuis l'itération 13, l'outil ne suppose plus de clé USB et
+> numérote dans l'ordre d'exécution. Correspondance pour rejouer une ancienne liste :
+>
+> | Ancienne section | Section actuelle | Ancienne étape | Étape actuelle |
+> |---|---|---|---|
+> | 1 Nom d'hôte | 8 | 13 | 11 |
+> | 2 Logiciels installés | 4 | 5 | 5 |
+> | 3 Programmes Microsoft | 3 | 3 et 4 | 3 et 4 |
+> | 4 Sessions locales | 2 | 2 | 2 |
+> | 5 Utilitaire constructeur | 5 Installations | 6 | 6 |
+> | 6 Office | 5 Installations | 7 | 6 |
+> | 7 Mises à jour | 7 | 11 et 12 | 9 et 10 |
+> | 8 Logiciels | 5 Installations | 8 | 6 |
+> | 9 Paramètres système | 6 | 9 et 10 | 7 et 8 |
+> | 10 N/S et MAC | 1 | 1 | 1 |
+> | 11 Créer une session | 9 | 14 | 12 |
+>
+> « Clé en lecture seule » se lit « dossier de sortie inaccessible » ; `VERSION.txt` se lit
+> « version affichée dans le titre de la fenêtre » ; `C:\ODT` se lit `%ProgramData%\FastPrepare\odt`.
+
 ## Itération 0 — parité avec le prototype (simulation)
 
 Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : __________
@@ -200,12 +222,54 @@ Poste : ____________________ · Date : __________ · Version (`VERSION.txt`) : _
 - [ ] Entrée sans portée (« Choix de winget ») : test réussi avec l'avertissement « Portée non précisée ».
 - [ ] Exécution réelle sur poste de test, outil lancé avec un compte administrateur différent de l'utilisateur final : Visual Studio Code (« machine ») installé dans `C:\Program Files\Microsoft VS Code` et visible depuis la session de l'utilisateur final.
 
+## Itération 13 — outil indépendant du support, installations unifiées
+
+Poste : ____________________ · Constructeur : ____________ · Date : __________ · Version (titre de la fenêtre) : __________
+
+### Lancement, quel que soit le support
+- [ ] Titre de la fenêtre : « FastPrepare 1.13.0 — Préparation de poste » ; première ligne du journal : version et dossier de l'outil.
+- [ ] Dossier **téléchargé** (archive `FastPrepare-1.13.0.zip` extraite dans `Téléchargements`) : `Lancer.cmd` demande l'élévation, la fenêtre s'ouvre.
+- [ ] `Lancer.cmd` double-cliqué **dans l'archive non extraite** : message « Preparation.ps1 est introuvable… extrayez-la entièrement », rien d'autre.
+- [ ] Dossier dont le chemin contient une apostrophe, des espaces et des parenthèses (ex. `C:\Outils\l'essai (1)\FastPrepare`) : la fenêtre s'ouvre.
+- [ ] Depuis un **partage réseau** ouvert par son chemin `\\serveur\partage\FastPrepare` : la fenêtre s'ouvre.
+- [ ] Depuis un **lecteur réseau mappé** (`Z:\FastPrepare`) : la fenêtre s'ouvre (le lecteur n'existe pas dans la session élevée : le lanceur passe par le chemin réseau).
+- [ ] Depuis un **support amovible** : la fenêtre s'ouvre ; journal dans `logs\` sur le support.
+- [ ] `config.json` d'une version précédente (`ConfigVersion` 3) : refus au démarrage avec la consigne de migration (`Output`, `Execution.WorkFolder`, `Utilities`).
+
+### Dossier de sortie
+- [ ] `Output.Folder` = `"logs"` : journal et inventaire dans `logs\` du dossier de l'outil.
+- [ ] `Output.Folder` = chemin absolu (`D:\Preparations`) : journal et inventaire à cet endroit, rien dans le dossier de l'outil.
+- [ ] `Output.Folder` = partage réseau accessible : journal et inventaire sur le partage.
+- [ ] Partage **injoignable** au démarrage : ligne `[ATTN] Dossier de sortie … non accessible en écriture : journal et inventaire écrits dans C:\ProgramData\FastPrepare\sortie` ; partage rétabli avant la fin : ligne « copiés dans le dossier de sortie » ; resté injoignable : consigne « copiez-les à la main » avec le chemin.
+- [ ] Dossier de l'outil en **lecture seule** et `Output.Folder` = `"logs"` : même repli ; l'onglet Réglages refuse d'enregistrer avec « le dossier … est protégé en écriture ».
+
+### Section Installations — outil du constructeur détecté
+- [ ] Poste **Dell** : « Constructeur détecté : Dell Inc. — outil proposé : Dell Command Update » ; seule cette case constructeur est affichée, cochée ; aucune case HP, Lenovo, Fujitsu.
+- [ ] Poste **HP** : HP Image Assistant seulement. Poste **Lenovo** : Commercial Vantage et Thin Installer. Poste **Fujitsu** : DeskUpdate.
+- [ ] **Machine virtuelle** ou constructeur inconnu : « aucun outil constructeur au catalogue pour cette marque » ; les logiciels sans constructeur restent proposés.
+- [ ] Les neuf sections sont numérotées 1 à 9 dans l'ordre du README ; Office est dans la section 5, sous le catalogue.
+- [ ] Section 7 : « Mettre à jour les pilotes et le BIOS (Dell Command Update) » visible et cochée ; outil constructeur décoché en section 5 → la case disparaît ; recoché → elle revient, cochée.
+- [ ] Onglet Réglages : **toutes** les entrées du catalogue, quel que soit le poste, avec « constructeur : … » ; entrée Dell : ligne « Conservés tels quels… dépendance .NET… mise à jour des pilotes ».
+- [ ] Onglet Réglages : nouveau logiciel avec « Constructeur » = marque du poste → la case apparaît en section 5 ; avec une autre marque → elle n'apparaît pas ; motif invalide (`HP(`) → Enregistrer grisé.
+- [ ] Modifier le libellé de l'entrée Dell et enregistrer : `software.json` garde ses blocs `DotNet` et `Update`.
+
+### Exécution
+- [ ] Simulation, outil constructeur + un logiciel + Office cochés : les trois sous `[ETAPE 06/12]`, dans l'ordre catalogue puis Office ; `[ETAPE 09/12] Pilotes et BIOS (…)` ; `[ETAPE 10/12] Windows Update`.
+- [ ] Réel (poste de test de chaque marque) : outil du constructeur installé, puis mise à jour des pilotes et du BIOS lancée par lui ; aucun redémarrage automatique.
+- [ ] Réel, poste **Lenovo** : Thin Installer installé par winget (`Lenovo.ThinInstaller`), présent dans `C:\Program Files (x86)\Lenovo\ThinInstaller`, puis mise à jour lancée. *À confirmer : chemin d'installation du paquet winget.*
+- [ ] Réel, exécution sans échec : en fin de rapport « Fichiers de travail supprimés » ; `C:\ProgramData\FastPrepare\cache` et `…\odt` n'existent plus ; pas de `C:\ODT`.
+- [ ] Réel, une installation en échec (ex. identifiant winget faux ajouté pour l'essai) : « Fichiers de travail conservés pour le diagnostic » ; les dossiers existent encore.
+
+### Livraison
+- [ ] `tools\Build-Release.ps1 -Destination D:\Livraisons -Zip` : dossier `FastPrepare-1.13.0` (ni tests, ni documentation), `BUILD.txt` (version, commit, empreinte), archive `FastPrepare-1.13.0.zip` sans aucun fichier `.log`.
+- [ ] Relancé sur le même dossier après un ajout au catalogue depuis l'onglet Réglages : catalogue conservé (message) ; avec `-ReplaceSoftwareCatalog` : remplacé.
+
 ## Recette complète avant passage en mode réel par défaut (DEC6)
 
 Dérouler, sur un poste de test réinitialisé de **chaque marque**, une exécution réelle **complète** (toutes les sections utiles cochées), puis :
 
 - [ ] Rapport final sans échec inattendu ; échecs attendus compris et documentés.
-- [ ] Après redémarrage manuel : nom d'hôte appliqué, Office installé et non activé, utilitaire constructeur présent, aucune application Microsoft retirée ne revient pour un nouveau profil.
+- [ ] Après redémarrage manuel : nom d'hôte appliqué, Office installé et non activé, outil du constructeur présent, aucune application Microsoft retirée ne revient pour un nouveau profil ; aucun fichier de l'outil hors du dossier de sortie.
 - [ ] Deuxième exécution sur le même poste : tout est « déjà fait / déjà absent », aucune erreur.
-- [ ] Valeurs provisoires confirmées ou corrigées dans `config.json` : codes de sortie winget et outils constructeurs (QO4), chemins `HPImageAssistant.exe` / `ducmd.exe`, lien et empreinte de Thin Installer.
+- [ ] Valeurs provisoires confirmées ou corrigées dans `software.json` (blocs `Update`) : codes de sortie des outils constructeurs (QO4), chemins `HPImageAssistant.exe` / `ducmd.exe` / `ThinInstaller.exe`.
 - [ ] Alors seulement : `Execution.DefaultMode` = `"Real"` dans `config.json`.

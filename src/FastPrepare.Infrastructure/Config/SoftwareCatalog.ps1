@@ -1,23 +1,25 @@
 ﻿<#
-    Le fichier software.json : catalogue des logiciels de la section 8 (itération 9, DEC17).
+    Le fichier software.json : catalogue des logiciels, outils constructeurs compris (DEC17, DEC26).
+    Format 2 (itération 13) ; un fichier au format 1 est lu tel quel et réécrit au format 2.
     Contrairement à config.json, il est réécrit par l'outil (onglet Réglages) : écriture atomique,
     ancienne version gardée en .bak. Les règles d'une entrée sont dans FastPrepare.Core
     (SoftwareCatalog.ps1) ; ce fichier ne fait que lire, valider le format et écrire.
 #>
 
-$script:SupportedCatalogVersion = 1
+$script:SupportedCatalogVersion = 2
+$script:ReadableCatalogVersions = @(1, 2)
 
 function Read-SoftwareCatalog {
     <#
-        Lit et valide le catalogue. Fichier absent : catalogue vide et avertissement (la section 8
-        est simplement vide). JSON invalide ou entrée refusée : erreur, comme pour config.json.
+        Lit et valide le catalogue. Fichier absent : catalogue vide et avertissement (la section
+        Installations ne propose alors qu'Office). JSON invalide ou entrée refusée : erreur, comme pour config.json.
         Renvoie { Entries (normalisées), Path, Warnings }.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        return [pscustomobject]@{ Entries = @(); Path = $Path; Warnings = @("Catalogue des logiciels introuvable ($Path) : section 8 vide, ajoutez des logiciels dans l'onglet Réglages") }
+        return [pscustomobject]@{ Entries = @(); Path = $Path; Warnings = @("Catalogue des logiciels introuvable ($Path) : aucun logiciel proposé, ajoutez-en dans l'onglet Réglages") }
     }
     try {
         $catalog = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
@@ -39,9 +41,9 @@ function Assert-SoftwareCatalog {
     $errors = New-Object System.Collections.Generic.List[string]
     $entries = New-Object System.Collections.Generic.List[object]
     if (-not ($Catalog -is [System.Management.Automation.PSCustomObject])) {
-        throw 'software.json : objet { "CatalogVersion": 1, "Software": [ … ] } attendu.'
+        throw 'software.json : objet { "CatalogVersion": 2, "Software": [ … ] } attendu.'
     }
-    if (-not $Catalog.PSObject.Properties['CatalogVersion'] -or $Catalog.CatalogVersion -ne $script:SupportedCatalogVersion) {
+    if (-not $Catalog.PSObject.Properties['CatalogVersion'] -or $script:ReadableCatalogVersions -notcontains $Catalog.CatalogVersion) {
         throw "software.json : CatalogVersion $script:SupportedCatalogVersion attendue."
     }
     if (-not $Catalog.PSObject.Properties['Software'] -or -not ($Catalog.Software -is [array] -or $null -eq $Catalog.Software)) {
@@ -68,7 +70,7 @@ function Save-SoftwareCatalog {
     <#
         Écrit le catalogue : fichier temporaire dans le même dossier, puis remplacement atomique
         qui garde l'ancienne version en <fichier>.bak. JSON indenté sur deux espaces, UTF-8 sans BOM.
-        Clé protégée en écriture : erreur explicite, le catalogue existant reste intact.
+        Dossier protégé en écriture : erreur explicite, le catalogue existant reste intact.
     #>
     [CmdletBinding()]
     param(
@@ -77,9 +79,10 @@ function Save-SoftwareCatalog {
     )
     # Validation avant écriture : un catalogue refusé à la relecture ne doit jamais être écrit.
     $document = [pscustomobject][ordered]@{ CatalogVersion = $script:SupportedCatalogVersion; Software = @($Entries) }
-    $normalized = Assert-SoftwareCatalog -Catalog ($document | ConvertTo-Json -Depth 6 | ConvertFrom-Json)
-    $document.Software = @($normalized)
-    $json = Format-JsonText -Json ($document | ConvertTo-Json -Depth 6 -Compress)
+    $normalized = @(Assert-SoftwareCatalog -Catalog ($document | ConvertTo-Json -Depth 8 | ConvertFrom-Json))
+    # Les champs facultatifs vides ne sont pas écrits (ConvertTo-SoftwareDocumentEntry, FastPrepare.Core).
+    $document.Software = @($normalized | ForEach-Object { ConvertTo-SoftwareDocumentEntry -Entry $_ })
+    $json = Format-JsonText -Json ($document | ConvertTo-Json -Depth 8 -Compress)
 
     $temporary = "$Path.tmp"
     $backup = "$Path.bak"
@@ -89,7 +92,7 @@ function Save-SoftwareCatalog {
             try {
                 [System.IO.File]::Replace($temporary, $Path, $backup)
             } catch [System.IO.IOException], [System.PlatformNotSupportedException] {
-                # Systèmes de fichiers sans remplacement atomique (certaines clés FAT32) : copie de secours puis remplacement.
+                # Systèmes de fichiers sans remplacement atomique (FAT32, certains partages) : copie de secours puis remplacement.
                 Copy-Item -LiteralPath $Path -Destination $backup -Force -ErrorAction Stop
                 Move-Item -LiteralPath $temporary -Destination $Path -Force -ErrorAction Stop
             }
@@ -99,7 +102,7 @@ function Save-SoftwareCatalog {
     } catch {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
         if ($_.Exception -is [System.UnauthorizedAccessException] -or $_.Exception.InnerException -is [System.UnauthorizedAccessException]) {
-            throw "Catalogue non enregistré : la clé (ou le dossier $(Split-Path -Parent $Path)) est protégée en écriture."
+            throw "Catalogue non enregistré : le dossier $(Split-Path -Parent $Path) est protégé en écriture."
         }
         throw "Catalogue non enregistré ($Path) : $($_.Exception.Message)"
     }

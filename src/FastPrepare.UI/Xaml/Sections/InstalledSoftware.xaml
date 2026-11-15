@@ -4,7 +4,7 @@
   <StackPanel>
     <DockPanel>
       <CheckBox Name="ChkAllApps" DockPanel.Dock="Right" Content="Tout cocher" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-      <TextBlock Style="{StaticResource H2}" Text="2 · Désinstallation des logiciels installés"/>
+      <TextBlock Name="TxtTitle" Style="{StaticResource H2}" Text="Désinstallation des logiciels installés"/>
     </DockPanel>
     <Border BorderBrush="#E5E5E5" BorderThickness="1" CornerRadius="4">
       <StackPanel>

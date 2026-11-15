@@ -1,10 +1,10 @@
 ﻿<#
-    Étape 3 — Désinstallation des programmes Microsoft : Office, Outlook, OneNote, Teams (section 3).
+    Étape 3 — Désinstallation des programmes Microsoft : Office, Outlook, OneNote, Teams.
     Office Click-to-Run et MSI sont retirés par un seul passage d'ODT (XML de New-OdtRemoveXml).
     Outlook classique et OneNote Click-to-Run partent avec la suite (Remove All).
 #>
 
-Register-Step -Id 'remove-microsoft-apps' -Section 3 -Title 'Désinstallation des programmes Microsoft' -Plan {
+Register-Step -Id 'remove-microsoft-apps' -Title 'Désinstallation des programmes Microsoft' -Plan {
     param($Selection, $Snapshot, $Context)
     $ms = $Selection.MicrosoftApps
 
@@ -43,7 +43,7 @@ Register-Step -Id 'remove-microsoft-apps' -Section 3 -Title 'Désinstallation de
     $p = $Action.Parameters
     switch ($p.Kind) {
         'OdtRemove' {
-            $setup = Initialize-OdtFolder -Folder $Context.Paths.OdtFolder -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
+            $setup = Initialize-OdtFolder -Folder $Context.Paths.Odt -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
             $result = Invoke-Odt -SetupPath $setup -Xml $p.Xml -Name 'suppression' -Log $log
             [pscustomobject]@{ RebootRequired = $result.RebootRequired }
         }

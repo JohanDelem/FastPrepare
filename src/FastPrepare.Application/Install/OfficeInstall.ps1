@@ -1,12 +1,19 @@
 ﻿<#
-    Étape 7 — Office via ODT (section 6).
+    Installation d'Office par l'Office Deployment Tool. Office fait partie de l'étape et de la
+    section « Installations » (DEC26) mais garde son formulaire : édition, variante sans Teams et
+    applications incluses ne se réduisent pas à une ligne de catalogue.
     XML universel produit par FastPrepare.Core (New-OdtInstallXml) et recopié dans le journal.
     Après ODT, le produit est recherché dans la configuration Click-to-Run : un ODT terminé sans
-    erreur mais sans produit installé est un échec. Activation manuelle plus tard (cahier).
+    erreur mais sans produit installé est un échec. Activation manuelle plus tard.
 #>
 
-Register-Step -Id 'install-office' -Section 6 -Title 'Installation d''Office' -Plan {
-    param($Selection, $Snapshot, $Context)
+function Get-OfficeInstallAction {
+    <# Action du plan pour l'édition d'Office cochée ; rien si aucune édition n'est choisie. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Selection,
+        [Parameter(Mandatory)]$Context
+    )
     $key = $Selection.Office.EditionKey
     if (-not $key) { return }
     $office = $Context.Config.Office
@@ -15,16 +22,23 @@ Register-Step -Id 'install-office' -Section 6 -Title 'Installation d''Office' -P
     $excluded = Get-ExcludedOfficeApp -OptionalApp @($office.OptionalApps) -IncludedId @($Selection.Office.IncludedApps)
     $xml = New-OdtInstallXml -ProductId $productId -Channel $edition.Channel -ExcludedApp $excluded -Architecture $office.Architecture -Language $office.Language
 
-    New-StepAction -Label ('Office : {0} via ODT dans {1} (ID produit {2}), configuration.xml :' -f $edition.Name, $office.OdtFolder, $productId) -Details ($xml -split "`r`n") -Parameters @{
+    New-StepAction -Label ('Office : {0} via ODT dans {1} (ID produit {2}), configuration.xml :' -f $edition.Name, $Context.Paths.Odt, $productId) -Details ($xml -split "`r`n") -Parameters @{
         Kind = 'OdtInstall'; Xml = $xml; EditionKey = $key; ProductId = $productId
     }
-} -Invoke {
-    param($Action, $Context)
+}
+
+function Invoke-OfficeInstall {
+    <# Télécharge l'ODT si besoin, installe l'édition décrite par l'action et vérifie le produit installé. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Action,
+        [Parameter(Mandatory)]$Context
+    )
     $log = $Context.Log
     $p = $Action.Parameters
     Write-RunLog -Log $log -Message ("Office : téléchargement et installation par ODT, compter plusieurs minutes selon la connexion")
     foreach ($line in ($p.Xml -split "`r`n")) { Write-RunLog -Log $log -Message ('     ' + $line) }
-    $setup = Initialize-OdtFolder -Folder $Context.Paths.OdtFolder -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
+    $setup = Initialize-OdtFolder -Folder $Context.Paths.Odt -SetupUrl $Context.Config.Office.OdtSetupUrl -Log $log
     $result = Invoke-Odt -SetupPath $setup -Xml $p.Xml -Name 'installation' -TimeoutMinutes 120 -Log $log
     $installed = @(Get-OfficeClickToRunProduct)
     if ($installed -notcontains $p.ProductId) {

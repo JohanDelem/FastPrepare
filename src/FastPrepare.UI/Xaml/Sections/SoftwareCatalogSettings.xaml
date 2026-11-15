@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource Section}">
   <StackPanel>
-    <TextBlock Style="{StaticResource H2}" Text="Catalogue des logiciels (section 8)"/>
+    <TextBlock Style="{StaticResource H2}" Text="Catalogue des logiciels"/>
     <TextBlock Name="TxtSwIntro" Style="{StaticResource Hint}" Margin="0,0,0,10"/>
     <Grid>
       <Grid.ColumnDefinitions>
@@ -31,13 +31,18 @@
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <TextBlock Grid.Row="0" Text="Libellé affiché" VerticalAlignment="Center"/>
           <TextBox Name="TxtSwLabel" Grid.Row="0" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center" MaxLength="80"/>
           <TextBlock Grid.Row="1" Text="Identifiant interne" VerticalAlignment="Center"/>
           <TextBlock Name="TxtSwId" Grid.Row="1" Grid.Column="1" Style="{StaticResource Tech}" Margin="0,4"/>
+          <TextBlock Grid.Row="2" Text="Constructeur (facultatif)" VerticalAlignment="Center"/>
+          <TextBox Name="TxtSwManufacturer" Grid.Row="2" Grid.Column="1" Height="28" Margin="0,2" Padding="6,0" VerticalContentAlignment="Center"
+                   ToolTip="Vide : proposé sur tous les postes. Renseigné : proposé seulement si le constructeur détecté correspond (ex. Dell, ou HP|Hewlett)."/>
         </Grid>
-        <CheckBox Name="ChkSwDefault" Content="Coché par défaut dans la section 8"/>
+        <CheckBox Name="ChkSwDefault" Content="Coché par défaut dans la section Installations"/>
+        <TextBlock Name="TxtSwAdvanced" Style="{StaticResource Hint}" Margin="0,4,0,0" Visibility="Collapsed"/>
         <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
           <TextBlock Text="Type d'installation" Width="190" VerticalAlignment="Center"/>
           <RadioButton Name="RbSwWinget" GroupName="SwType" Content="Paquet winget" IsChecked="True" Margin="0,0,16,0" VerticalContentAlignment="Center"/>

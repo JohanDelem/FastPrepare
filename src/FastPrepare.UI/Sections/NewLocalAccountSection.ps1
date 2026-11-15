@@ -1,11 +1,11 @@
 ﻿<#
-    Section 11 — Créer une session locale (fonctionnalité ajoutée après le cahier, itération 8).
+    Section « Créer une session locale » (fonctionnalité ajoutée après le cahier, itération 8).
     Saisie vérifiée par FastPrepare.Core (Get-LocalAccountNameError, Get-LocalAccountPasswordError).
     Le mot de passe n'est jamais lu en clair : seule PasswordBox.SecurePassword est utilisée, et
     chaque copie est libérée dès qu'elle ne sert plus (DEC15).
 #>
 
-Register-UiSection -Id 'new-local-account' -Number 11 -Column Left -XamlFile 'Sections\NewLocalAccount.xaml' -Initialize {
+Register-UiSection -Id 'new-local-account' -Number 9 -Column Right -XamlFile 'Sections\NewLocalAccount.xaml' -Initialize {
     param($Section, $Context)
     $c = $Section.Controls
     $Section.State.DefaultHint = "20 caractères max · mot de passe saisi deux fois, jamais écrit dans le journal · profil créé à la première ouverture de session"
@@ -54,7 +54,7 @@ Register-UiSection -Id 'new-local-account' -Number 11 -Column Left -XamlFile 'Se
     Update-NewLocalAccountView
 } -Refresh {
     param($Section, $Selection)
-    # Un nom libéré par la section 4 redevient disponible ; le futur nom du poste est interdit.
+    # Un nom libéré par la suppression des sessions locales redevient disponible ; le futur nom du poste est interdit.
     $Section.State.RemovedNames = @(@($Selection.LocalAccounts.Items) | ForEach-Object { [string]$_.Name })
     $computers = @($Section.State.CurrentHostName)
     if ($Selection.HostName.Enabled) { $computers += [string]$Selection.HostName.Name }

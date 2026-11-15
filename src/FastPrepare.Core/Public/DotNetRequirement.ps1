@@ -1,7 +1,7 @@
 ﻿<#
     Correspondance version de l'outil constructeur → runtime .NET requis
     (cahier des charges, « Dell et .NET » : un runtime trop récent fait échouer DCU 5.7.0).
-    Les plages viennent de config.Utilities.<clé>.DotNet. Fonctions pures.
+    Les plages viennent du champ DotNet d'une entrée du catalogue (software.json). Fonctions pures.
 #>
 
 function ConvertTo-ComparableVersion {
@@ -49,7 +49,7 @@ function Test-VersionInRange {
 
 function Select-DotNetRequirement {
     <#
-        Entrée de config.Utilities.<clé>.DotNet qui s'applique à la version d'outil -ToolVersion.
+        Entrée DotNet du catalogue qui s'applique à la version d'outil -ToolVersion.
         Renvoie { Requirement, IsExactMatch } :
           - IsExactMatch vrai : l'entrée correspond à la version (5.7.0 couvre 5.7.0.xxxx) ;
           - IsExactMatch faux : version inconnue de la configuration, l'entrée de la plus grande
@@ -66,7 +66,7 @@ function Select-DotNetRequirement {
     if (-not $tool) { throw "Numéro de version invalide : '$ToolVersion'." }
 
     $candidates = @(@($Requirement) | Where-Object { $_ } | ForEach-Object {
-            $version = ConvertTo-ComparableVersion -Value ([string]$_.DcuVersion)
+            $version = ConvertTo-ComparableVersion -Value ([string]$_.ToolVersion)
             if ($version) { [pscustomobject]@{ Version = $version; Entry = $_ } }
         })
 

@@ -1,12 +1,18 @@
 ﻿<#
-    Règles d'une entrée du catalogue des logiciels de la section 8 (fonctionnalité F2,
-    plan d'architecture §3.3, DEC17). Source unique : appelées par la validation de software.json
-    et par le formulaire de l'onglet Réglages. Fonctions pures.
+    Règles d'une entrée du catalogue des logiciels (plan d'architecture §3.3, F2, F4, F5 ;
+    DEC17, DEC25, DEC26). Source unique : appelées par la validation de software.json, par le
+    formulaire de l'onglet Réglages, par la section Installations et par le plan d'exécution.
+    Fonctions pures.
 
-    Entrée : { Id, Label, DefaultChecked, Install }, Install étant
-      { Type = 'winget'; Id; Source; Override; Scope }  ou   (Scope : machine, user ou vide)
-      { Type = 'download'; Url; FileName; Arguments; Sha256; ExpectedSigner }
-    (même modèle d'élément que les utilitaires constructeurs de config.json).
+    Entrée : { Id, Label, DefaultChecked, ManufacturerPattern, Install, DotNet, Update }
+      Install : { Type = 'winget'; Id; Source; Override; Scope }  ou   (Scope : machine, user ou vide)
+                { Type = 'download'; Url; FileName; Arguments; Sha256; ExpectedSigner }
+      Facultatifs (outils propres à un constructeur, notamment) :
+      ManufacturerPattern : expression régulière sur le constructeur du poste ; vide = tous les postes.
+      DotNet : @({ ToolVersion; WingetId; MinVersion; MaxVersion }) — runtime .NET Desktop requis
+               selon la version de l'outil proposée par winget (entrées winget seulement).
+      Update : { Label; FilePath; Arguments; SuccessExitCodes; RebootExitCodes } — commande de mise
+               à jour des pilotes et du BIOS, lancée par l'étape update-drivers.
 #>
 
 $script:SoftwareInstallFields = @{
@@ -44,11 +50,97 @@ function ConvertTo-SoftwareEntry {
     $defaultChecked = $false
     if ($InputObject -and $InputObject.PSObject.Properties['DefaultChecked']) { $defaultChecked = [bool]$InputObject.DefaultChecked }
 
+    $label = Get-SoftwareText -Object $InputObject -Name 'Label'
     return [pscustomobject][ordered]@{
-        Id             = (Get-SoftwareText -Object $InputObject -Name 'Id')
-        Label          = (Get-SoftwareText -Object $InputObject -Name 'Label')
-        DefaultChecked = $defaultChecked
-        Install        = [pscustomobject]$normalizedInstall
+        Id                  = (Get-SoftwareText -Object $InputObject -Name 'Id')
+        Label               = $label
+        DefaultChecked      = $defaultChecked
+        ManufacturerPattern = (Get-SoftwareText -Object $InputObject -Name 'ManufacturerPattern')
+        Install             = [pscustomobject]$normalizedInstall
+        DotNet              = @(ConvertTo-SoftwareDotNetRequirement -InputObject $InputObject)
+        Update              = (ConvertTo-SoftwareUpdate -InputObject $InputObject -DefaultLabel $label)
+    }
+}
+
+function ConvertTo-SoftwareDotNetRequirement {
+    <# Liste DotNet normalisée d'une entrée (vide si absente). #>
+    param($InputObject)
+    if (-not $InputObject -or -not $InputObject.PSObject.Properties['DotNet']) { return }
+    foreach ($requirement in @($InputObject.DotNet)) {
+        if ($null -eq $requirement) { continue }
+        [pscustomobject][ordered]@{
+            ToolVersion = (Get-SoftwareText -Object $requirement -Name 'ToolVersion')
+            WingetId    = (Get-SoftwareText -Object $requirement -Name 'WingetId')
+            MinVersion  = (Get-SoftwareText -Object $requirement -Name 'MinVersion')
+            MaxVersion  = (Get-SoftwareText -Object $requirement -Name 'MaxVersion')
+        }
+    }
+}
+
+function ConvertTo-SoftwareUpdate {
+    <# Bloc Update normalisé d'une entrée ; $null s'il est absent. Label par défaut : celui de l'entrée. #>
+    param($InputObject, [string]$DefaultLabel)
+    if (-not $InputObject -or -not $InputObject.PSObject.Properties['Update'] -or $null -eq $InputObject.Update) { return $null }
+    $update = $InputObject.Update
+    $label = Get-SoftwareText -Object $update -Name 'Label'
+    if (-not $label) { $label = $DefaultLabel }
+    $codes = @{}
+    foreach ($name in 'SuccessExitCodes', 'RebootExitCodes') {
+        # Affectation explicite : en 5.1, « $x = if (…) { @() } » donne $null, pas une liste vide.
+        $codes[$name] = @()
+        if ($update.PSObject.Properties[$name]) { $codes[$name] = @(@($update.$name) | Where-Object { $null -ne $_ }) }
+    }
+    return [pscustomobject][ordered]@{
+        Label            = $label
+        FilePath         = (Get-SoftwareText -Object $update -Name 'FilePath')
+        Arguments        = (Get-SoftwareText -Object $update -Name 'Arguments')
+        SuccessExitCodes = $codes['SuccessExitCodes']
+        RebootExitCodes  = $codes['RebootExitCodes']
+    }
+}
+
+function ConvertTo-SoftwareDocumentEntry {
+    <#
+        Forme écrite dans software.json : les champs facultatifs vides (ManufacturerPattern, DotNet,
+        Update) sont omis, pour qu'une entrée simple reste lisible.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Entry)
+    $document = [ordered]@{ Id = $Entry.Id; Label = $Entry.Label; DefaultChecked = [bool]$Entry.DefaultChecked }
+    if ($Entry.ManufacturerPattern) { $document.ManufacturerPattern = $Entry.ManufacturerPattern }
+    $document.Install = $Entry.Install
+    if (@($Entry.DotNet).Count -gt 0) { $document.DotNet = @($Entry.DotNet) }
+    if ($Entry.Update) { $document.Update = $Entry.Update }
+    return [pscustomobject]$document
+}
+
+function Test-SoftwareApplicable {
+    <#
+        Vrai si l'entrée est proposée sur un poste de ce constructeur (DEC25) : sans motif, sur
+        tous les postes ; avec motif, seulement si le constructeur détecté lui correspond
+        (insensible à la casse). Constructeur inconnu ou vide : aucune entrée à motif.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [AllowNull()][AllowEmptyString()][string]$Manufacturer
+    )
+    $pattern = [string]$Entry.ManufacturerPattern
+    if (-not $pattern) { return $true }
+    if ([string]::IsNullOrWhiteSpace($Manufacturer)) { return $false }
+    return ($Manufacturer -match $pattern)
+}
+
+function Select-ApplicableSoftware {
+    <# Entrées du catalogue proposées sur un poste de ce constructeur, dans l'ordre du catalogue. #>
+    [CmdletBinding()]
+    param(
+        [AllowEmptyCollection()][object[]]$Catalog = @(),
+        [AllowNull()][AllowEmptyString()][string]$Manufacturer
+    )
+    foreach ($entry in @($Catalog)) {
+        if (Test-SoftwareApplicable -Entry $entry -Manufacturer $Manufacturer) { $entry }
     }
 }
 
@@ -91,6 +183,32 @@ function Get-SoftwareEntryError {
         }
         default { $problems.Add("Type : « winget » ou « lien direct » attendu") }
     }
+
+    if ($Entry.ManufacturerPattern) {
+        try { [void][regex]::new($Entry.ManufacturerPattern) } catch { $problems.Add('Constructeur : expression régulière invalide (ex. Dell, ou HP|Hewlett)') }
+    }
+
+    $requirements = @($Entry.DotNet)
+    if ($requirements.Count -gt 0 -and [string]$install.Type -ne 'winget') {
+        $problems.Add("DotNet : réservé aux paquets winget (la version de l'outil est lue dans winget)")
+    }
+    for ($i = 0; $i -lt $requirements.Count; $i++) {
+        $requirement = $requirements[$i]
+        if (-not ($requirement.ToolVersion -as [version])) { $problems.Add("DotNet[$i].ToolVersion : numéro de version attendu (ex. 5.7.0)") }
+        if (-not $requirement.WingetId) { $problems.Add("DotNet[$i].WingetId : vide") }
+        if (-not ($requirement.MinVersion -as [version])) { $problems.Add("DotNet[$i].MinVersion : numéro de version attendu (ex. 8.0.8)") }
+        if ($requirement.MaxVersion -and -not ($requirement.MaxVersion -as [version])) { $problems.Add("DotNet[$i].MaxVersion : numéro de version ou vide attendu") }
+    }
+
+    if ($Entry.Update) {
+        if (-not $Entry.Update.FilePath) { $problems.Add('Update.FilePath : vide') }
+        if (@($Entry.Update.SuccessExitCodes).Count -eq 0) { $problems.Add('Update.SuccessExitCodes : au moins un code de sortie attendu') }
+        foreach ($name in 'SuccessExitCodes', 'RebootExitCodes') {
+            foreach ($code in @($Entry.Update.$name)) {
+                if (-not (($code -is [int]) -or ($code -is [long]))) { $problems.Add("Update.$name : entiers attendus"); break }
+            }
+        }
+    }
     return $problems.ToArray()
 }
 
@@ -122,7 +240,7 @@ function New-SoftwareId {
 }
 
 function Format-SoftwareInstallCommand {
-    <# Commande lisible : formulaire de l'onglet Réglages, info-bulle de la section 8, plan et journal. #>
+    <# Commande lisible : formulaire de l'onglet Réglages, info-bulle de la section Installations, plan et journal. #>
     [CmdletBinding()]
     [OutputType([string])]
     param([Parameter(Mandatory)]$Entry)

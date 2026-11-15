@@ -23,13 +23,13 @@ Describe 'Mode réel — étapes de l''itération 3' {
         $selection = New-Selection
         $selection.SystemSettings.Power = $true
         $selection.SystemSettings.Ipv6Adapters = @((New-TestSnapshot).Adapters)
-        $selection.ExtraSoftware.Ids = @('adobe-reader')
+        $selection.Catalog.Ids = @('adobe-reader')
         $selection.HostName.Enabled = $true; $selection.HostName.Name = 'PC-0042'
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
 
         @($results | Where-Object Outcome -NE 'Succeeded').Count | Should -Be 0
-        Should -Invoke @m Assert-WingetAvailable -Times 1 -ParameterFilter { $OfflineBundle -eq 'C:\Cle\packages\winget.msixbundle' }
+        Should -Invoke @m Assert-WingetAvailable -Times 1 -ParameterFilter { $OfflineBundle -eq 'C:\Outil\packages\winget.msixbundle' }
         Should -Invoke @m Install-WingetPackage -Times 1 -ParameterFilter { $Id -eq 'Adobe.Acrobat.Reader.64-bit' -and $Override -eq '-sfx_nu /sAll /rs /msi' }
         Should -Invoke @m Disable-AdapterIpv6 -Times 1 -ParameterFilter { $Name -eq 'Ethernet' }
         Should -Invoke @m Set-PowerTimeout -Times 1 -ParameterFilter { $MonitorMinutes -eq 5 -and $StandbyMinutes -eq 15 -and $IncludeBattery }
@@ -55,7 +55,7 @@ Describe 'Mode réel — étapes de l''itération 3' {
     It 'un échec (winget) n''empêche pas les actions suivantes' {
         Mock @m Install-WingetPackage { throw '« winget.exe » : code de sortie 1603' }
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('adobe-reader')
+        $selection.Catalog.Ids = @('adobe-reader')
         $selection.SystemSettings.Power = $true
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context

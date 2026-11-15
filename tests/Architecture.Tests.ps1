@@ -106,6 +106,12 @@ Describe 'Sécurité' {
     }
 }
 
+Describe 'Indépendance du support (DEC23)' {
+    It '<Name> : aucune référence à une clé USB' -ForEach $allCode {
+        Get-CodeText $Path | Should -Not -Match '(?i)\busb\b|\b(sur|depuis) la clé\b|racine de la clé|clé (est )?(retirée|protégée|en lecture seule)|\$env:TEMP'
+    }
+}
+
 Describe 'Encodage' {
     It '<Name> : UTF-8 avec BOM (sinon PowerShell 5.1 casse les accents)' -ForEach $bomFiles {
         $bytes = [System.IO.File]::ReadAllBytes($Path)

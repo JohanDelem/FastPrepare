@@ -83,7 +83,7 @@ function Start-ExecutionPlan {
 }
 
 function Format-ActionPrefix {
-    <# Préfixe d'une ligne d'action : rang dans l'ordre du cahier et section de l'interface (contrat §8.2). #>
+    <# Préfixe d'une ligne d'action : rang de l'étape dans l'ordre d'exécution (contrat §8.2). #>
     param($Action, [int]$StepCount)
-    return ('[ETAPE {0:00}/{1} · section {2}] ' -f $Action.StepNumber, $StepCount, $Action.Section)
+    return ('[ETAPE {0:00}/{1}] ' -f $Action.StepNumber, $StepCount)
 }

@@ -1,10 +1,10 @@
 ﻿<#
-    Section 9 — Configuration des paramètres système.
+    Section « Configuration des paramètres système ».
     Désactivation d'IPv6 (une case par carte physique) et mode d'alimentation (durées issues
     de config.Power ; batterie incluse selon Power.ApplyOnBattery).
 #>
 
-Register-UiSection -Id 'system-settings' -Number 9 -Column Right -XamlFile 'Sections\SystemSettings.xaml' -Initialize {
+Register-UiSection -Id 'system-settings' -Number 6 -Column Right -XamlFile 'Sections\SystemSettings.xaml' -Initialize {
     param($Section, $Context)
     $Section.State.NicChecks = New-Object System.Collections.Generic.List[object]
     $power = $Context.Config.Power

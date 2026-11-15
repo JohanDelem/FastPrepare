@@ -25,7 +25,7 @@ function Start-MachineSnapshot {
 function Get-MachineSnapshot {
     <#
         Renvoie { Identity, WingetAvailable, WingetSourceReady, Software, LocalAccounts { Removable, Excluded, Names },
-        Adapters, OneDrive, SuggestedUtilityKey, InventoryText }.
+        Adapters, OneDrive, Profiles, InventoryText }.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Context)
@@ -41,7 +41,6 @@ function Get-MachineSnapshot {
         Adapters            = @()
         OneDrive            = [pscustomobject]@{ Path = ''; Exists = $false; FileCount = 0 }
         Profiles            = $null
-        SuggestedUtilityKey = $null
         InventoryText       = ''
         InventoryExport     = $null
     }
@@ -90,7 +89,6 @@ function Get-MachineSnapshot {
         $snapshot.OneDrive = Get-OneDriveFolderInfo -ProfilePath $env:USERPROFILE
     }
 
-    $snapshot.SuggestedUtilityKey = Resolve-UtilityKey -Manufacturer $snapshot.Identity.Manufacturer -Utilities $Context.Config.Utilities
     $snapshot.InventoryText = Format-InventoryText -Serial $snapshot.Identity.Serial -Adapter $snapshot.Adapters
     return $snapshot
 }

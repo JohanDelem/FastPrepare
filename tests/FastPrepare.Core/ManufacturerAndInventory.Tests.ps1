@@ -1,22 +1,41 @@
 ﻿BeforeAll {
     . (Join-Path $PSScriptRoot '..\TestHelpers.ps1')
     Import-FastPrepareModule Core
-    $utilities = (Get-TestConfig).Utilities
+    $catalog = @(Get-TestCatalogEntry)
 }
 
-Describe 'Resolve-UtilityKey (présélection, section 5)' {
+Describe 'Outil du constructeur détecté seulement (DEC25)' {
     It '<Manufacturer> → <Expected>' -ForEach @(
-        @{ Manufacturer = 'Dell Inc.'; Expected = 'dell' }
-        @{ Manufacturer = 'HP'; Expected = 'hp' }
-        @{ Manufacturer = 'Hewlett-Packard'; Expected = 'hp' }
-        @{ Manufacturer = 'LENOVO'; Expected = 'lenovo' }
-        @{ Manufacturer = 'FUJITSU CLIENT COMPUTING LIMITED'; Expected = 'fujitsu' }
+        @{ Manufacturer = 'Dell Inc.'; Expected = 'dell-command-update' }
+        @{ Manufacturer = 'HP'; Expected = 'hp-image-assistant' }
+        @{ Manufacturer = 'Hewlett-Packard'; Expected = 'hp-image-assistant' }
+        @{ Manufacturer = 'LENOVO'; Expected = 'lenovo-commercial-vantage,lenovo-thin-installer,lenovo-outil-direct' }
+        @{ Manufacturer = 'FUJITSU CLIENT COMPUTING LIMITED'; Expected = 'fujitsu-deskupdate' }
     ) {
-        Resolve-UtilityKey -Manufacturer $Manufacturer -Utilities $utilities | Should -Be $Expected
+        $applicable = @(Select-ApplicableSoftware -Catalog $catalog -Manufacturer $Manufacturer)
+        (@($applicable | Where-Object { $_.ManufacturerPattern } | ForEach-Object Id) -join ',') | Should -Be $Expected
+        # Les entrées sans constructeur restent proposées partout.
+        @($applicable | ForEach-Object Id) | Should -Contain 'adobe-reader'
     }
-    It 'constructeur inconnu ou vide : aucune présélection' {
-        Resolve-UtilityKey -Manufacturer 'Microsoft Corporation' -Utilities $utilities | Should -BeNullOrEmpty
-        Resolve-UtilityKey -Manufacturer '' -Utilities $utilities | Should -BeNullOrEmpty
+    It 'constructeur inconnu, vide ou non détecté : aucun outil constructeur, les autres logiciels restent' -ForEach @(
+        @{ Manufacturer = 'Microsoft Corporation' }
+        @{ Manufacturer = '' }
+        @{ Manufacturer = '   ' }
+        @{ Manufacturer = $null }
+    ) {
+        @(Select-ApplicableSoftware -Catalog $catalog -Manufacturer $Manufacturer | ForEach-Object Id) | Should -Be @('adobe-reader')
+    }
+    It 'ordre du catalogue conservé' {
+        $ids = @(Select-ApplicableSoftware -Catalog $catalog -Manufacturer 'Dell Inc.' | ForEach-Object Id)
+        $ids | Should -Be @('dell-command-update', 'adobe-reader')
+    }
+    It 'Test-SoftwareApplicable : insensible à la casse' {
+        $dell = $catalog | Where-Object Id -EQ 'dell-command-update'
+        Test-SoftwareApplicable -Entry $dell -Manufacturer 'DELL INC.' | Should -BeTrue
+        Test-SoftwareApplicable -Entry $dell -Manufacturer 'HP' | Should -BeFalse
+    }
+    It 'catalogue vide : rien' {
+        @(Select-ApplicableSoftware -Catalog @() -Manufacturer 'Dell Inc.').Count | Should -Be 0
     }
 }
 

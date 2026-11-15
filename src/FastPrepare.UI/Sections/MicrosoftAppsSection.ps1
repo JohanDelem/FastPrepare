@@ -1,5 +1,5 @@
 ﻿<#
-    Section 3 — Désinstallation des programmes Microsoft.
+    Section « Désinstallation des programmes Microsoft ».
     « Dossier OneDrive » est grisé tant que OneDrive n'est pas coché ; nombre de fichiers affiché.
 #>
 

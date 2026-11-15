@@ -36,15 +36,14 @@ Describe 'Plan — création d''une session locale' {
         @($plan.Actions | Where-Object StepId -EQ 'create-local-account') | Should -BeNullOrEmpty
     }
 
-    It 'une action en dernier (rang 14, section 11), libellé sans mot de passe' {
+    It 'une action en dernier (rang 12), libellé sans mot de passe' {
         $context = New-TestContext -Folder $TestDrive
         $selection = New-AccountSelection
         $selection.HostName.Enabled = $true; $selection.HostName.Name = 'PC-NEUF'
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $action = $plan.Actions[-1]
         $action.StepId | Should -Be 'create-local-account'
-        $action.StepNumber | Should -Be 14
-        $action.Section | Should -Be 11
+        $action.StepNumber | Should -Be 12
         $action.Label | Should -Be "Session locale : New-LocalUser 'jdupont' (Jean Dupont) · administrateur du poste · mot de passe à changer à la première ouverture"
         $action.Parameters.Password | Should -BeOfType [System.Security.SecureString]
         $action.Parameters.ComputerNames | Should -Be @('PC-TEST', 'PC-NEUF')
@@ -63,7 +62,7 @@ Describe 'Plan — création d''une session locale' {
         $plan = New-ExecutionPlan -Selection (New-AccountSelection) -Snapshot (New-TestSnapshot) -Context $context
         [void](Invoke-ExecutionPlan -Plan $plan -Context $context)
         $text = Get-LogText $context
-        $text | Should -Match "\[ETAPE 14/14 · section 11\] Session locale : New-LocalUser 'jdupont'"
+        $text | Should -Match "\[ETAPE 12/12\] Session locale : New-LocalUser 'jdupont'"
         $text | Should -Not -Match ([regex]::Escape($secretText))
     }
 }

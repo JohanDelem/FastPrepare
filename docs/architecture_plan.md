@@ -1,11 +1,11 @@
 # FastPrepare — Plan d'architecture cible de l'outil de préparation de poste
 
-- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; itération 12 : portée d'installation winget (pour tous les utilisateurs) dans le catalogue ; recette sur postes de test en attente
-- **Date** : 2026-11-10
-- **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `config.json`, `logos/`, `logs/`)
-- **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
+- **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; itération 12 : portée d'installation winget (pour tous les utilisateurs) dans le catalogue ; itération 13 : outil indépendant du support, installations unifiées par le catalogue, utilitaire limité au constructeur détecté ; recette sur postes de test en attente
+- **Date** : 2026-11-15
+- **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `VERSION`, `config.json`, `software.json`, `src/`, `tools/`, `tests/`)
+- **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · cahier des charges d'origine du 9 novembre 2026 (maquette validée le 10 novembre 2026 ; document retiré du dossier le 2026-11-15 car dépassé : ce plan est la référence du contrat depuis l'itération 13, DEC27) · journaux d'exécution réels dans `logs/`
 
-> **État au 2026-11-10** : les itérations du cahier (0 à 7) sont livrées ; l'itération 8 ajoute la création d'une session locale (§3.3, DEC14 à DEC16), l'itération 9 le catalogue des logiciels modifiable depuis l'interface (DEC17 à DEC19) ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence.
+> **État au 2026-11-15** : les itérations du cahier (0 à 7) sont livrées ; l'itération 8 ajoute la création d'une session locale (§3.3, DEC14 à DEC16), l'itération 9 le catalogue des logiciels modifiable depuis l'interface (DEC17 à DEC19) ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence ; ils sont à jour de l'itération 13, qui a révisé le contrat hérité du cahier des charges (ordre d'exécution à 12 rangs, 9 sections, `ConfigVersion` 4, `CatalogVersion` 2 : DEC23 à DEC29). Les §2, §3.1 et les itérations 0 à 12 du §9 sont conservés tels quels : ils décrivent l'historique, avec la numérotation de leur époque.
 
 > Ce document est une **vue d'ensemble** : fichiers, responsabilités, noms des fonctions et ce qu'elles font. Il ne contient volontairement **aucun code**. Il décrivait au départ une **cible** : l'outil actuel tient dans un seul script de 1017 lignes écrit d'un trait, il doit devenir un ensemble de modules PowerShell à responsabilité unique, testables, et où l'ajout d'une étape, d'une marque ou d'un logiciel se fait sans toucher au reste. Les §2 et §3 décrivent l'existant et ses écarts ; les §4 à §8 la cible ; le §9 l'ordre de livraison ; le §10 les recettes d'extension ; le §11 les décisions.
 
@@ -126,6 +126,10 @@ Le fichier reste **unique et à la racine** (contrat du cahier, et le technicien
 | C9 | `Execution` : `DefaultMode` (`"Simulation"` ou `"Real"`), `CacheFolder` (`%ProgramData%\FastPrepare\cache`). `Winget` : `FamilyName`, `OfflineBundle` (chemin relatif à la racine de la clé). `Logging` : `Folder` (`logs`). | D13, E2, E3. |
 | C10 | `NewLocalAccount` (**facultatif**, ajouté à l'itération 8) : `{ Administrator, PasswordNeverExpires, MustChangePassword }`, valeurs **par défaut** des cases de la section 11. `ConfigVersion` reste `2` : sans ce bloc, l'outil prend « utilisateur standard, mot de passe qui n'expire pas ». `PasswordNeverExpires` et `MustChangePassword` ne peuvent pas être vrais ensemble (Windows ignorerait le second). Aucun nom de compte ni mot de passe dans la configuration : ils sont saisis à chaque préparation. | F1 ; DEC15. |
 | C11 | **`ConfigVersion: 3`** (itération 9) : `Software[]` quitte `config.json` pour un fichier **`software.json`** à la racine (`{ CatalogVersion: 1, Software: [ … ] }`), désigné par la clé `SoftwareCatalog` (chemin relatif à la racine). Chaque logiciel : `{ Id, Label, DefaultChecked, Install }`, où `Install` est `{ Type: "winget", Id, Source, Override, Scope }` (`Scope` depuis l'itération 12 : `machine`, `user` ou vide) ou `{ Type: "download", Url, FileName, Arguments, Sha256, ExpectedSigner }` — le même modèle d'élément que les utilitaires constructeurs (C2). Une configuration en version 2 est refusée avec la consigne de migration. | F2 ; DEC17. |
+| C12 | **`ConfigVersion: 4`** (itération 13) : le bloc **`Utilities` quitte `config.json`**. Chaque outil constructeur devient une entrée de `software.json` (C13). Une configuration en version 3 est refusée avec la consigne de migration. | F4, F5 ; DEC25, DEC26. |
+| C13 | **`CatalogVersion: 2`** : une entrée de `software.json` accepte trois champs **facultatifs** : `ManufacturerPattern` (expression régulière sur le constructeur détecté ; absente : entrée proposée sur tous les postes), `DotNet[]` `{ ToolVersion, WingetId, MinVersion, MaxVersion }` (dépendance choisie selon la version de l'outil ; `ToolVersion` remplace `DcuVersion`, nom propre à Dell) et `Update` `{ Label, FilePath, Arguments, SuccessExitCodes, RebootExitCodes }` (commande de mise à jour des pilotes et du BIOS). `Install` reste un élément unique : Lenovo devient **deux entrées** (Commercial Vantage, Thin Installer), `Update` étant porté par Thin Installer. Un catalogue en version 1 est lu tel quel (ses entrées sont valides en version 2) et réécrit en version 2 au prochain enregistrement. | F4, F5 ; DEC25, DEC26. |
+| C14 | `Logging.Folder` remplacé par **`Output.Folder`** : dossier qui reçoit le journal et l'inventaire. Chemin relatif (au dossier de l'outil), absolu ou réseau (`\\serveur\partage\…`). Aucun identifiant de connexion dans la configuration : le partage est ouvert avec le compte qui lance l'outil. | F3 ; DEC23. |
+| C15 | `Execution.CacheFolder` remplacé par **`Execution.WorkFolder`** (`%ProgramData%\FastPrepare`) : dossier de travail local de l'outil sur le poste, qui contient `cache\` (téléchargements), `odt\` (Office) et `sortie\` (repli du journal). **`Office.OdtFolder` disparaît** (`C:\ODT` à la racine du disque n'a pas sa place sur un poste livré). `Winget.OfflineBundle` devient **facultatif** (chemin relatif au dossier de l'outil). `ManualReminders` devient facultatif (liste vide : le mémo n'est pas affiché). | F3, F6 ; DEC23, DEC28. |
 
 **Ce qui reste hors configuration** : les règles elles-mêmes (comptes protégés, format du nom d'hôte, stratégies de désinstallation, ordre d'exécution). Elles viennent du cahier, pas de l'exploitation ; les rendre configurables multiplierait les cas à tester sans besoin exprimé.
 
@@ -137,6 +141,10 @@ Chaque fonctionnalité nouvelle suit les recettes du §10 : elle ajoute des fich
 |---|---|---|---|
 | F1 | Créer une session locale pour l'utilisateur final : nom de session, nom complet, mot de passe (saisi deux fois), administrateur du poste ou utilisateur standard, mot de passe qui n'expire jamais **ou** à changer à la première ouverture de session. | Section d'interface 11 « Créer une session locale » (colonne gauche, sous la section 4) ; étape `create-local-account` (rang 14, après le renommage, DEC14) ; règles de saisie dans `Core/LocalAccountCreation.ps1` ; création dans `Infrastructure/System/LocalAccounts.ps1` (`New-LocalAccount`). Mot de passe en `SecureString` de bout en bout, jamais journalisé (DEC15). | 8 |
 | F2 | Ajouter, modifier et retirer les logiciels proposés en section 8 **depuis l'interface**, par paquet winget ou par lien direct, et **tester** chaque entrée sans rien télécharger ni installer, pour ne pas découvrir une erreur pendant une exécution réelle. Prévoir un emplacement pour les réglages futurs. | Onglet **« Réglages »** dans la fenêtre (les réglages sont des sections d'interface de colonne `Settings`, §5.8) ; page « Catalogue des logiciels » ; catalogue dans `software.json` (C11, DEC17) ; règles d'une entrée dans `Core/SoftwareCatalog.ps1` ; lecture, validation et écriture atomique dans `Infrastructure/Config/SoftwareCatalog.ps1` ; test par `winget show` ou requête d'en-tête HTTP (DEC18). | 9 |
+| F3 | **Outil indépendant du support.** FastPrepare doit fonctionner de la même façon quel que soit le moyen par lequel il est arrivé sur le poste : clé USB, téléchargement, partage réseau, copie locale. La notion de « clé » disparaît du code, des messages, de la configuration et de la documentation. | Racine = « dossier de l'outil » ; dossier de sortie configurable (C14) avec repli local et nouvelle copie en fin d'exécution ; `Lancer.cmd` durci (apostrophe dans le chemin, archive non extraite, lecteur réseau) ; `tools/Build-Release.ps1` remplace `Build-Usb.ps1` et produit un dossier ou une archive ZIP versionnés (DEC23, DEC24). | 13 |
+| F4 | **Utilitaire du constructeur détecté seulement.** L'outil ne doit pas proposer l'outil d'un autre constructeur que celui du poste. | `ManufacturerPattern` par entrée de catalogue (C13) ; la fenêtre n'affiche que les entrées applicables au poste, le plan refuse les autres (`Test-Selection`) ; constructeur inconnu : aucun utilitaire proposé (DEC25). | 13 |
+| F5 | **Une seule étape d'installation.** L'installation de l'utilitaire constructeur (ancien rang 6), celle d'Office (rang 7) et celle des logiciels (rang 8) sont une même nature d'action : elles passent par la même section et la même étape. | Section « Installations » (catalogue filtré, puis Office avec son formulaire) ; étape unique `install` ; un seul chemin de code pour installer un élément winget ou un lien direct ; sections et étapes renumérotées dans l'ordre d'exécution (DEC26, DEC27). | 13 |
+| F6 | **Aucune trace inutile sur le poste préparé.** | Téléchargements et dossier ODT supprimés en fin d'exécution réussie (DEC28). | 13 |
 
 ---
 
@@ -150,8 +158,7 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┣ 📂docs 🆕
  ┃ ┣ 📜architecture_plan.md 🆕 (ce document)
  ┃ ┣ 📜CONTRIBUTING.md 🆕
- ┃ ┣ 📜recette.md 🆕
- ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf (local, non versionné : *.pdf ignoré par Git)
+ ┃ ┗ 📜recette.md 🆕
  ┣ 📂src 🆕
  ┃ ┣ 📂FastPrepare.Core                      (pur : ni système, ni WPF)
  ┃ ┃ ┣ 📂Public
@@ -161,18 +168,18 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┃ ┣ 📜Inventory.ps1
  ┃ ┃ ┃ ┣ 📜LocalAccountCreation.ps1 (it. 8)
  ┃ ┃ ┃ ┣ 📜LocalAccountPolicy.ps1
- ┃ ┃ ┃ ┣ 📜ManufacturerMatch.ps1
  ┃ ┃ ┃ ┣ 📜OdtConfiguration.ps1
  ┃ ┃ ┃ ┣ 📜PathGuard.ps1
  ┃ ┃ ┃ ┣ 📜Selection.ps1
- ┃ ┃ ┃ ┣ 📜SoftwareCatalog.ps1 (it. 9)
+ ┃ ┃ ┃ ┣ 📜SoftwareCatalog.ps1 (it. 9 ; it. 13 : constructeur, DotNet, Update)
  ┃ ┃ ┃ ┗ 📜UninstallStrategy.ps1
  ┃ ┃ ┣ 📜FastPrepare.Core.psd1
  ┃ ┃ ┗ 📜FastPrepare.Core.psm1
  ┃ ┣ 📂FastPrepare.Infrastructure            (adaptateurs Windows)
  ┃ ┃ ┣ 📂Config
  ┃ ┃ ┃ ┣ 📜AppConfig.ps1
- ┃ ┃ ┃ ┗ 📜SoftwareCatalog.ps1 (it. 9)
+ ┃ ┃ ┃ ┣ 📜SoftwareCatalog.ps1 (it. 9)
+ ┃ ┃ ┃ ┗ 📜ToolVersion.ps1 (it. 13)
  ┃ ┃ ┣ 📂Logging
  ┃ ┃ ┃ ┗ 📜RunLog.ps1
  ┃ ┃ ┣ 📂Runtime
@@ -190,32 +197,33 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┃ ┣ 📜Power.ps1
  ┃ ┃ ┃ ┣ 📜Process.ps1
  ┃ ┃ ┃ ┣ 📜Winget.ps1
+ ┃ ┃ ┃ ┣ 📜WorkFolder.ps1 (it. 13)
  ┃ ┃ ┃ ┗ 📜WindowsUpdate.ps1
  ┃ ┃ ┣ 📜FastPrepare.Infrastructure.psd1
  ┃ ┃ ┗ 📜FastPrepare.Infrastructure.psm1
  ┃ ┣ 📂FastPrepare.Application               (cas d'usage : détections, plan, moteur)
+ ┃ ┃ ┣ 📂Install                          (it. 13 : ce que l'étape install assemble)
+ ┃ ┃ ┃ ┣ 📜CatalogInstall.ps1
+ ┃ ┃ ┃ ┗ 📜OfficeInstall.ps1
  ┃ ┃ ┣ 📂Steps
- ┃ ┃ ┃ ┣ 📜ExportInventory.step.ps1
- ┃ ┃ ┃ ┣ 📜RemoveLocalAccounts.step.ps1
- ┃ ┃ ┃ ┣ 📜RemoveMicrosoftApps.step.ps1
- ┃ ┃ ┃ ┣ 📜RemoveOneDrive.step.ps1
- ┃ ┃ ┃ ┣ 📜UninstallSoftware.step.ps1
- ┃ ┃ ┃ ┣ 📜InstallVendorUtility.step.ps1
- ┃ ┃ ┃ ┣ 📜InstallOffice.step.ps1
- ┃ ┃ ┃ ┣ 📜InstallSoftware.step.ps1
- ┃ ┃ ┃ ┣ 📜DisableIpv6.step.ps1
- ┃ ┃ ┃ ┣ 📜SetPowerPlan.step.ps1
- ┃ ┃ ┃ ┣ 📜UpdateVendorUtility.step.ps1
- ┃ ┃ ┃ ┣ 📜RunWindowsUpdate.step.ps1
- ┃ ┃ ┃ ┣ 📜RenameComputer.step.ps1
- ┃ ┃ ┃ ┗ 📜CreateLocalAccount.step.ps1 (it. 8)
+ ┃ ┃ ┃ ┣ 📜ExportInventory.step.ps1         (1)
+ ┃ ┃ ┃ ┣ 📜RemoveLocalAccounts.step.ps1     (2)
+ ┃ ┃ ┃ ┣ 📜RemoveMicrosoftApps.step.ps1     (3)
+ ┃ ┃ ┃ ┣ 📜RemoveOneDrive.step.ps1          (4)
+ ┃ ┃ ┃ ┣ 📜UninstallSoftware.step.ps1       (5)
+ ┃ ┃ ┃ ┣ 📜Install.step.ps1                 (6, it. 13)
+ ┃ ┃ ┃ ┣ 📜DisableIpv6.step.ps1             (7)
+ ┃ ┃ ┃ ┣ 📜SetPowerPlan.step.ps1            (8)
+ ┃ ┃ ┃ ┣ 📜UpdateDrivers.step.ps1           (9, it. 13)
+ ┃ ┃ ┃ ┣ 📜RunWindowsUpdate.step.ps1        (10)
+ ┃ ┃ ┃ ┣ 📜RenameComputer.step.ps1          (11)
+ ┃ ┃ ┃ ┗ 📜CreateLocalAccount.step.ps1      (12, it. 8)
  ┃ ┃ ┣ 📜AppContext.ps1
  ┃ ┃ ┣ 📜ExecutionEngine.ps1
  ┃ ┃ ┣ 📜ExecutionPlan.ps1
  ┃ ┃ ┣ 📜FinalReport.ps1
  ┃ ┃ ┣ 📜InventoryExport.ps1 (export au démarrage, réutilisé par ExportInventory.step)
  ┃ ┃ ┣ 📜MachineSnapshot.ps1
- ┃ ┃ ┣ 📜Prefetch.ps1
  ┃ ┃ ┣ 📜SoftwareCatalog.ps1 (it. 9 : modification et test du catalogue)
  ┃ ┃ ┣ 📜StepOrder.ps1
  ┃ ┃ ┣ 📜StepRegistry.ps1
@@ -223,18 +231,16 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┃ ┗ 📜FastPrepare.Application.psm1
  ┃ ┗ 📂FastPrepare.UI                        (WPF uniquement)
  ┃ ┃ ┣ 📂Sections
- ┃ ┃ ┃ ┣ 📜ConnectivitySection.ps1          (0)
- ┃ ┃ ┃ ┣ 📜HostNameSection.ps1              (1)
- ┃ ┃ ┃ ┣ 📜InstalledSoftwareSection.ps1     (2)
+ ┃ ┃ ┃ ┣ 📜ConnectivitySection.ps1          (en-tête)
+ ┃ ┃ ┃ ┣ 📜InventorySection.ps1             (1)
+ ┃ ┃ ┃ ┣ 📜LocalAccountsSection.ps1         (2)
  ┃ ┃ ┃ ┣ 📜MicrosoftAppsSection.ps1         (3)
- ┃ ┃ ┃ ┣ 📜LocalAccountsSection.ps1         (4)
- ┃ ┃ ┃ ┣ 📜VendorUtilitySection.ps1         (5)
- ┃ ┃ ┃ ┣ 📜OfficeSection.ps1                (6)
+ ┃ ┃ ┃ ┣ 📜InstalledSoftwareSection.ps1     (4)
+ ┃ ┃ ┃ ┣ 📜InstallSection.ps1               (5, it. 13 : catalogue et Office)
+ ┃ ┃ ┃ ┣ 📜SystemSettingsSection.ps1        (6)
  ┃ ┃ ┃ ┣ 📜UpdatesSection.ps1               (7)
- ┃ ┃ ┃ ┣ 📜SoftwareSection.ps1              (8)
- ┃ ┃ ┃ ┣ 📜SystemSettingsSection.ps1        (9)
- ┃ ┃ ┃ ┣ 📜InventorySection.ps1             (10)
- ┃ ┃ ┃ ┣ 📜NewLocalAccountSection.ps1       (11, it. 8)
+ ┃ ┃ ┃ ┣ 📜HostNameSection.ps1              (8)
+ ┃ ┃ ┃ ┣ 📜NewLocalAccountSection.ps1       (9, it. 8)
  ┃ ┃ ┃ ┗ 📜SoftwareCatalogSettingsSection.ps1 (onglet Réglages, it. 9)
  ┃ ┃ ┣ 📂Xaml
  ┃ ┃ ┃ ┣ 📂Sections
@@ -253,26 +259,25 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┃ ┣ 📂FastPrepare.Core
  ┃ ┣ 📂FastPrepare.Infrastructure
  ┃ ┣ 📂FastPrepare.Application
+ ┃ ┣ 📂FastPrepare.UI (it. 13 : fenêtre construite sans être affichée)
  ┃ ┣ 📂Fixtures
- ┃ ┃ ┣ 📜config.valid.json
  ┃ ┃ ┣ 📜registry-uninstall-entries.json
- ┃ ┃ ┗ 📜selection.full.json
+ ┃ ┃ ┗ 📜software.test.json
  ┃ ┣ 📜Architecture.Tests.ps1
  ┃ ┗ 📜TestHelpers.ps1
  ┣ 📂tools 🆕
- ┃ ┣ 📜Build-Usb.ps1
+ ┃ ┣ 📜Build-Release.ps1 (it. 13)
  ┃ ┣ 📜Invoke-Lint.ps1
  ┃ ┣ 📜Invoke-Tests.ps1
  ┃ ┗ 📜PSScriptAnalyzerSettings.psd1
  ┣ 📂packages 🆕 (ignoré par Git — .msixbundle winget hors ligne)
- ┣ 📂logos ✅
- ┃ ┗ 📜LISEZMOI.txt ♻️
- ┣ 📂logs (ignoré par Git)
+ ┣ 📂logs (ignoré par Git — dossier de sortie par défaut, `Output.Folder`)
  ┣ 📜.editorconfig 🆕
  ┣ 📜.gitattributes 🆕
  ┣ 📜.gitignore 🆕
- ┣ 📜config.json ♻️ (version 3 depuis l'itération 9)
- ┣ 📜software.json (it. 9 : catalogue de la section 8, modifié par l'onglet Réglages)
+ ┣ 📜config.json ♻️ (version 4 depuis l'itération 13)
+ ┣ 📜software.json (it. 9 : catalogue modifié par l'onglet Réglages ; format 2 depuis l'itération 13, outils constructeurs compris)
+ ┣ 📜VERSION (it. 13 : version de l'outil)
  ┣ 📜Lancer.cmd ♻️
  ┣ 📜Preparation.ps1 ♻️ (point d'entrée mince)
  ┗ 📜README.md 🆕
@@ -326,7 +331,7 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 ### 5.1 Démarrage
 
 **`Lancer.cmd`** ♻️ — Obtient l'élévation et lance le point d'entrée ; aucune logique métier.
-- Vérifie l'élévation (`net session`), sinon se relance par `Start-Process -Verb RunAs` en **transmettant les arguments** (`%*`).
+- Vérifie que `Preparation.ps1` est à côté de lui (sinon : « extrayez l'archive avant de lancer ») puis l'élévation (`net session`) ; sinon se relance par `Start-Process -Verb RunAs`. Le chemin et les arguments passent par des variables d'environnement, jamais par une chaîne réinterprétée (apostrophe, espace, parenthèse) ; un lecteur réseau mappé est remplacé par son chemin réseau complet, car il n'existe pas dans la session élevée (it. 13, DEC23).
 - Lance `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File "%~dp0Preparation.ps1" %*` : chemin absolu (pas de résolution par le `PATH`, et jamais `pwsh`).
 - `pause` si le code de sortie est non nul, pour que le technicien lise l'erreur.
 - Usage : `Lancer.cmd` (mode par défaut de la configuration) ou `Lancer.cmd -Real` / `Lancer.cmd -Simulation`.
@@ -336,7 +341,9 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 - Séquence : `Assert-Administrator` → import des quatre modules par chemin relatif à `$PSScriptRoot` → `Read-AppConfig` → `New-AppContext` (crée le journal) → `Start-MainWindow -Context`. Toute exception non capturée est montrée dans une `MessageBox`, journalisée si le journal existe déjà, puis code de sortie 1.
 - Aucune fonction n'y est définie.
 
-**`README.md`** 🆕 — Pour le technicien : préparer la clé (`tools/Build-Usb.ps1`), lancer, lire le journal, modifier une version dans `config.json`. Pour le développeur : renvoi vers `docs/CONTRIBUTING.md` et ce plan.
+**`README.md`** 🆕 — Pour le technicien : obtenir l'outil (dossier ou archive produits par `tools/Build-Release.ps1`), lancer, lire le journal, régler le dossier de sortie. Pour le développeur : renvoi vers `docs/CONTRIBUTING.md` et ce plan.
+
+**`VERSION`** (it. 13) — Une ligne, `majeur.itération.correctif` (`1.13.0`) : lue au démarrage (`Read-ToolVersion`), affichée dans le titre de la fenêtre et en première ligne du journal (DEC24).
 
 **`docs/CONTRIBUTING.md`** 🆕 — Conventions du §1 (encodage, compatibilité 5.1, verbes, nommage), lancement des tests et du lint, procédure de revue (une règle touchée = son test mis à jour, cf. §6).
 
@@ -388,8 +395,6 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 - `Select-DotNetRequirement -ToolVersion -Requirements` — renvoie l'entrée dont `DcuVersion` correspond (égalité de version, ou plus grande version connue inférieure ou égale si la version exacte est absente, avec avertissement), ou `$null`.
 - `Test-VersionInRange -Version -MinVersion -MaxVersion` — bornes incluses, borne vide = ouverte ; comparaison par `[version]`, jamais par chaîne.
 
-**`Public/ManufacturerMatch.ps1`** 🆕 — Présélection de la card constructeur. *Pur.*
-- `Resolve-UtilityKey -Manufacturer -Utilities` — première clé dont `ManufacturerPattern` correspond (insensible à la casse) ; `$null` sinon (aucune card présélectionnée).
 
 **`Public/Inventory.ps1`** 🆕 — Format de l'inventaire N/S + MAC (section 10). *Pur.*
 - `Format-InventoryText -Serial -Adapters` — bloc aligné affiché dans la fenêtre et copié dans le presse-papiers.
@@ -397,25 +402,27 @@ Format : **fichier** — responsabilité unique, puis ses fonctions publiques. L
 - `ConvertTo-SafeFileName -Value` — caractères hors `[A-Za-z0-9_-]` remplacés par `_` ; valeur vide → `INCONNU`.
 
 **`Public/Selection.ps1`** 🆕 — Schéma de ce que le technicien a coché. *Pur.* C'est **le contrat entre l'interface et le plan**.
-- `New-Selection` — objet vide typé `FastPrepare.Selection` avec une propriété par section : `HostName { Enabled, Name }`, `Software { Items[] }`, `MicrosoftApps { OfficeC2R, OfficeMsi, OutlookClassic, OutlookNew, OneNote, Teams, OneDrive, OneDriveFolder }`, `LocalAccounts { Sids[] }`, `VendorUtility { Key, RunUpdate }`, `Office { EditionKey, WithoutTeams, IncludedApps[] }`, `Updates { WindowsUpdate }`, `ExtraSoftware { Ids[] }`, `SystemSettings { Ipv6DisabledAdapters[], Power }`, et depuis l'itération 8 `NewLocalAccount { Enabled, Name, FullName, Password (SecureString), Administrator, PasswordNeverExpires, MustChangePassword }`.
-- `Test-Selection -Selection -Snapshot -SoftwareCatalog` — cohérence (les logiciels cochés en section 8 sont cherchés dans le catalogue fourni, plus dans la configuration, depuis l'itération 9) : un SID choisi existe et n'est pas protégé, une édition existe, « dossier OneDrive » implique « OneDrive »… ; renvoie la liste des incohérences. Appelée avant de construire le plan (défense en profondeur : l'interface ne devrait pas les permettre). Pour la session à créer : nom valide (`Get-LocalAccountNameError`, avec les noms existants **moins** les sessions cochées pour suppression, qui sont supprimées avant), mot de passe présent et d'au plus 127 caractères, pas les deux options d'expiration à la fois.
+- `New-Selection` — objet vide typé `FastPrepare.Selection` avec une propriété par section : `HostName { Enabled, Name }`, `Software { Items[] }`, `MicrosoftApps { OfficeC2R, OfficeMsi, OutlookClassic, OutlookNew, OneNote, Teams, OneDrive, OneDriveFolder }`, `LocalAccounts { Items[] }`, `Catalog { Ids[] }` (entrées cochées du catalogue, outil du constructeur compris, it. 13), `Office { EditionKey, WithoutTeams, IncludedApps[] }`, `Updates { WindowsUpdate, Drivers }`, `SystemSettings { Ipv6DisabledAdapters[], Power }`, et depuis l'itération 8 `NewLocalAccount { Enabled, Name, FullName, Password (SecureString), Administrator, PasswordNeverExpires, MustChangePassword }`.
+- `Test-Selection -Selection -Snapshot -SoftwareCatalog` — cohérence (chaque entrée cochée existe dans le catalogue fourni **et est applicable au constructeur du relevé**, DEC25 ; « pilotes et BIOS » exige une entrée cochée qui porte `Update`) : un SID choisi existe et n'est pas protégé, une édition existe, « dossier OneDrive » implique « OneDrive »… ; renvoie la liste des incohérences. Appelée avant de construire le plan (défense en profondeur : l'interface ne devrait pas les permettre). Pour la session à créer : nom valide (`Get-LocalAccountNameError`, avec les noms existants **moins** les sessions cochées pour suppression, qui sont supprimées avant), mot de passe présent et d'au plus 127 caractères, pas les deux options d'expiration à la fois.
 - `Clear-SelectionSecret -Selection` (it. 8) — libère (`Dispose`) le mot de passe porté par la sélection ; appelée par la fenêtre après chaque rafraîchissement et à la fin d'une exécution. Les actions du plan référencent le même objet : il est libéré aussi.
 
 ### 5.3 `FastPrepare.Infrastructure/Config` et `Logging`
 
 **`Config/AppConfig.ps1`** 🆕 — Lecture et validation de `config.json`.
 - `Read-AppConfig -Path` — lit en UTF-8, convertit, appelle `Assert-AppConfig` ; erreur claire si le fichier est absent ou n'est pas du JSON valide (message affiché par `Preparation.ps1`).
-- `Assert-AppConfig -Config` — vérifie `ConfigVersion = 3` (2 jusqu'à l'itération 8), la présence et le type des clés obligatoires (C1 à C9), les URL en `https://` (sauf `Connectivity.TestUrl`, imposée en `http` par Microsoft), l'unicité des clés de marques, d'éditions et de logiciels ; lève **une** erreur qui liste tous les problèmes, chacun avec son chemin (`Utilities.lenovo.Install[1].Url : vide`).
+- `Assert-AppConfig -Config` — vérifie `ConfigVersion = 4` (les versions 2 et 3 sont refusées avec leur consigne de migration), la présence et le type des clés obligatoires (`Execution`, `Output`, `Connectivity`, `Winget`, `Office`, `SoftwareCatalog`, `Power`), les URL en `https://` (sauf `Connectivity.TestUrl`, imposée en `http` par Microsoft), l'unicité des éditions ; refuse les blocs déplacés (`Utilities`, `Software`, `Office.OdtFolder`) avec l'endroit où ils sont allés ; lève **une** erreur qui liste tous les problèmes, chacun avec son chemin (`Office.Editions[1].ProductId : absent`).
 
 **`Config/SoftwareCatalog.ps1`** (it. 9) — Le fichier `software.json`.
-- `Read-SoftwareCatalog -Path` — lit en UTF-8 et valide ; fichier absent → catalogue **vide** avec avertissement (la section 8 est simplement vide) ; JSON invalide ou entrée refusée → erreur au démarrage, comme `config.json`. Renvoie `{ Entries, Path, Warnings }`.
-- `Assert-SoftwareCatalog -Catalog` — `CatalogVersion = 1`, liste `Software`, chaque entrée par `Get-SoftwareEntryError` (Core), identifiants uniques ; une erreur unique qui liste tous les problèmes (`Software[2] — Lien : https:// attendu`).
-- `Save-SoftwareCatalog -Path -Entries` — **écriture atomique** : fichier temporaire dans le même dossier, puis `[IO.File]::Replace` qui garde l'ancienne version en `software.json.bak` ; JSON indenté sur deux espaces (lisible et comparable dans un diff, contrairement à la sortie de `ConvertTo-Json` en 5.1) ; clé en lecture seule → erreur explicite « catalogue non enregistré ».
+- `Read-SoftwareCatalog -Path` — lit en UTF-8 et valide ; fichier absent → catalogue **vide** avec avertissement (la section Installations ne propose alors qu'Office) ; JSON invalide ou entrée refusée → erreur au démarrage, comme `config.json`. Renvoie `{ Entries, Path, Warnings }`.
+- `Assert-SoftwareCatalog -Catalog` — `CatalogVersion` 1 ou 2 (le format 1 est lu tel quel, it. 13), liste `Software`, chaque entrée par `Get-SoftwareEntryError` (Core), identifiants uniques ; une erreur unique qui liste tous les problèmes (`Software[2] — Lien : https:// attendu`).
+- `Save-SoftwareCatalog -Path -Entries` — **écriture atomique** : fichier temporaire dans le même dossier, puis `[IO.File]::Replace` qui garde l'ancienne version en `software.json.bak` ; JSON indenté sur deux espaces (lisible et comparable dans un diff, contrairement à la sortie de `ConvertTo-Json` en 5.1) ; dossier en lecture seule → erreur explicite « catalogue non enregistré ». Écrit toujours au format 2 ; les champs facultatifs vides sont omis (`ConvertTo-SoftwareDocumentEntry`).
 
 **`Logging/RunLog.ps1`** 🆕 — Journal d'une exécution, utilisable depuis n'importe quel fil.
-- `New-RunLog -Folder -FallbackFolder -HostName -Stamp` — choisit le dossier (sonde d'écriture sur la clé, repli sur `%TEMP%\FastPrepare` comme aujourd'hui), crée le fichier `Journal_<hôte>_<horodatage>.log` en UTF-8 avec BOM et une `ConcurrentQueue` ; renvoie `{ FilePath, Queue, IsFallback }`.
+- `New-RunLog -Folder -FallbackFolder -HostName -Stamp` — choisit le dossier (sonde d'écriture sur le dossier de sortie ; repli sur `-FallbackFolder`, soit `<WorkFolder>\sortie`, s'il est inaccessible : support en lecture seule, partage injoignable), crée le fichier `Journal_<hôte>_<horodatage>.log` en UTF-8 avec BOM et une `ConcurrentQueue` ; renvoie `{ FilePath, Folder, RequestedFolder, Queue, IsFallback }`.
 - `Write-RunLog -Log -Message -Level -StepId` — niveaux `INFO`, `OK`, `ERREUR`, `ATTN`, `SIMU`, `DEBUG` (fichier seulement) ; écrit la ligne (§8), la publie dans la file. Un échec d'écriture fichier est publié **une fois** en `ATTN` dans la file, puis l'écriture fichier est suspendue (plus d'échec silencieux).
-- `Copy-RunLogToDrive -Log -Destination` — copie finale vers la clé si le journal était en repli (E7).
+- `Copy-RunLogToOutput -Log -AdditionalFile` — copie finale vers le dossier de sortie si le journal était en repli (E7, DEC23).
+
+**`Config/ToolVersion.ps1`** (it. 13) — `Read-ToolVersion -Path` : première ligne du fichier `VERSION`, chaîne vide s'il est absent.
 
 ### 5.4 `FastPrepare.Infrastructure/Runtime`
 
@@ -440,7 +447,7 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Assert-TrustedExecutable -Path -ExpectedSigner` — `Get-AuthenticodeSignature` : statut `Valid` exigé, sujet du certificat conforme à `ExpectedSigner` si renseigné ; sinon erreur, le fichier n'est pas lancé (§7).
 - `Test-RemoteFile -Url` (it. 9) — requête `HEAD` (repli : `GET` dont seuls les en-têtes sont lus, la connexion est fermée avant le corps) : `{ StatusCode, ContentType, ContentLength, FinalUrl }`. Lien `https://` exigé, redirections suivies ; ne télécharge pas le fichier.
 
-**`System/Winget.ps1`** 🆕 — winget (cahier : vérifié au démarrage, réenregistré, sinon paquet de la clé).
+**`System/Winget.ps1`** 🆕 — winget (vérifié au démarrage, réenregistré, sinon paquet hors ligne fourni avec l'outil, facultatif).
 - `Test-Winget` — `winget.exe` résolu et `winget --version` répond.
 - `Assert-Winget -FamilyName -OfflineBundle -Log` — si absent : `Add-AppxPackage -RegisterByFamilyName -MainPackage <FamilyName>` ; si toujours absent : `Add-AppxPackage -Path <OfflineBundle>` (dépendances VCLibs/UI.Xaml du dossier `packages/` comprises) ; erreur explicite si rien ne fonctionne.
 - `Install-WingetPackage -Id -Source -Version -Override -Log` — `winget install --id <Id> --exact --source <Source> --silent --accept-package-agreements --accept-source-agreements [--version] [--override]` via `Invoke-ExternalProcess` ; code « déjà installé » traité comme un succès.
@@ -490,34 +497,34 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 ### 5.6 `FastPrepare.Application` — détections, plan et moteur
 
 **`AppContext.ps1`** 🆕 — Remplace les variables `$script:` globales (D6).
-- `New-AppContext -Root -Config -Mode` — renvoie `{ Root, Config, Mode ('Simulation'|'Real'), Paths { Logs, Logos, Packages, OdtFolder, Cache, SoftwareCatalog }, SoftwareCatalog, Log, Stamp, ModulePaths }`. `SoftwareCatalog` (it. 9) : entrées lues dans `software.json`, remplacées quand l'onglet Réglages enregistre. Résout le mode : paramètre de ligne de commande > `Execution.DefaultMode`. Le mode est **lu par le moteur seul** (règle §6).
+- `New-AppContext -Root -Config -RequestedMode` — renvoie `{ Root, Version, Config, Mode ('Simulation'|'Real'), Paths { Tool, Output, Work, Cache, Odt, WingetBundle, Variables, SoftwareCatalog }, SoftwareCatalog, Log, Stamp, ModulePaths }`. `-Root` est le dossier de l'outil, **quel que soit son support** (DEC23). `Paths.Output` : dossier de sortie réellement utilisé (`Output.Folder`, relatif au dossier de l'outil, absolu ou réseau ; repli `<WorkFolder>\sortie`). `Paths.Work` : dossier de travail local (`Execution.WorkFolder`), dont `cache\` et `odt\`. `SoftwareCatalog` (it. 9) : entrées lues dans `software.json`, remplacées quand l'onglet Réglages enregistre. Résout le mode : paramètre de ligne de commande > `Execution.DefaultMode`. Le mode est **lu par le moteur seul** (règle §6).
 
 **`MachineSnapshot.ps1`** 🆕 — Tout ce que la fenêtre affiche sur le poste, calculé une fois en arrière-plan.
-- `Get-MachineSnapshot -Context` — assemble `Identity` (`Get-MachineIdentity`), `WingetAvailable`, `Software` (entrées + `Resolve-UninstallStrategy` par entrée), `LocalAccounts` (`Split-LocalAccount`), `Adapters`, `OneDrive` (`Get-OneDriveFolderInfo`), `SuggestedUtilityKey` (`Resolve-UtilityKey`), `InventoryText` ; journalise les mêmes lignes qu'aujourd'hui (« 32 logiciels détectés, dont 11 sans désinstallation silencieuse »). Chaque partie est protégée séparément : un échec WMI ne vide pas la liste des logiciels.
+- `Get-MachineSnapshot -Context` — assemble `Identity` (`Get-MachineIdentity`), `WingetAvailable`, `Software` (entrées + `Resolve-UninstallStrategy` par entrée), `LocalAccounts` (`Split-LocalAccount`), `Adapters`, `OneDrive` (`Get-OneDriveFolderInfo`), `Profiles`, `InventoryText` (le relevé porte le constructeur ; c'est la fenêtre qui filtre le catalogue, it. 13) ; journalise les mêmes lignes qu'aujourd'hui (« 32 logiciels détectés, dont 11 sans désinstallation silencieuse »). Chaque partie est protégée séparément : un échec WMI ne vide pas la liste des logiciels.
 
 **`StepRegistry.ps1`** 🆕 — Catalogue des étapes.
-- `Register-Step -Id -Section -Title -Plan -Invoke` — enregistre un descripteur. **Contrat d'une étape** :
+- `Register-Step -Id -Title -Plan -Invoke` — enregistre un descripteur (le titre préfixe les avertissements du plan ; plus de numéro de section depuis l'itération 13). **Contrat d'une étape** :
   - `Plan` : bloc `param($Selection, $Snapshot, $Context)` qui renvoie zéro, une ou plusieurs **actions** `{ StepId, Label, Parameters, Interactive }` ; aucun effet de bord ; zéro action = étape non cochée.
   - `Invoke` : bloc `param($Action, $Context)` qui exécute **une** action par les fonctions d'`Infrastructure` ; lève une erreur en cas d'échec ; ne teste jamais le mode simulation.
 - `Get-RegisteredStep` — descripteurs dans l'ordre de `StepOrder.ps1`.
 - `Assert-StepCatalog` — chaque étape enregistrée figure exactement une fois dans `StepOrder`, et réciproquement ; appelé au chargement du module (une étape oubliée échoue au démarrage, pas en production).
 
-**`StepOrder.ps1`** 🆕 — **Ordre d'exécution du cahier, à un seul endroit.**
-- `Get-StepOrder` — liste ordonnée des identifiants : `export-inventory` (1), `remove-local-accounts` (2), `remove-microsoft-apps` (3), `remove-onedrive` (4), `uninstall-software` (5), `install-vendor-utility` (6), `install-office` (7), `install-software` (8), `disable-ipv6` (9), `set-power-plan` (10), `update-vendor-utility` (11), `run-windows-update` (12), `rename-computer` (13), puis `create-local-account` (14, ajoutée à l'itération 8, DEC14). Le rapport final n'est pas une étape : c'est la conclusion du moteur.
+**`StepOrder.ps1`** 🆕 — **Ordre d'exécution, à un seul endroit** (numérotation propre à l'outil depuis l'itération 13, DEC27).
+- `Get-StepOrder` — liste ordonnée des identifiants : `export-inventory` (1), `remove-local-accounts` (2), `remove-microsoft-apps` (3), `remove-onedrive` (4), `uninstall-software` (5), `install` (6), `disable-ipv6` (7), `set-power-plan` (8), `update-drivers` (9), `run-windows-update` (10), `rename-computer` (11), `create-local-account` (12). Le rapport final n'est pas une étape : c'est la conclusion du moteur.
 
 **`ExecutionPlan.ps1`** 🆕
 - `New-ExecutionPlan -Selection -Snapshot -Context` — `Test-Selection`, puis appelle le `Plan` de chaque étape dans l'ordre, numérote les actions et renvoie `{ Actions[], Warnings[] }`. **Même plan pour la simulation et l'exécution réelle.**
 - `Format-ExecutionPlanSummary -Plan` — « 13 actions, dont 2 désinstallations avec assistant » : affiché dans la boîte de confirmation avant une exécution réelle.
 
 **`ExecutionEngine.ps1`** 🆕 — Exécute un plan ; seul fichier qui connaît le mode.
-- `Invoke-ExecutionPlan -Plan -Context` — pour chaque action : journalise `[ETAPE n/N]`, puis
+- `Invoke-ExecutionPlan -Plan -Context` — pour chaque action : journalise `[ETAPE nn/12]`, puis
   - en **Simulation** : journalise le `Label` de l'action en `SIMU` (ou `ATTN` si `Interactive`) ;
   - en **Real** : appelle le `Invoke` de l'étape dans un `try` ; succès → `OK` avec durée ; erreur → `ERREUR` (message + commande + code de sortie) et **passage à l'action suivante** (cahier).
   Publie la progression ; renvoie les résultats `{ Action, Outcome ('Succeeded'|'Failed'|'Simulated'), Error, RebootRequired, Duration }`.
 - `Start-ExecutionPlan -Plan -Context` — lance `Invoke-ExecutionPlan` dans le runspace (`Start-BackgroundWork`) ; appelée par l'interface.
 
-**`FinalReport.ps1`** 🆕 — Étape 14 du cahier.
-- `Write-FinalReport -Results -Context` — compte réussites, échecs (rappelés un par un), actions simulées ; signale « redémarrage requis » si une action l'a indiqué ; rappelle `config.ManualReminders` ; donne l'emplacement du journal et de l'inventaire ; appelle `Copy-RunLogToDrive` si le journal était en repli.
+**`FinalReport.ps1`** 🆕 — Conclusion du moteur.
+- `Write-FinalReport -Plan -Result -Context` — compte réussites, échecs (rappelés un par un), actions simulées ; signale « redémarrage requis » si une action l'a indiqué ; rappelle `config.ManualReminders` s'il y en a (`Get-ManualReminder`) ; donne l'emplacement du journal et de l'inventaire ; en mode réel, supprime `<WorkFolder>\cache` et `<WorkFolder>\odt` si aucune installation n'a échoué, les conserve et le dit sinon (`Clear-WorkFolder`, DEC28) ; appelle `Copy-RunLogToOutput` si le journal était en repli.
 
 **`SoftwareCatalog.ps1`** (it. 9) — Modification et test du catalogue, sans aucun type WPF (l'onglet Réglages n'en est que l'affichage).
 - `Set-SoftwareCatalogEntry -Context -Entry -PreviousId` — ajoute ou remplace une entrée : `ConvertTo-SoftwareEntry`, `Get-SoftwareEntryError` (refus si problème), `Save-SoftwareCatalog`, puis mise à jour de `Context.SoftwareCatalog` ; journalisé (« Catalogue des logiciels : 7-Zip ajouté »).
@@ -525,30 +532,33 @@ Règle commune : chaque fonction fait **une** opération système, renvoie un ob
 - `Test-SoftwareCatalogEntry -Entry -Context` — **test sans téléchargement ni installation** (DEC18) : règles de saisie, puis winget présent et `Get-WingetPackageInfo` (nom et version trouvés), ou `Test-RemoteFile` (code HTTP 200, type de contenu qui n'est pas une page web, taille). Renvoie `{ Succeeded, Lines[] { Level, Text } }` ; rappelle ce qui ne peut être vérifié qu'à l'installation (signature, empreinte, options silencieuses).
 - `Start-SoftwareCatalogTest -Entry -Context` — le même test dans un runspace (`Start-BackgroundWork`) : la fenêtre reste réactive pendant `winget show`.
 
-**`Prefetch.ps1`** 🆕 — Téléchargement anticipé dès le clic sur une card (E3).
-- `Start-Prefetch -UtilityKey -Context` — en arrière-plan : version proposée par winget, runtime .NET correspondant, puis `Save-WingetPackage` / `Save-RemoteFile` de chaque élément `Install` dans `Cache\<clé>` ; un nouveau clic annule le précédent.
-- `Get-PrefetchedItem -UtilityKey -ItemIndex -Context` — chemin du fichier en cache s'il est complet et vérifié, sinon `$null` (l'étape 06 installera alors en ligne).
+**`Install/CatalogInstall.ps1`** (it. 13) — **Le seul chemin de code qui installe une entrée du catalogue**, outil du constructeur compris (DEC26).
+- `Get-CatalogInstallAction -Selection -Context` — actions du plan pour les entrées cochées, dans l'ordre du catalogue ; une entrée qui porte `DotNet` produit d'abord l'action de sa dépendance. L'entrée est **recopiée dans l'action**.
+- `Invoke-CatalogInstall -Software -Context` — winget : `Assert-WingetAvailable`, `Install-WingetPackage` (`Override`, `Scope`). Lien direct : `Save-RemoteFile` vers `<cache>\<id>` (empreinte si renseignée), `Assert-TrustedExecutable` (éditeur attendu), puis `Invoke-ExternalProcess` (`.exe` avec ses arguments, `.msi` par `msiexec.exe /i … /qn /norestart`).
+- `Invoke-CatalogDotNetDependency -Software -Context`, `Resolve-SoftwareDotNetRequirement`, `Install-DotNetRequirement` — version de l'outil proposée par winget, règle `DotNet` correspondante (`Select-DotNetRequirement`), runtime garanti dans la plage.
+
+**`Install/OfficeInstall.ps1`** (it. 13) — Office par l'Office Deployment Tool : `Get-OfficeInstallAction` (XML en détail du plan) et `Invoke-OfficeInstall` (`Initialize-OdtFolder`, `Invoke-Odt`, vérification du produit dans la configuration Click-to-Run).
+
+Le téléchargement anticipé (`Prefetch.ps1`, itération 5) est supprimé : DEC29.
 
 ### 5.7 `FastPrepare.Application/Steps` — une étape par fichier
 
 Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune, ce que `Plan` produit et ce que `Invoke` exécute.
 
-| Fichier | Section | `Plan` (actions produites) | `Invoke` (fonctions appelées) |
+| Fichier | Rang | `Plan` (actions produites) | `Invoke` (fonctions appelées) |
 |---|---|---|---|
-| `ExportInventory.step.ps1` | 10 | Une action si l'inventaire n'a pas déjà été exporté au démarrage. | `Format-InventoryExport` + écriture `Inventaire_<N/S>_<horodatage>.txt` dans le dossier du journal. |
-| `RemoveLocalAccounts.step.ps1` | 4 | Une action par SID coché (libellé : nom + chemin du profil). | Revérifie `Test-ProtectedAccount` **et** `Test-SafeProfilePath`, puis `Remove-LocalAccountWithProfile`. |
+| `ExportInventory.step.ps1` | 1 | Une action si l'inventaire n'a pas déjà été exporté au démarrage. | `Format-InventoryExport` + écriture `Inventaire_<N/S>_<horodatage>.txt` dans le dossier du journal. |
+| `RemoveLocalAccounts.step.ps1` | 2 | Une action par SID coché (libellé : nom + chemin du profil). | Revérifie `Test-ProtectedAccount` **et** `Test-SafeProfilePath`, puis `Remove-LocalAccountWithProfile`. |
 | `RemoveMicrosoftApps.step.ps1` | 3 | Une action ODT de suppression (C2R et/ou MSI réunis dans un même XML) ; une action par Appx (nouvel Outlook, OneNote, MSTeams, MicrosoftTeams) ; une action Teams classique (MSI Machine-Wide + dossiers locaux). « Outlook classique » seul : action d'information (retiré avec la suite, QO1 au §11). | `Initialize-OdtFolder` + `Invoke-Odt` (`New-OdtRemoveXml`) ; `Remove-AppxEverywhere` ; `Get-MsiProductCodeByName` + `Invoke-ExternalProcess msiexec /x`. |
-| `RemoveOneDrive.step.ps1` | 3 | Désinstallation ; retrait de la clé `Run` du profil Default ; suppression du dossier si cochée (libellé : nombre de fichiers). | `Uninstall-OneDrive`, `Remove-DefaultProfileOneDriveRun`, `Test-SafeProfilePath` puis `Remove-Item -Recurse`. |
-| `UninstallSoftware.step.ps1` | 2 | Une action par logiciel coché, triées par `Get-UninstallOrder` ; `Interactive = $true` pour les assistants. | `Invoke-ExternalProcess` (silencieux) ; assistant : lancement et attente de sa fermeture, avertissement `ATTN` préalable dans le journal. |
-| `InstallVendorUtility.step.ps1` | 5 | Dépendance .NET si requise (`Select-DotNetRequirement` sur la version annoncée par winget), puis un élément par entrée `Install`. | `Assert-Winget` ; `Install-WingetPackage` ; `Get-PrefetchedItem` ou `Save-RemoteFile` + `Assert-TrustedExecutable` + `Invoke-ExternalProcess`. |
-| `InstallOffice.step.ps1` | 6 | Une action (libellé : édition, ID produit, exclusions ; XML complet en paramètre). | `Initialize-OdtFolder`, `Invoke-Odt` (`New-OdtInstallXml`). |
-| `InstallSoftware.step.ps1` | 8 | Une action par logiciel coché du catalogue `Context.SoftwareCatalog` (it. 9) ; l'entrée est **recopiée dans l'action**, l'exécution ne dépend pas d'une modification ultérieure du catalogue. Libellé : `Format-SoftwareInstallCommand`. | winget : `Assert-Winget`, `Install-WingetPackage` (avec `Override`). Lien direct : `Save-RemoteFile` vers `Cache\software\<id>` (empreinte si renseignée), `Assert-TrustedExecutable` (éditeur attendu), puis `Invoke-ExternalProcess` (`.exe` avec ses arguments, `.msi` par `msiexec.exe /i … /qn /norestart`). |
-| `DisableIpv6.step.ps1` | 9 | Une action par carte cochée **dont IPv6 est encore actif**. | `Disable-AdapterIpv6`. |
-| `SetPowerPlan.step.ps1` | 9 | Une action si cochée (libellé calculé depuis `config.Power`). | `Set-PowerTimeout`. |
-| `UpdateVendorUtility.step.ps1` | 7 | Une action si une card est choisie et la case cochée. | `Expand-ConfigPath` sur `Update.FilePath`, `Invoke-ExternalProcess` avec `SuccessExitCodes`. |
-| `RunWindowsUpdate.step.ps1` | 7 | Une action si cochée. | `Invoke-WindowsUpdatePass`. |
-| `RenameComputer.step.ps1` | 1 | Une action si cochée (revalidée par `Test-HostName`). | `Rename-Computer -NewName -Force` **sans** `-Restart` ; marque « redémarrage requis ». |
-| `CreateLocalAccount.step.ps1` (it. 8) | 11 | Une action si cochée. Libellé : nom, nom complet, groupe, option d'expiration ; **jamais le mot de passe** (ni dans `Label`, ni dans `Details`). Le mot de passe voyage dans `Parameters`, que le moteur ne journalise pas. | Revalide le nom contre les comptes **relus sur le poste** (`Get-LocalAccount`) et le nom du poste, puis `New-LocalAccount` avec `Get-LocalAccountGroupSid`. |
+| `RemoveOneDrive.step.ps1` | 4 | Désinstallation ; retrait de la clé `Run` du profil Default ; suppression du dossier si cochée (libellé : nombre de fichiers). | `Uninstall-OneDrive`, `Remove-DefaultProfileOneDriveRun`, `Test-SafeProfilePath` puis `Remove-Item -Recurse`. |
+| `UninstallSoftware.step.ps1` | 5 | Une action par logiciel coché, triées par `Get-UninstallOrder` ; `Interactive = $true` pour les assistants. | `Invoke-ExternalProcess` (silencieux) ; assistant : lancement et attente de sa fermeture, avertissement `ATTN` préalable dans le journal. |
+| `Install.step.ps1` (it. 13) | 6 | Assemble : `Get-CatalogInstallAction` (entrées cochées du catalogue, dans l'ordre du fichier, dépendance .NET d'une entrée juste avant elle), puis `Get-OfficeInstallAction` (une action : édition, ID produit, exclusions ; XML complet en paramètre). | Selon l'action : `Invoke-CatalogDotNetDependency`, `Invoke-CatalogInstall`, `Invoke-OfficeInstall` (`Install\CatalogInstall.ps1`, `Install\OfficeInstall.ps1`). |
+| `DisableIpv6.step.ps1` | 7 | Une action par carte cochée **dont IPv6 est encore actif**. | `Disable-AdapterIpv6`. |
+| `SetPowerPlan.step.ps1` | 8 | Une action si cochée (libellé calculé depuis `config.Power`). | `Set-PowerTimeout`. |
+| `UpdateDrivers.step.ps1` (it. 13) | 9 | Si la case « pilotes et BIOS » est cochée : une action par entrée cochée du catalogue qui porte `Update` (bloc recopié dans l'action). | `Expand-ConfigPath` sur `Update.FilePath`, `Find-InstalledExecutable`, `Invoke-ExternalProcess` avec `SuccessExitCodes` et `RebootExitCodes` (3010 et 1641 par défaut). |
+| `RunWindowsUpdate.step.ps1` | 10 | Une action si cochée. | `Invoke-WindowsUpdatePass`. |
+| `RenameComputer.step.ps1` | 11 | Une action si cochée (revalidée par `Test-HostName`). | `Rename-Computer -NewName -Force` **sans** `-Restart` ; marque « redémarrage requis ». |
+| `CreateLocalAccount.step.ps1` (it. 8) | 12 | Une action si cochée. Libellé : nom, nom complet, groupe, option d'expiration ; **jamais le mot de passe** (ni dans `Label`, ni dans `Details`). Le mot de passe voyage dans `Parameters`, que le moteur ne journalise pas. | Revalide le nom contre les comptes **relus sur le poste** (`Get-LocalAccount`) et le nom du poste, puis `New-LocalAccount` avec `Get-LocalAccountGroupSid`. |
 
 ### 5.8 `FastPrepare.UI` — fenêtre WPF
 
@@ -577,23 +587,21 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 - `Get-UiSection [-Id]` — une section, ou toutes triées par numéro.
 - (it. 9) Colonne **`Settings`** : la section est une page de l'onglet Réglages (numérotée à partir de 100, sans `GetSelection` ni `Validate` : un réglage ne bloque jamais Lancer). Rappel facultatif **`OnSettingsChanged(Section, Context)`** : appelé par `Publish-SettingsChanged` (`MainWindow.ps1`) quand un réglage enregistré change ce que d'autres sections affichent (ex. la section 8 régénère ses cases après une modification du catalogue, en conservant les cases cochées).
 
-**`Sections/*.ps1`** 🆕 — Une section du cahier par fichier, chacun n'appelant que `Register-UiSection` :
+**`Sections/*.ps1`** 🆕 — Une section de la fenêtre par fichier, chacun n'appelant que `Register-UiSection`. Le numéro entre parenthèses est la position affichée (« 5 · Installations »), calculée par `Get-UiSectionDisplayNumber` à partir de l'ordre d'enregistrement : il n'est jamais écrit dans le XAML (élément `TxtTitle`), et suit l'ordre d'exécution (it. 13, DEC27) :
 
 | Fichier | Rôle propre |
 |---|---|
-| `ConnectivitySection.ps1` (0) | Pastille verte / rouge ; sonde `New-ConnectivityProbe` à l'intervalle configuré ; journalise seulement les **changements** d'état ; `Validate` bloque Lancer tant que la connexion n'est pas validée. |
-| `HostNameSection.ps1` (1) | Champ grisé si décoché ; `Get-HostNameError` affiché sous le champ ; nom actuel rappelé. |
-| `InstalledSoftwareSection.ps1` (2) | Liste générée depuis `Snapshot.Software` ; « Tout cocher » ; légende ⚠. |
+| `ConnectivitySection.ps1` (en-tête) | Pastille verte / rouge ; sonde `New-ConnectivityProbe` à l'intervalle configuré ; journalise seulement les **changements** d'état ; `Validate` bloque Lancer tant que la connexion n'est pas validée. |
+| `InventorySection.ps1` (1) | Bloc N/S + MAC ; bouton Copier ; emplacement de l'export. |
+| `LocalAccountsSection.ps1` (2) | Comptes supprimables et liste des exclus avec motif. |
 | `MicrosoftAppsSection.ps1` (3) | Cases et méthodes affichées ; « Dossier OneDrive » grisé tant que OneDrive est décoché ; nombre de fichiers. |
-| `LocalAccountsSection.ps1` (4) | Comptes supprimables et liste des exclus avec motif. |
-| `VendorUtilitySection.ps1` (5) | Cards générées depuis `config.Utilities` ; présélection `Snapshot.SuggestedUtilityKey` ; clic → `Start-Prefetch` ; état du téléchargement affiché sous les cards. |
-| `OfficeSection.ps1` (6) | Cards générées depuis `config.Office.Editions` ; pastilles Avec / Sans Teams visibles seulement si l'édition a un `NoTeamsProductId` ; cases `OptionalApps`. |
-| `UpdatesSection.ps1` (7) | « MàJ utilitaire » grisée sans card choisie (lit l'état de la section 5 par la `Selection`, pas par ses contrôles). |
-| `SoftwareSection.ps1` (8) | Cases générées depuis `Context.SoftwareCatalog` (it. 9), info-bulle = commande d'installation ; régénérées par `OnSettingsChanged` ; catalogue vide → « Aucun logiciel : ajoutez-en dans l'onglet Réglages ». |
-| `SoftwareCatalogSettingsSection.ps1` (Réglages, it. 9) | Liste des logiciels du catalogue ; formulaire (libellé, coché par défaut, type winget / lien direct et leurs champs) avec règles vérifiées à la saisie et aperçu de la commande ; boutons **Tester** (sans téléchargement ni installation, en arrière-plan, résultat ligne à ligne), **Enregistrer** (confirmation si l'entrée n'a pas été testée avec succès depuis sa dernière modification), **Nouveau**, **Retirer** (confirmation). Désactivée pendant une exécution. |
-| `SystemSettingsSection.ps1` (9) | Une case par carte réseau ; case alimentation avec libellé calculé (`ApplyOnBattery`). |
-| `InventorySection.ps1` (10) | Bloc N/S + MAC ; bouton Copier ; emplacement de l'export. |
-| `NewLocalAccountSection.ps1` (11, it. 8) | Case « Créer une session locale » qui active le formulaire : nom de session, nom complet, mot de passe et confirmation (`PasswordBox` : le texte n'est jamais lu, seulement `SecurePassword`), « Administrateur du poste », « Le mot de passe n'expire jamais » et « Changer le mot de passe à la première ouverture » (exclusives). Défauts depuis `config.NewLocalAccount`. Motif du refus affiché sous le formulaire ; `Refresh` retient les sessions cochées pour suppression et le futur nom d'hôte (un nom libéré par la section 4 redevient disponible) ; `Validate` bloque Lancer. |
+| `InstalledSoftwareSection.ps1` (4) | Liste générée depuis `Snapshot.Software` ; « Tout cocher » ; légende ⚠. |
+| `InstallSection.ps1` (5, it. 13) | **Tout ce qui s'installe** (DEC26). Catalogue : une case par entrée de `Context.SoftwareCatalog` applicable au constructeur détecté (`Select-ApplicableSoftware` ; l'outil d'un autre constructeur n'est jamais proposé, DEC25), celles du constructeur en tête, info-bulle = commande d'installation ; régénérées par `OnSnapshot` et `OnSettingsChanged` en conservant les cases cochées. Office : cards générées depuis `config.Office.Editions` ; pastilles Avec / Sans Teams visibles seulement si l'édition a un `NoTeamsProductId` ; cases `OptionalApps`. |
+| `SystemSettingsSection.ps1` (6) | Une case par carte réseau ; case alimentation avec libellé calculé (`ApplyOnBattery`). |
+| `UpdatesSection.ps1` (7) | Windows Update ; « Mettre à jour les pilotes et le BIOS (`<Update.Label>`) » proposée seulement si une entrée cochée de la section Installations porte `Update`, et cochée d'elle-même à ce moment (lit l'état de l'autre section par la `Selection`, pas par ses contrôles). |
+| `HostNameSection.ps1` (8) | Champ grisé si décoché ; `Get-HostNameError` affiché sous le champ ; nom actuel rappelé. |
+| `NewLocalAccountSection.ps1` (9, it. 8) | Case « Créer une session locale » qui active le formulaire : nom de session, nom complet, mot de passe et confirmation (`PasswordBox` : le texte n'est jamais lu, seulement `SecurePassword`), « Administrateur du poste », « Le mot de passe n'expire jamais » et « Changer le mot de passe à la première ouverture » (exclusives). Défauts depuis `config.NewLocalAccount`. Motif du refus affiché sous le formulaire ; `Refresh` retient les sessions cochées pour suppression et le futur nom d'hôte (un nom libéré par la suppression des sessions locales redevient disponible) ; `Validate` bloque Lancer. |
+| `SoftwareCatalogSettingsSection.ps1` (Réglages, it. 9) | Liste des logiciels du catalogue ; formulaire (libellé, constructeur facultatif, coché par défaut, type winget / lien direct et leurs champs ; `DotNet` et `Update` affichés en lecture seule et repris tels quels à l'enregistrement, it. 13) avec règles vérifiées à la saisie et aperçu de la commande ; boutons **Tester** (sans téléchargement ni installation, en arrière-plan, résultat ligne à ligne), **Enregistrer** (confirmation si l'entrée n'a pas été testée avec succès depuis sa dernière modification), **Nouveau**, **Retirer** (confirmation). Désactivée pendant une exécution. |
 
 **`LogView.ps1`** 🆕
 - `Add-LogLine -RichTextBox -Entry` — ajoute la ligne colorée selon le niveau (couleurs du thème), défile en bas ; limite l'affichage aux 5 000 dernières lignes (le fichier, lui, garde tout).
@@ -602,19 +610,19 @@ Chaque fichier appelle `Register-Step` une fois. Le tableau donne, pour chacune,
 - `Start-UiPump -Context -Handlers` — toutes les 200 ms : vide la file du journal vers `LogView`, met à jour la progression, détecte la fin des travaux d'arrière-plan et appelle leur rappel (`OnSnapshot`, fin de préchargement, fin d'exécution).
 - `Stop-UiPump`.
 
-**`MainWindow.ps1`** 🆕 — Assemble la fenêtre ; aucune règle métier.
+**`MainWindow.ps1`** 🆕 — Assemble la fenêtre ; aucune règle métier. Depuis l'itération 13, `Initialize-MainWindow -Context` construit la fenêtre sans l'afficher (coquille, sections, titres numérotés, événements) et `Start-MainWindow` l'affiche : la construction est vérifiée par `tests/FastPrepare.UI/MainWindow.Tests.ps1`.
 - `Start-MainWindow -Context` — `Initialize-WpfApplication`, charge la coquille, insère chaque fragment de section dans sa colonne, appelle les `Initialize`, lance `Get-MachineSnapshot` en arrière-plan, démarre la pompe, affiche la fenêtre.
 - `Update-LaunchState` — Lancer actif si **toutes** les sections renvoient `Validate = $null` et qu'aucune exécution n'est en cours ; affiche le premier motif bloquant (remplace `Update-LaunchState` qui connaissait chaque contrôle).
 - `Invoke-Launch` — construit la `Selection` (chaque `GetSelection`), le plan (`New-ExecutionPlan`) ; en mode réel, boîte de confirmation avec `Format-ExecutionPlanSummary` ; puis `Start-ExecutionPlan`, désactive le formulaire jusqu'à la fin.
 - `Confirm-WindowClose` — confirmation si une exécution est en cours.
 
-### 5.9 Outillage (poste de développement, jamais sur la clé)
+### 5.9 Outillage (poste de développement, jamais dans le livrable)
 
 **`tools/Invoke-Tests.ps1`** 🆕 — Lance Pester 5 sur `tests/` avec couverture de `src/FastPrepare.Core` et `src/FastPrepare.Application` ; échoue si un test échoue. Pester 5 est installé sur le poste de développement uniquement (Windows 11 n'embarque que Pester 3.4) — DEC5.
 
 **`tools/Invoke-Lint.ps1`** 🆕 — PSScriptAnalyzer avec `PSScriptAnalyzerSettings.psd1` (règles par défaut + `PSUseCompatibleSyntax` cible 5.1, `PSAvoidUsingInvokeExpression`, `PSUseApprovedVerbs`, `PSAvoidGlobalVars`) ; vérifie aussi l'encodage (BOM UTF-8 sur `*.ps1|psm1|psd1`, CRLF sur `*.cmd`).
 
-**`tools/Build-Usb.ps1`** 🆕 — `-Destination E:\` : lance tests et lint, puis copie **uniquement** `Lancer.cmd`, `Preparation.ps1`, `config.json`, `software.json` (it. 9), `src/`, `logos/`, `packages/` et un dossier `logs/` vide ; retire la marque de zone (`Unblock-File`) des scripts copiés ; écrit `VERSION.txt` (date, empreinte de `config.json`).
+**`tools/Build-Release.ps1`** (it. 13, remplace `Build-Usb.ps1`) — `-Destination <dossier> [-Zip]` : lance tests et lint, puis produit `FastPrepare-<version>\` avec **uniquement** `Lancer.cmd`, `Preparation.ps1`, `VERSION`, `config.json`, `software.json`, `src/`, `packages/` et un dossier `logs/` vide ; retire la marque de zone (`Unblock-File`) des scripts copiés ; écrit `BUILD.txt` (version, date, commit, empreinte de `config.json`). `-Zip` : archive `FastPrepare-<version>.zip`, **sans aucun journal**. Un dossier déjà présent garde ses journaux et son catalogue (`-ReplaceSoftwareCatalog`). Le même livrable se copie sur un support amovible, se dépose sur un partage ou se télécharge (DEC24).
 
 **`.editorconfig`**, **`.gitattributes`**, **`.gitignore`** 🆕 — Encodage et fins de ligne (§1) ; `logs/`, `packages/`, `*.log` ignorés.
 
@@ -631,16 +639,20 @@ Tests Pester sous `tests/`, en miroir de `src/`. `Core` est testé **sans mock**
 | `Core/LocalAccountPolicy.Tests.ps1` | RID 500/501/503/504 et compte connecté exclus ; RID 1001 supprimable. |
 | `Core/LocalAccountCreation.Tests.ps1` (it. 8) | Chaque motif de refus du nom (longueur 20/21, caractères interdits, points, doublon insensible à la casse, nom du poste) ; mot de passe vide, trop long, confirmation différente, identique ; SID des groupes ; incohérences détectées par `Test-Selection` ; `Clear-SelectionSecret`. |
 | `Core/PathGuard.Tests.ps1` | `C:\Users`, `C:\Users\Default`, `C:\Users\Public`, le profil connecté, `C:\Users\x\..\..\Windows` refusés ; `C:\Users\ancien` accepté. |
-| `Core/ManufacturerMatch.Tests.ps1`, `Inventory.Tests.ps1`, `CommandLine.Tests.ps1`, `Selection.Tests.ps1` | Présélection (`Hewlett-Packard` → hp, `LENOVO` → lenovo, inconnu → aucune) ; format et nom de fichier sûr ; découpe des lignes avec guillemets ; incohérences de sélection détectées. |
-| `Core/SoftwareCatalog.Tests.ps1` (it. 9) | Chaque règle d'une entrée winget et lien direct, identifiant déduit du libellé et rendu unique, normalisation (seuls les champs du type sont conservés), commande affichée. |
+| `Core/ManufacturerAndInventory.Tests.ps1`, `CommandLine.Tests.ps1`, `SelectionAndOdtRemove.Tests.ps1` | Outil du constructeur détecté seulement (`Hewlett-Packard` → HP Image Assistant, `LENOVO` → les deux outils Lenovo, inconnu ou vide → aucun, les logiciels sans constructeur partout) ; format et nom de fichier sûr ; découpe des lignes avec guillemets ; incohérences de sélection détectées, dont l'outil d'un autre constructeur. |
+| `Core/SoftwareCatalog.Tests.ps1` (it. 9) | Chaque règle d'une entrée winget et lien direct, identifiant déduit du libellé et rendu unique, normalisation (seuls les champs du type sont conservés), commande affichée. Champs facultatifs (it. 13) : motif de constructeur, règles `DotNet`, bloc `Update`, forme écrite dans le fichier. |
 | `Infrastructure/SoftwareCatalog.Tests.ps1` (it. 9) | Lecture (fichier absent → vide + avertissement ; JSON invalide, version inconnue, doublon → erreur citant l'entrée), écriture atomique avec `.bak`, relecture identique, JSON indenté ; `Test-RemoteFile` et `Get-WingetPackageInfo` (sorties et codes simulés). |
 | `Application/SoftwareCatalog.Tests.ps1` (it. 9) | Ajout, remplacement (changement d'identifiant), retrait, refus d'une entrée invalide sans écriture ; test winget et lien direct (adaptateurs simulés) : réussite, paquet introuvable, page web au lieu d'un fichier, winget absent ; **aucun appel d'installation ni de téléchargement** pendant un test. |
-| `Infrastructure/AppConfig.Tests.ps1` | `config.valid.json` accepté ; chaque clé obligatoire retirée → erreur qui cite son chemin ; ancienne configuration (sans `ConfigVersion`) refusée avec un message explicite. |
-| `Application/StepRegistry.Tests.ps1` | Chaque étape de `Steps/` est dans `StepOrder` et réciproquement ; aucun doublon. |
-| `Application/ExecutionPlan.Tests.ps1` | Avec `Fixtures/selection.full.json`, les actions sortent **dans l'ordre du cahier** quelle que soit l'ordre des sections ; sélection vide → plan vide ; carte avec IPv6 déjà désactivé → pas d'action. |
+| `Infrastructure/AppConfig.Tests.ps1` | `config.json` du dépôt accepté, sans avertissement ; chaque clé obligatoire retirée → erreur qui cite son chemin ; versions 2 et 3 refusées avec leur consigne de migration ; blocs déplacés (`Utilities`, `Software`, `Office.OdtFolder`) refusés ; dossier de sortie relatif, absolu ou réseau. |
+| `Application/StepCatalog.Tests.ps1` | Chaque étape de `Steps/` est dans `StepOrder` et réciproquement ; 12 rangs sans doublon ; une seule étape d'installation. |
+| `Application/InstallStep.Tests.ps1` (it. 13) | Étapes `install` et `update-drivers` en mode réel (adaptateurs simulés) : dépendance .NET, outil du constructeur, lien direct vérifié, Office dans la même étape, plan refusé pour l'outil d'un autre constructeur, codes de sortie du catalogue. |
+| `Application/AppContext.Tests.ps1` (it. 13) | Dossier de sortie relatif, absolu, inaccessible (repli) ; dossier de travail ; paquet winget facultatif ; version en tête du journal. |
+| `UI/MainWindow.Tests.ps1` (it. 13) | Fenêtre construite sans être affichée : neuf sections numérotées dans l'ordre d'exécution, catalogue filtré par constructeur, mise à jour des pilotes proposée ou masquée, onglet Réglages. |
+| `Tools.Tests.ps1` | `Build-Release` : strict nécessaire, journaux et catalogue conservés, archive sans journal. |
+| `Application/ExecutionPlan.Tests.ps1` | Les actions sortent **dans l'ordre d'exécution** quelle que soit l'ordre des sections ; sélection vide → plan vide ; carte avec IPv6 déjà désactivé → pas d'action. |
 | `Application/ExecutionEngine.Tests.ps1` | Simulation : aucun `Invoke` appelé, une ligne `SIMU` par action. Réel : une action qui lève une erreur est journalisée `ERREUR` et **les suivantes s'exécutent** ; résultats agrégés justes ; « redémarrage requis » propagé au rapport. |
 | `Application/Steps/*.Tests.ps1` | Pour chaque étape : `Plan` produit les bonnes actions, `Invoke` appelle les bonnes fonctions d'`Infrastructure` avec les bons arguments (mocks) ; garde de chemin et comptes protégés revérifiés dans `Invoke`. Session créée (it. 8) : **le mot de passe n'apparaît ni dans le plan, ni dans le fichier journal**, en simulation comme en réel. |
-| `Architecture.Tests.ps1` | Analyse statique des sources : aucun `System.Windows` hors `FastPrepare.UI` ; aucun `Get-CimInstance`, `Get-ItemProperty HKLM:`, `Start-Process` hors `Infrastructure` ; aucun `Invoke-Expression` ; aucune URL `http(s)://` dans `src/` (règle « liens jamais dans le code ») ; aucun fichier sans BOM. |
+| `Architecture.Tests.ps1` | Analyse statique des sources : aucun `System.Windows` hors `FastPrepare.UI` ; aucun `Get-CimInstance`, `Get-ItemProperty HKLM:`, `Start-Process` hors `Infrastructure` ; aucun `Invoke-Expression` ; aucune URL `http(s)://` dans `src/` (règle « liens jamais dans le code ») ; aucun fichier sans BOM. ; aucune référence à une clé USB ni à `$env:TEMP` (indépendance du support, DEC23). |
 
 ---
 
@@ -661,27 +673,27 @@ Une règle n'est écrite qu'une fois ; les autres fichiers l'**appellent**. Tout
 | Groupes d'une session créée (par SID) | `Core/LocalAccountCreation.ps1` (`Get-LocalAccountGroupSid`) | `CreateLocalAccount.step` | `LocalAccountCreation.Tests` |
 | Mot de passe jamais en clair ni journalisé | `Core/LocalAccountCreation.ps1` (seule comparaison, en mémoire non managée) ; `SecureString` de la `PasswordBox` à `New-LocalUser` | `NewLocalAccountSection`, `CreateLocalAccount.step`, `New-LocalAccount` | `Architecture.Tests` (aucune conversion de `SecureString` en texte ailleurs) ; tests de l'étape (journal relu) |
 | Suppression récursive sûre | `Core/PathGuard.ps1` | `RemoveLocalAccounts.step`, `RemoveOneDrive.step` | `PathGuard.Tests` ; tests des deux étapes |
-| XML ODT (section 6) et suppression ODT (section 3) | `Core/OdtConfiguration.ps1` | `InstallOffice.step`, `RemoveMicrosoftApps.step`, `OfficeSection` (résumé) | `OdtConfiguration.Tests` |
+| XML ODT (section 6) et suppression ODT (section 3) | `Core/OdtConfiguration.ps1` | `Install.step` (`OfficeInstall`), `RemoveMicrosoftApps.step`, `OfficeSection` (résumé) | `OdtConfiguration.Tests` |
 | ID produit avec / sans Teams | `Core/OdtConfiguration.ps1` (`Get-OfficeProductId`) + données `config.Office.Editions` | `New-OdtInstallXml` | `OdtConfiguration.Tests` |
-| Runtime .NET selon la version de DCU | `Core/DotNetRequirement.ps1` + données `Utilities.dell.DotNet` | `InstallVendorUtility.step`, `Prefetch` | `DotNetRequirement.Tests` |
-| Présélection de la marque (section 5) | `Core/ManufacturerMatch.ps1` + `ManufacturerPattern` | `MachineSnapshot` | `ManufacturerMatch.Tests` |
-| Une seule card par groupe | `UI/Controls.ps1` (`Set-ExclusiveSelection`) | `VendorUtilitySection`, `OfficeSection` | recette manuelle |
+| Runtime .NET selon la version de DCU | `Core/DotNetRequirement.ps1` + champ `DotNet` de l'entrée du catalogue | `Install.step` (`CatalogInstall`) | `DotNetRequirement.Tests` |
+| Outil du constructeur détecté seulement (DEC25) | `Core/SoftwareCatalog.ps1` (`Test-SoftwareApplicable`, `Select-ApplicableSoftware`) + `ManufacturerPattern` de l'entrée | `InstallSection`, `Test-Selection` | `ManufacturerAndInventory.Tests`, `SelectionAndOdtRemove.Tests`, `UI/MainWindow.Tests` |
+| Une seule card par groupe | `UI/Controls.ps1` (`Set-ExclusiveSelection`) | `InstallSection` (éditions Office) | recette manuelle |
 | Conditions d'activation de Lancer | `UI/MainWindow.ps1` (`Update-LaunchState`) à partir des `Validate` de section | toutes les sections | recette manuelle |
-| Liens, versions, identifiants winget | `config.json` | étapes, `Prefetch` | `Architecture.Tests` (aucune URL dans `src/`) ; `AppConfig.Tests` |
+| Liens, versions, identifiants winget | `config.json` | étapes | `Architecture.Tests` (aucune URL dans `src/`) ; `AppConfig.Tests` |
 | Validité de la configuration | `Infrastructure/Config/AppConfig.ps1` (`Assert-AppConfig`) | `Preparation.ps1` | `AppConfig.Tests` |
 | Règles d'une entrée du catalogue logiciel (F2) | `Core/SoftwareCatalog.ps1` (`Get-SoftwareEntryError`) | `Assert-SoftwareCatalog` (fichier), `Set-SoftwareCatalogEntry` (enregistrement), onglet Réglages (saisie) | `SoftwareCatalog.Tests` (Core) |
 | Écriture du catalogue | `Infrastructure/Config/SoftwareCatalog.ps1` (`Save-SoftwareCatalog`) | `Application/SoftwareCatalog.ps1` | `SoftwareCatalog.Tests` (Infrastructure) ; `Architecture.Tests` (l'outil n'écrit jamais `config.json`) |
 | Test d'une entrée sans téléchargement | `Application/SoftwareCatalog.ps1` (`Test-SoftwareCatalogEntry`) | onglet Réglages | `SoftwareCatalog.Tests` (Application) |
 | Lancement d'un processus externe | `Infrastructure/System/Process.ps1` | toutes les étapes | `Architecture.Tests` (aucun `Start-Process` ailleurs) |
 | Codes de sortie MSI / outils constructeur | `Process.ps1` (MSI) + `Update.SuccessExitCodes` (outils) | étapes | `Process.Tests` |
-| Téléchargement et vérification | `Infrastructure/System/Download.ps1` | `Odt`, `InstallVendorUtility.step`, `Prefetch` | `Download.Tests` (empreinte fausse → refus ; signature invalide → refus) |
-| winget présent (contraintes du cahier) | `Infrastructure/System/Winget.ps1` (`Assert-Winget`) | étapes 06 et 08, `Prefetch` | `Winget.Tests` (mocks des trois cas) ; recette sur poste sans winget |
+| Téléchargement et vérification | `Infrastructure/System/Download.ps1` | `Odt`, `Install.step` (`CatalogInstall`) | `Download.Tests` (empreinte fausse → refus ; signature invalide → refus) |
+| winget présent (contraintes du cahier) | `Infrastructure/System/Winget.ps1` (`Assert-Winget`) | étape `install` | `Winget.Tests` (mocks des trois cas) ; recette sur poste sans winget |
 | Source winget utilisable, réparée une fois (it. 10) | `Infrastructure/System/Winget.ps1` (`Invoke-Winget`, `Test-WingetSource`) | tous les appels à winget ; `MachineSnapshot` (vérification au démarrage) | `WingetSource.Tests` ; recette « autre compte administrateur » |
 | Format du journal | `Infrastructure/Logging/RunLog.ps1` | tous | `RunLog.Tests` |
 | Format et nom de l'inventaire | `Core/Inventory.ps1` | `MachineSnapshot`, `ExportInventory.step`, `InventorySection` | `Inventory.Tests` |
 | Rappels des actions manuelles | `config.ManualReminders` | mémo de la fenêtre, `FinalReport` | `FinalReport.Tests` |
 | Jamais de redémarrage automatique | aucun appel à `Restart-Computer`, aucun `-Restart`, ODT et outils lancés avec leurs options « sans redémarrage » | — | `Architecture.Tests` (motifs interdits) ; recette |
-| Création d'un runspace | `Infrastructure/Runtime/BackgroundRunner.ps1` | `MainWindow`, `Prefetch`, `ExecutionEngine` | `Architecture.Tests` |
+| Création d'un runspace | `Infrastructure/Runtime/BackgroundRunner.ps1` | `MainWindow`, `ExecutionEngine` | `Architecture.Tests` |
 
 ---
 
@@ -699,7 +711,7 @@ L'outil s'exécute **en administrateur** sur un poste qui sera remis à un utili
 | Exécutable téléchargé falsifié (lien direct Thin Installer, `setup.exe` ODT) | HTTPS imposé par `Assert-AppConfig` ; `Assert-TrustedExecutable` (signature Authenticode `Valid` + éditeur attendu) ; empreinte SHA-256 si renseignée. | `Download.ps1`, `AppConfig.ps1` |
 | Paquet winget usurpé | `--exact --source <source>` toujours précisés ; identifiants dans la configuration, relus à chaque changement de version (le cahier demande de les revérifier au moment de coder). | `Winget.ps1` |
 | Résolution d'un mauvais `powershell.exe` | Chemin absolu dans `Lancer.cmd`. | `Lancer.cmd` |
-| Politique d'exécution | `-ExecutionPolicy Bypass` limité au processus (aucune modification de la politique du poste). `Build-Usb` débloque les fichiers copiés. | `Lancer.cmd`, `Build-Usb.ps1` |
+| Politique d'exécution | `-ExecutionPolicy Bypass` limité au processus (aucune modification de la politique du poste). `Build-Release` débloque les fichiers copiés. | `Lancer.cmd`, `Build-Usb.ps1` |
 | Module chargé depuis un emplacement inattendu | Modules importés **par chemin absolu** calculé depuis `$PSScriptRoot`, jamais par nom (pas de recherche dans `PSModulePath`). | `Preparation.ps1`, `BackgroundRunner.ps1` |
 
 ### 7.2 Actions destructives
@@ -728,7 +740,7 @@ L'outil s'exécute **en administrateur** sur un poste qui sera remis à un utili
 
 | Élément | Valeur |
 |---|---|
-| Dossier | `logs\` à côté de `Preparation.ps1` ; repli `%TEMP%\FastPrepare` si la clé est en lecture seule (le dossier de repli actuel, `PreparationPoste`, est renommé). |
+| Dossier | Dossier de sortie `Output.Folder` (par défaut `logs\` dans le dossier de l'outil ; chemin absolu ou réseau possible) ; repli `<WorkFolder>\sortie` s'il est inaccessible en écriture, puis nouvelle copie en fin d'exécution (DEC23). |
 | Fichiers | `Journal_<NOM-HÔTE>_<yyyyMMdd-HHmmss>.log` ; `Inventaire_<N/S>_<yyyyMMdd-HHmmss>.txt` (même horodatage). |
 | Encodage | UTF-8 avec BOM. |
 | Ligne | `HH:mm:ss [NIVEAU] message` |
@@ -737,15 +749,15 @@ L'outil s'exécute **en administrateur** sur un poste qui sera remis à un utili
 ### 8.2 Ajouts
 
 - Niveau **`DEBUG`**, écrit dans le fichier seulement : commandes effectives, codes de sortie, durées, sorties techniques utiles au support. La fenêtre reste lisible pour le technicien.
-- Lignes d'étape : `HH:mm:ss [INFO] [ETAPE 5/13 · section 2] Désinstallation silencieuse (MSI) : <logiciel>` puis `[OK] … (12 s)` ou `[ERREUR] … : code de sortie 1603`. Le numéro d'étape (ordre du cahier) et le numéro de section (interface) sont distincts : les deux figurent, la confusion actuelle (« 3. » dans le journal pour la section 3 **et** pour l'étape 3) disparaît.
-- En-tête du journal : version de l'outil (`VERSION.txt`), mode (`Simulation` / `Real`), empreinte de `config.json`, poste (constructeur, modèle, N/S, Windows).
-- Rapport final (étape 14) : nombre d'actions réussies / échouées / simulées, rappel de chaque échec, « redémarrage requis », rappels manuels, emplacement du journal.
+- Lignes d'étape : `HH:mm:ss [INFO] [ETAPE 05/12] Désinstallation silencieuse (MSI) : <logiciel>` puis `[OK] … (12 s)` ou `[ERREUR] … : code de sortie 1603`. Seul le rang de l'étape figure (ordre d'exécution, DEC27) ; jusqu'à l'itération 12 la ligne portait aussi le numéro de section du cahier (`[ETAPE 5/14 · section 2]`).
+- En-tête du journal : version de l'outil (fichier `VERSION`) et dossier de l'outil en première ligne, mode (`Simulation` / `Real`), poste (constructeur, modèle, N/S, Windows).
+- Rapport final : nombre d'actions réussies / échouées / simulées, rappel de chaque échec, « redémarrage requis », rappels manuels, emplacement du journal.
 
 ---
 
 ## 9. Ordre de développement — itérations
 
-L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à comportement constant**, puis on ajoute le moteur réel en commençant par les actions réversibles et en finissant par les plus longues. Chaque itération est utilisable sur une clé et se termine par `tools/Invoke-Tests.ps1`, `tools/Invoke-Lint.ps1` verts et la partie concernée de `docs/recette.md` déroulée sur un poste réel.
+L'ordre suit les dépendances (§4.1) et le risque : on **restructure d'abord à comportement constant**, puis on ajoute le moteur réel en commençant par les actions réversibles et en finissant par les plus longues. Chaque itération est utilisable sur un poste et se termine par `tools/Invoke-Tests.ps1`, `tools/Invoke-Lint.ps1` verts et la partie concernée de `docs/recette.md` déroulée sur un poste réel.
 
 ### Itération 0 — Fondations, parité avec l'existant
 
@@ -975,6 +987,84 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 - **`software.json`** : les deux logiciels ajoutés par le technicien (Microsoft Teams, Visual Studio Code) sont versionnés, et les trois entrées passent en `machine`. Le catalogue de test (`tests/Fixtures/software.test.json`) reste sans portée, pour couvrir les entrées antérieures.
 - **Vérifié** : 1269 tests Pester verts, PSScriptAnalyzer sans avertissement.
 
+### Itération 13 — Outil indépendant du support, installations unifiées
+
+Constat (audit du 2026-11-15) : le cahier des charges décrivait un outil lancé depuis une clé USB, avec une étape et une section par nature d'outil installé. Trois incohérences en découlent : la clé est supposée partout (journal, catalogue, livraison, messages), les quatre constructeurs sont proposés sur tous les postes, et trois mécanismes font la même chose (installer). Cette itération change le contrat : `ConfigVersion` 4, `CatalogVersion` 2, ordre d'exécution à 12 rangs (DEC23 à DEC29).
+
+**Ordre d'exécution cible** (remplace les 14 rangs ; révise DEC14) :
+
+| Rang | Étape | Contenu |
+|---|---|---|
+| 1 | `export-inventory` | Relevé et export des N/S et MAC |
+| 2 | `remove-local-accounts` | Sessions locales et profils |
+| 3 | `remove-microsoft-apps` | Office, Outlook, OneNote, Teams |
+| 4 | `remove-onedrive` | OneDrive, puis son dossier |
+| 5 | `uninstall-software` | Logiciels installés |
+| 6 | `install` | Entrées cochées du catalogue, dans l'ordre du catalogue (dépendance .NET d'une entrée juste avant elle), puis Office |
+| 7 | `disable-ipv6` | IPv6 sur les cartes cochées |
+| 8 | `set-power-plan` | Mode d'alimentation |
+| 9 | `update-drivers` | Commande `Update` des entrées installées qui en portent une (pilotes, BIOS) |
+| 10 | `run-windows-update` | Windows Update |
+| 11 | `rename-computer` | Nom d'hôte |
+| 12 | `create-local-account` | Session locale à créer |
+
+**Sections de la fenêtre cible** (numéro = position, calculé par le registre, plus jamais écrit dans le XAML) : colonne gauche — 1 Numéro de série et adresses MAC, 2 Suppression des sessions locales, 3 Désinstallation des programmes Microsoft, 4 Désinstallation des logiciels installés ; colonne droite — 5 Installations, 6 Paramètres système, 7 Mises à jour, 8 Nom d'hôte, 9 Créer une session locale.
+
+**Lot A — Indépendance du support (F3)**
+
+- `config.json` : `Output.Folder` (C14), `Execution.WorkFolder` (C15) ; `Infrastructure/Config/AppConfig.ps1` valide la version 4 et refuse la version 3 avec la consigne de migration.
+- `Infrastructure/Logging/RunLog.ps1` : `New-RunLog` reçoit le dossier de sortie résolu et le repli `<WorkFolder>\sortie` ; `Copy-RunLogToDrive` devient `Copy-RunLogToOutput`. Messages : « dossier de sortie », jamais « clé ».
+- `Application/AppContext.ps1` : `Paths.Tool` (dossier de l'outil), `Paths.Output`, `Paths.Work`, `Paths.Cache`, `Paths.Odt` ; retrait de `Paths.Logos` et du drapeau `RealModeAvailable` (toujours vrai depuis l'itération 3).
+- `Application/FinalReport.ps1` : emplacement du journal et de l'inventaire ; si le dossier de sortie était inaccessible au démarrage, nouvel essai de copie, sinon consigne de copie manuelle avec le chemin local.
+- `Lancer.cmd` : chemin transmis à l'élévation sans être réinterprété (apostrophe, espace, parenthèse) ; `Preparation.ps1` absent à côté du lanceur → message « extrayez l'archive avant de lancer » ; lancé depuis un lecteur réseau mappé → chemin réseau complet résolu avant l'élévation (un lecteur mappé n'existe pas dans la session élevée).
+- Fichier `VERSION` à la racine (une ligne, `1.13.0`) : lu au démarrage, affiché dans le titre de la fenêtre (« FastPrepare 1.13.0 — Préparation de poste ») et en première ligne du journal.
+- `tools/Build-Release.ps1 -Destination <dossier> [-Zip]` remplace `Build-Usb.ps1` : mêmes contrôles (lint, tests, configuration validée), dossier `FastPrepare-<version>\` avec le strict nécessaire, `BUILD.txt` (date, commit, empreinte de `config.json`), archive `FastPrepare-<version>.zip` avec `-Zip`. Le catalogue déjà présent à destination reste conservé (`-ReplaceSoftwareCatalog`).
+- `tests/Architecture.Tests.ps1` : aucun fichier de `src\` ne contient « USB » ni « la clé » au sens du support.
+
+**Lot B — Catalogue étendu, utilitaire du constructeur détecté (F4)**
+
+- `Core/SoftwareCatalog.ps1` : `ManufacturerPattern`, `DotNet[]` et `Update` normalisés et validés (règles reprises d'`AppConfig.ps1`, qui les perd) ; `Select-ApplicableSoftware -Catalog -Manufacturer` renvoie les entrées proposées sur le poste ; `Test-SoftwareApplicable -Entry -Manufacturer`. `Core/ManufacturerMatch.ps1` (`Resolve-UtilityKey`) est supprimé.
+- `Core/DotNetRequirement.ps1` : `ToolVersion` à la place de `DcuVersion`.
+- `Core/Selection.ps1` : `VendorUtility` disparaît ; `ExtraSoftware.Ids` devient `Catalog.Ids` ; `Updates.VendorUtility` devient `Updates.Drivers` ; `Test-Selection` refuse une entrée cochée qui n'est pas applicable au constructeur du relevé.
+- `Infrastructure/Config/SoftwareCatalog.ps1` : lecture des versions 1 et 2, écriture en version 2 ; les champs facultatifs d'une entrée sont conservés quand le formulaire l'enregistre.
+- `software.json` : Dell Command Update (avec `DotNet` et `Update`), HP Image Assistant, Lenovo Commercial Vantage, Lenovo Thin Installer (avec `Update`), Fujitsu DeskUpdate, tous cochés par défaut et limités à leur constructeur. Une entrée « lien direct » sans lien n'est plus acceptée : Thin Installer est livré avec son lien, ou retiré du catalogue.
+- Onglet Réglages : champ « Constructeur » (vide : tous les postes), colonne correspondante dans la liste, qui montre **toutes** les entrées. `DotNet` et `Update` ne sont pas modifiables dans le formulaire (écrits à la main dans `software.json`), mais affichés en lecture seule.
+- `Application/MachineSnapshot.ps1` : `SuggestedUtilityKey` disparaît ; le relevé porte le constructeur, la fenêtre filtre.
+
+**Lot C — Une section et une étape « Installations » (F5)**
+
+- `Application/Steps/Install.step.ps1` (rang 6) remplace `InstallVendorUtility`, `InstallOffice` et `InstallSoftware` ; `UpdateDrivers.step.ps1` (rang 9) remplace `UpdateVendorUtility`.
+- `Application/Install/CatalogInstall.ps1` : `Get-CatalogInstallAction` (plan) et `Invoke-CatalogInstall` (un élément winget ou un lien direct, avec vérification de signature et d'empreinte) : **le seul chemin de code** qui installe une entrée. `Application/Install/OfficeInstall.ps1` : plan et exécution d'Office, inchangés sur le fond.
+- `Application/Prefetch.ps1` est supprimé (DEC29) ; `Resolve-UtilityDotNetRequirement` et `Install-DotNetRequirement` rejoignent `CatalogInstall.ps1`.
+- `UI/Sections/InstallSection.ps1` + `Xaml/Sections/Install.xaml` remplacent `VendorUtility`, `Office` et `Software` : cases du catalogue applicables au poste (les entrées propres au constructeur en tête, avec la mention du constructeur détecté), puis le bloc Office (cards d'édition, Teams, applications incluses). Titre du bloc : « Microsoft Office (ODT) ».
+- `UI/Sections/UpdatesSection.ps1` : « Mettre à jour les pilotes et le BIOS (`<Update.Label>`) », active si une entrée cochée porte `Update` ; masquée sinon.
+- `UI/SectionRegistry.ps1` : `-Number` devient l'ordre d'affichage ; le titre affiché est « n · titre », n calculé. `Register-Step` perd `-Section`. Dossier `logos/` et paramètre `-LogoPath` des cards supprimés.
+- `Application/StepOrder.ps1` : les 12 rangs ci-dessus.
+
+**Lot D — Traces et documentation (F6)**
+
+- `Application/FinalReport.ps1` : en mode réel, `<WorkFolder>\cache` et `<WorkFolder>\odt` supprimés (`Core/PathGuard.ps1` vérifie le chemin) si aucune action d'installation n'a échoué ; conservés et signalés sinon.
+- `README.md`, `docs/CONTRIBUTING.md`, `docs/recette.md` : réécrits sans « clé » ; section de recette « Itération 13 » (lancement depuis un dossier téléchargé, depuis un partage réseau, depuis un support en lecture seule ; poste Dell, HP, Lenovo, constructeur inconnu ; dossier de sortie réseau inaccessible).
+- §4 à §8 et §10 de ce plan mis à jour à la livraison (§10.2 « Ajouter une marque » devient « une entrée de catalogue avec `ManufacturerPattern` »).
+
+**Tests** : `Core/SoftwareCatalog.Tests` (champs facultatifs, applicabilité, constructeur vide ou inconnu) ; `Core/SelectionAndOdtRemove.Tests` (entrée d'un autre constructeur refusée) ; `Infrastructure/AppConfig.Tests` (version 4, version 3 refusée, `Output`, `WorkFolder`) ; `Infrastructure/SoftwareCatalog.Tests` (version 1 lue, version 2 écrite, champs facultatifs conservés) ; `Infrastructure/RunLog.Tests` (dossier de sortie relatif, absolu, inaccessible) ; `Application/InstallStep.Tests` (remplace `VendorSteps`, `OfficeStep` et la partie installation de `RealSteps`) ; `Application/StepCatalog.Tests` (12 rangs) ; `Application/FinalSteps.Tests` (nettoyage, copie vers le dossier de sortie) ; `Tools.Tests` (`Build-Release`, archive).
+
+**Ordre de réalisation** : A (comportement des étapes inchangé), puis B et C ensemble (le schéma et l'étape changent d'un bloc), puis D. Lint et tests verts à la fin de chaque lot.
+
+- **Sortie** : le même dossier FastPrepare, copié sur une clé, téléchargé ou ouvert depuis un partage, prépare un poste sans différence de comportement ; journal et inventaire arrivent dans le dossier de sortie configuré ; un poste Dell ne voit que Dell Command Update, un poste de constructeur inconnu aucun utilitaire ; tout ce qui s'installe est coché dans une seule section et exécuté par une seule étape.
+
+**État : ✅ codée le 2026-11-15** (branche `iteration-13`) ; recette sur postes réels à dérouler (`docs/recette.md`, « Itération 13 »). Précisions et écarts avec la cible ci-dessus :
+
+- **Lenovo Thin Installer par winget.** Le paquet `Lenovo.ThinInstaller` existe dans la source winget (constaté par `winget search` le 2026-11-15) : l'entrée du catalogue est un paquet winget, plus un lien direct. Le lien resté vide depuis l'itération 5 disparaît, et `config.json` ne produit plus aucun avertissement au démarrage.
+- **Catalogue livré** : cinq outils constructeurs (Dell Command Update avec `DotNet` et `Update`, HP Image Assistant, Lenovo Commercial Vantage, Lenovo Thin Installer, Fujitsu DeskUpdate), cochés par défaut sur les postes de leur marque, puis les trois logiciels existants. Portée winget laissée vide pour les outils constructeurs (comportement antérieur, DEC22).
+- **Champs facultatifs toujours présents en mémoire** (`ManufacturerPattern` vide, `DotNet` vide, `Update` nul) : aucun accès à une propriété absente ; ils ne sont omis qu'à l'écriture (`ConvertTo-SoftwareDocumentEntry`). `RebootExitCodes` vide vaut « 3010 et 1641 », comme l'absence du champ auparavant.
+- **Fenêtre vérifiable sans être affichée** : `Initialize-MainWindow` (construction) est séparée de `Start-MainWindow` (affichage) ; `tests/FastPrepare.UI/MainWindow.Tests.ps1` contrôle les neuf titres numérotés, le filtrage par constructeur (Dell, HP, Lenovo, inconnu, non détecté), la case « pilotes et BIOS » et l'onglet Réglages.
+- **Section « Mises à jour »** : la case « pilotes et BIOS » est **masquée** (plutôt que grisée) quand aucun outil coché ne sait mettre à jour.
+- **`Lancer.cmd`** : la branche « `Preparation.ps1` introuvable » et la préparation de l'élévation (chemin avec apostrophe, espaces et parenthèses) ont été exécutées ; l'élévation elle-même et le lancement depuis un lecteur réseau restent à vérifier en recette (ils demandent une session interactive).
+- **Nettoyage (DEC28)** : conservé aussi quand un retrait d'Office par ODT échoue (étape 3), pas seulement une installation ; la garde de chemin (`Remove-WorkSubfolder`) refuse tout dossier qui n'est pas strictement sous `Execution.WorkFolder`.
+- **Recettes historiques** : les listes des itérations 0 à 12 de `docs/recette.md` gardent la numérotation de leur époque ; une table de correspondance figure en tête du fichier.
+- **Vérifié** : 1393 tests Pester verts ; 3 tests de `WingetSource.Tests.ps1` (DEC21) échouent sur le poste de développement, **avant comme après** cette itération (chemin temporaire du poste, sans rapport avec le code modifié). **PSScriptAnalyzer n'est pas installé sur ce poste** : `tools\Invoke-Lint.ps1` n'a pas pu être lancé, seuls l'encodage et les fins de ligne sont couverts par `Architecture.Tests.ps1`. À lancer avant la fusion.
+
 | Itération | Sections du cahier | Écarts / dettes levés | Modules principaux |
 |---|---|---|---|
 | 0 | toutes (affichage) | D1, D3, D4, D6, D8, D10–D15 | squelette des quatre modules, UI |
@@ -990,6 +1080,7 @@ Première fonctionnalité ajoutée après le cahier ; elle suit les recettes §1
 | 10 | 5, 8 (winget) | — (correctif, DEC20) | Winget (Infrastructure), MachineSnapshot |
 | 11 | 5, 8 (winget) | — (correctif, DEC21) | Winget (Infrastructure), AppContext |
 | 12 | 8 | — (DEC22) | SoftwareCatalog, Winget, onglet Réglages |
+| 13 | toutes (contrat révisé, hors cahier) | F3, F4, F5, F6 (DEC23 à DEC29) | AppConfig, RunLog, SoftwareCatalog, Install.step, InstallSection, Build-Release |
 
 ---
 
@@ -1008,15 +1099,15 @@ C'est le critère de réussite de cette architecture : chaque évolution prévis
 
 ### 10.2 Ajouter une marque (ex. Dynabook)
 
-1. `config.json` : un bloc `Utilities.dynabook` (`Label`, `Subtitle`, `Logo`, `ManufacturerPattern`, `Install[]`, `Update`).
-2. `logos/dynabook.png` (facultatif).
-3. Aucun fichier de code modifié. La card apparaît, la présélection fonctionne, l'installation et la MàJ passent par les étapes 06 et 11. Seule exception : une dépendance conditionnelle à la version (comme .NET pour Dell) demande d'étendre `DotNetRequirement.ps1` en règle générique « dépendances par version ».
+1. `software.json` : une entrée avec `ManufacturerPattern` (ex. `Dynabook|Toshiba`), créée dans l'onglet **Réglages** (champ « Constructeur ») comme tout logiciel (§10.3).
+2. Pour la mise à jour des pilotes et du BIOS : ajouter à la main le bloc `Update` (`FilePath`, `Arguments`, `SuccessExitCodes`, `RebootExitCodes`) à cette entrée dans `software.json` ; pour une dépendance .NET qui varie selon la version de l'outil, le bloc `DotNet`. L'onglet Réglages les affiche et les conserve.
+3. Aucun fichier de code modifié. L'outil n'est proposé que sur les postes de cette marque, s'installe par l'étape `install` et se met à jour par l'étape `update-drivers`.
 
-### 10.3 Ajouter un logiciel à la section 8 (ex. 7-Zip)
+### 10.3 Ajouter un logiciel à la section Installations (ex. 7-Zip)
 
-1. Onglet **Réglages** → « Catalogue des logiciels » → **Nouveau** : libellé, puis identifiant winget et source (ou lien direct, nom du fichier, arguments silencieux, éditeur attendu).
+1. Onglet **Réglages** → « Catalogue des logiciels » → **Nouveau** : libellé, puis identifiant winget et source (ou lien direct, nom du fichier, arguments silencieux, éditeur attendu). « Constructeur » vide : proposé sur tous les postes.
 2. **Tester** : le paquet est trouvé (nom, version) ou le lien répond avec un fichier ; rien n'est téléchargé ni installé.
-3. **Enregistrer** : `software.json` est réécrit sur la clé ; la case apparaît aussitôt en section 8.
+3. **Enregistrer** : `software.json` est réécrit ; la case apparaît aussitôt dans la section Installations.
 4. Aucun fichier de code modifié, aucun fichier édité à la main (l'édition directe de `software.json` reste possible, il est validé au démarrage).
 
 ### 10.4 Ajouter une édition Office ou changer un canal
@@ -1027,19 +1118,19 @@ C'est le critère de réussite de cette architecture : chaque évolution prévis
 ### 10.5 Ajouter une section d'interface
 
 1. `src/FastPrepare.UI/Xaml/Sections/<Nom>.xaml` : le fragment.
-2. `src/FastPrepare.UI/Sections/<Nom>Section.ps1` : `Register-UiSection` (colonne, numéro, `Initialize`, `GetSelection`, `Validate`, `OnSnapshot`).
+2. `src/FastPrepare.UI/Sections/<Nom>Section.ps1` : `Register-UiSection` (colonne, `-Number` = rang d'affichage, `Initialize`, `GetSelection`, `Validate`, `OnSnapshot`). Dans le fragment, le titre est un `TextBlock` nommé `TxtTitle`, **sans numéro** : il est numéroté à l'affichage.
 3. Si la section affiche une détection : la propriété dans `MachineSnapshot.ps1` et l'adaptateur de lecture correspondant.
 4. `MainWindow.ps1` n'est pas modifié.
 
 ### 10.6 Ajouter un réglage à l'onglet « Réglages » (it. 9)
 
 1. `src/FastPrepare.UI/Xaml/Sections/<Nom>Settings.xaml` et `src/FastPrepare.UI/Sections/<Nom>SettingsSection.ps1` : `Register-UiSection -Column Settings -Number 1xx`.
-2. Les données du réglage dans un fichier dédié à la racine de la clé, lu et écrit par un adaptateur de `Infrastructure/Config`, avec ses règles dans `Core` (modèle : le catalogue des logiciels). `config.json` reste écrit à la main et n'est jamais réécrit par l'outil (DEC17).
+2. Les données du réglage dans un fichier dédié du dossier de l'outil, lu et écrit par un adaptateur de `Infrastructure/Config`, avec ses règles dans `Core` (modèle : le catalogue des logiciels). `config.json` reste écrit à la main et n'est jamais réécrit par l'outil (DEC17).
 3. Si d'autres sections affichent ce réglage : leur rappel `OnSettingsChanged`, et `Publish-SettingsChanged` après l'enregistrement.
 
 ### 10.7 Ce qui demande une décision avant d'être codé
 
-Une règle qui change le **contrat** (format du journal, ordre d'exécution du cahier, comportement en cas d'échec, introduction d'un redémarrage) se décide d'abord dans ce document (§11) et dans le cahier des charges, puis se code.
+Une règle qui change le **contrat** (format du journal, ordre d'exécution, schéma de `config.json` ou de `software.json`, comportement en cas d'échec, introduction d'un redémarrage) se décide d'abord dans ce document (§11), puis se code. Depuis l'itération 13, ce plan est la référence du contrat : le cahier des charges d'origine n'en est plus que le point de départ (DEC27).
 
 ---
 
@@ -1069,6 +1160,13 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | DEC20 | Source winget inutilisable (`0x8A15000F`) : que fait l'outil ? | **Une réparation automatique, la plus légère** : `winget source update` puis un nouvel essai, au démarrage comme à chaque appel (elle ne fait que rafraîchir le catalogue de winget). **Jamais `winget source reset --force` automatiquement** : il supprime aussi les sources ajoutées par une organisation ; c'est au technicien de le décider, le message lui donne les commandes. Constat qui justifie de ne pas s'arrêter à la mise à jour dans le message : sur le poste de développement, `source update` seul n'a pas suffi. | 10 |
 | DEC21 | `winget source update` ne suffit pas (constaté : paquet `Microsoft.Winget.Source` absent du compte administrateur, réparé à la main par `Add-AppxPackage … source.msix`) : FastPrepare doit-il le faire seul ? | **Oui, en seconde tentative automatique**, pour qu'aucune commande ne soit à taper : téléchargement HTTPS du paquet désigné dans `config.json` (lien jamais dans le code), **signature Authenticode valide et émise pour « CN=Microsoft Corporation » exigée** avant installation, installation pour le seul compte courant, fichier supprimé ensuite. Toujours **pas** de `winget source reset --force` automatique (il supprime les sources d'une organisation). Bloc `Winget.SourcePackage` facultatif : absent, la seconde tentative est sautée et le message le dit. | 11 |
 | DEC22 | Portée d'une installation winget (constat : sans `--scope`, VS Code s'installe avec `VSCodeUserSetup`, dans le profil du compte **qui lance l'outil** — souvent un compte administrateur, pas l'utilisateur final). | **Champ `Scope` par logiciel winget du catalogue** : `machine` (pour tous les utilisateurs), `user` (compte qui lance l'outil) ou vide (choix de winget, comportement antérieur, conservé pour les entrées existantes). **`machine` par défaut pour un nouveau logiciel** dans l'onglet Réglages : un outil de préparation de poste installe pour le poste. Le test vérifie qu'un installateur existe **pour cette portée** : `winget show --scope` répond 0 même quand aucun installateur ne correspond (constaté pour Adobe Reader et 7-Zip en `user`), donc la présence d'un installateur est détectée par sa ligne SHA-256 (indépendante de la langue) ; le nom du fichier installateur est affiché (ex. `VSCodeSetup-x64-1.143.1.exe`). Les éléments winget des utilitaires constructeurs (`config.json`) ne sont pas concernés pour l'instant. | 12 |
+| DEC23 | L'outil suppose une clé USB (journal « sur la clé », repli « clé en lecture seule », catalogue « de la clé »). Que devient ce contrat quand l'outil est téléchargé ou lancé depuis un partage ? | **Aucune hypothèse sur le support.** Le « dossier de l'outil » est celui de `Preparation.ps1`, où qu'il soit. Journal et inventaire vont dans **`Output.Folder`**, configurable : relatif au dossier de l'outil (`logs`, valeur par défaut, comportement antérieur), absolu ou réseau. Dossier inaccessible → écriture dans `<WorkFolder>\sortie`, signalée, puis nouvelle copie en fin d'exécution (mécanisme E7 généralisé). Aucun identifiant de partage dans la configuration. Le catalogue reste désigné par `SoftwareCatalog`, qui accepte déjà un chemin absolu ou réseau : un catalogue commun à plusieurs techniciens devient possible (répond à QO6). | 13 |
+| DEC24 | Livraison : `Build-Usb.ps1` est le seul moyen de produire un livrable, et rien ne porte de numéro de version. | **`Build-Release.ps1`** produit un dossier `FastPrepare-<version>` et, avec `-Zip`, une archive : le même livrable se copie sur une clé, se dépose sur un partage ou se télécharge. **Version** dans un fichier `VERSION` à la racine (`majeur.itération.correctif`, `1.13.0`), affichée dans la fenêtre et le journal : un journal dit quelle version l'a produit. Les noms `Lancer.cmd` et `Preparation.ps1` sont conservés (habitude des techniciens, aucune valeur à les renommer). | 13 |
+| DEC25 | Les quatre constructeurs sont proposés sur tous les postes ; la détection ne fait que présélectionner. | **Seul l'outil du constructeur détecté est proposé.** `ManufacturerPattern` par entrée de catalogue ; la fenêtre filtre, et `Test-Selection` refuse une entrée d'un autre constructeur (défense en profondeur : le plan ne se construit pas). Constructeur inconnu ou non détecté (machine virtuelle, assembleur) : aucune entrée à motif n'est proposée, sans possibilité de forcer ; les entrées sans motif restent proposées partout. L'onglet Réglages montre tout le catalogue, quel que soit le poste. | 13 |
+| DEC26 | Utilitaire constructeur, Office et logiciels : trois sections, trois étapes, deux sources de configuration pour la même action (installer). | **Une section « Installations », une étape `install`, un chemin de code par nature d'élément.** Les utilitaires constructeurs deviennent des entrées de `software.json` (`CatalogVersion` 2) ; `Utilities` quitte `config.json` (`ConfigVersion` 4). **Office rejoint la section et l'étape mais garde son formulaire et son bloc `Office` de configuration** : édition, variante Teams et applications incluses ne se réduisent pas à une ligne de catalogue, et son XML est généré. Ordre dans l'étape : catalogue (dans l'ordre du fichier), puis Office, l'installation la plus longue. Les cards à logo disparaissent avec le choix entre marques : une case à cocher, comme tout logiciel. | 13 |
+| DEC27 | Numérotation : les sections 1 à 11 et les rangs 1 à 14 viennent du cahier ; l'affichage ne suit ni l'écran ni l'exécution (étape 6 = section 5, étape 13 = section 1). | **Renumérotation dans l'ordre d'exécution, sans référence au cahier** : 12 rangs, 9 sections, numéro de section calculé à l'affichage. **Révise DEC14** (le cahier n'est plus la référence de numérotation ; ce plan l'est). Les journaux antérieurs gardent leur numérotation, la version en première ligne du journal lève l'ambiguïté. | 13 |
+| DEC28 | L'outil laisse `C:\ODT` et son cache de téléchargements sur le poste livré. | **Un dossier de travail unique, `Execution.WorkFolder`** (`%ProgramData%\FastPrepare`), dont `cache\` et `odt\` sont **supprimés en fin d'exécution réelle si aucune installation n'a échoué** ; en cas d'échec ils sont conservés (journaux d'ODT utiles au diagnostic) et le rapport final le dit. `sortie\` (repli du journal) n'est jamais supprimé par l'outil. | 13 |
+| DEC29 | Téléchargement anticipé au clic sur la card (cahier, section 5) : que devient-il sans card ? | **Supprimé.** Depuis DEC13 il ne portait plus que sur un fichier (Lenovo Thin Installer, quelques mégaoctets) et sur la résolution de la version de Dell Command Update : gain négligeable, pour un fichier, un état d'arrière-plan dans la fenêtre et un cas particulier dans l'étape. L'étape `install` télécharge elle-même. **Écart assumé au cahier.** | 13 |
 
 **Questions ouvertes** (à trancher avec le cahier des charges avant l'itération concernée) :
 
@@ -1078,5 +1176,5 @@ Une règle qui change le **contrat** (format du journal, ordre d'exécution du c
 | QO2 | Teams classique : supprimer le dossier `%LocalAppData%\Microsoft\Teams` du profil connecté seulement, ou de tous les profils restants ? **Provisoirement : profil connecté seulement** (itération 4). | 4 |
 | QO3 | Windows Update : une passe suffit-elle si une mise à jour en exige une autre (pile de maintenance) ? Le cahier dit « une passe complète » : on journalise « des mises à jour restent disponibles » sans relancer. **Appliqué ainsi** (itération 7). | 7 |
 | QO5 | Session créée : faut-il aussi la configurer en ouverture automatique, ou créer son profil d'avance ? **Non pour l'instant** (aucun besoin exprimé ; l'ouverture automatique stocke le mot de passe dans le registre). | 8 |
-| QO6 | Catalogue logiciel : faut-il partager un même catalogue entre plusieurs clés (dossier réseau, dépôt) ou un catalogue par clé suffit-il ? **Un par clé pour l'instant** ; `Build-Usb.ps1` copie celui du dépôt. Attention : `Build-Usb` remplace le `software.json` de la clé par celui du dépôt — un catalogue modifié sur la clé doit d'abord être recopié dans le dépôt. | 9 |
+| QO6 | Catalogue logiciel partagé entre plusieurs techniciens ? **Tranchée à l'itération 13 (DEC23)** : `SoftwareCatalog` peut désigner un chemin réseau ; par défaut, le catalogue reste dans le dossier de l'outil, et `Build-Release.ps1` conserve celui déjà présent à destination. | 13 |
 | QO4 | Préciser les codes de sortie de chaque outil constructeur considérés comme succès (`Update.SuccessExitCodes`) ou comme redémarrage nécessaire (`Update.RebootExitCodes`). **Valeurs provisoires dans `config.json`** (itération 5), à confirmer en recette. | 5 |

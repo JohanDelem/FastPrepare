@@ -1,9 +1,9 @@
 ﻿<#
-    Section 1 — Changer le nom d'hôte.
+    Section « Changer le nom d'hôte ».
     Champ grisé si la case est décochée ; saisie vérifiée par FastPrepare.Core (Get-HostNameError).
 #>
 
-Register-UiSection -Id 'host-name' -Number 1 -Column Left -XamlFile 'Sections\HostName.xaml' -Initialize {
+Register-UiSection -Id 'host-name' -Number 8 -Column Right -XamlFile 'Sections\HostName.xaml' -Initialize {
     param($Section, $Context)
     $Section.State.DefaultHint = "15 caractères max · lettres, chiffres, tiret · appliqué au redémarrage"
     $Section.Controls.TxtHostHint.Text = $Section.State.DefaultHint

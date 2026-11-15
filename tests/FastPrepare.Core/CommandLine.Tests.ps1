@@ -27,11 +27,11 @@ Describe 'Split-CommandLine' {
 }
 
 Describe 'Expand-ConfigPath' {
-    BeforeAll { $variables = @{ ProgramFiles = 'C:\Program Files'; OdtFolder = 'C:\ODT' } }
+    BeforeAll { $variables = @{ ProgramFiles = 'C:\Program Files'; WorkFolder = 'C:\ProgramData\FastPrepare' } }
 
     It 'remplace les variables connues, sans tenir compte de la casse' {
         Expand-ConfigPath -Path '%ProgramFiles%\Dell\dcu-cli.exe' -Variables $variables | Should -Be 'C:\Program Files\Dell\dcu-cli.exe'
-        Expand-ConfigPath -Path '%odtfolder%\setup.exe' -Variables $variables | Should -Be 'C:\ODT\setup.exe'
+        Expand-ConfigPath -Path '%workfolder%\odt\setup.exe' -Variables $variables | Should -Be 'C:\ProgramData\FastPrepare\odt\setup.exe'
     }
     It 'laisse un chemin sans variable inchangé' {
         Expand-ConfigPath -Path 'ThinInstaller.exe' -Variables $variables | Should -Be 'ThinInstaller.exe'
