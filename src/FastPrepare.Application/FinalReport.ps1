@@ -1,6 +1,7 @@
 ﻿<#
     Rapport final : bilan, échecs rappelés un par un, redémarrage nécessaire, emplacement du
-    journal et de l'inventaire, rappel des actions manuelles, copie vers le dossier de sortie.
+    journal et de l'inventaire, rappel des actions manuelles, nettoyage du dossier de travail,
+    copie vers le dossier de sortie.
 #>
 
 function Write-FinalReport {
@@ -40,6 +41,8 @@ function Write-FinalReport {
         Write-RunLog -Log $log -Level ATTN -Message ('À faire à la main : {0}' -f ($reminders -join ' · '))
     }
 
+    if ($Context.Mode -ne 'Simulation') { Clear-WorkFolder -Failed $failed -Context $Context }
+
     # Dossier de sortie inaccessible au démarrage (journal en repli) : nouvel essai de copie (DEC23).
     if ($log.IsFallback) {
         $copy = Copy-RunLogToOutput -Log $log -AdditionalFile @($Plan.InventoryPath)
@@ -58,4 +61,29 @@ function Get-ManualReminder {
     param([Parameter(Mandatory)]$Config)
     if (-not $Config.PSObject.Properties['ManualReminders']) { return @() }
     return @(@($Config.ManualReminders) | Where-Object { $_ })
+}
+
+function Clear-WorkFolder {
+    <#
+        Supprime les téléchargements et le dossier ODT du poste (DEC28), sauf si une installation ou
+        un retrait par ODT a échoué : ils sont alors conservés pour le diagnostic, et signalés.
+        Le repli du journal (<WorkFolder>\sortie) n'est jamais supprimé. Ne lève pas d'erreur.
+    #>
+    param([AllowEmptyCollection()][object[]]$Failed = @(), [Parameter(Mandatory)]$Context)
+    $log = $Context.Log
+    $folders = @($Context.Paths.Cache, $Context.Paths.Odt) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+    if (@($folders).Count -eq 0) { return }
+    $installFailed = @(@($Failed) | Where-Object { @('install', 'remove-microsoft-apps') -contains $_.Action.StepId })
+    if ($installFailed.Count -gt 0) {
+        Write-RunLog -Log $log -Level ATTN -Message ('Fichiers de travail conservés pour le diagnostic (une installation a échoué) : {0}. À supprimer à la main ensuite.' -f (@($folders) -join ', '))
+        return
+    }
+    foreach ($folder in @($folders)) {
+        try {
+            [void](Remove-WorkSubfolder -Path $folder -WorkFolder $Context.Paths.Work)
+            Write-RunLog -Log $log -Message "Fichiers de travail supprimés : $folder"
+        } catch {
+            Write-RunLog -Log $log -Level ATTN -Message ('Fichiers de travail non supprimés ({0}) : {1}' -f $folder, $_.Exception.Message)
+        }
+    }
 }

@@ -1,7 +1,7 @@
 ﻿<#
     Produit le livrable de l'outil : un dossier FastPrepare-<version> contenant le strict nécessaire
-    à l'exécution (Lancer.cmd, Preparation.ps1, VERSION, config.json, software.json, src\, logos\,
-    packages\ et un dossier logs\ vide), et, avec -Zip, l'archive FastPrepare-<version>.zip.
+    à l'exécution (Lancer.cmd, Preparation.ps1, VERSION, config.json, software.json, src\, packages\
+    et un dossier logs\ vide), et, avec -Zip, l'archive FastPrepare-<version>.zip.
     Le même livrable se copie sur un support amovible, se dépose sur un partage ou se télécharge.
     Ni tests, ni documentation, ni journaux de développement.
     Si le dossier existe déjà : le code est remplacé, les journaux sont conservés, ainsi que le
@@ -69,7 +69,7 @@ if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Path 
 $srcDestination = Join-Path $target 'src'
 if (Test-Path -LiteralPath $srcDestination) { Remove-Item -LiteralPath $srcDestination -Recurse -Force }
 
-foreach ($item in 'Lancer.cmd', 'Preparation.ps1', 'VERSION', 'config.json', 'src', 'logos', 'packages') {
+foreach ($item in 'Lancer.cmd', 'Preparation.ps1', 'VERSION', 'config.json', 'src', 'packages') {
     $source = Join-Path $root $item
     if (Test-Path -LiteralPath $source) {
         Copy-Item -LiteralPath $source -Destination $target -Recurse -Force

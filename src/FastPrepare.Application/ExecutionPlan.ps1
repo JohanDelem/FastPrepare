@@ -6,7 +6,7 @@
 function New-ExecutionPlan {
     <#
         Vérifie la cohérence de la sélection (Test-Selection), puis appelle le Plan de chaque étape
-        dans l'ordre du cahier. Renvoie { Actions, Warnings, StepCount, InventoryPath }.
+        dans l'ordre d'exécution (StepOrder.ps1). Renvoie { Actions, Warnings, StepCount, InventoryPath }.
         Erreur si la sélection est incohérente.
     #>
     [CmdletBinding()]
@@ -30,11 +30,11 @@ function New-ExecutionPlan {
         foreach ($item in @(& $step.Plan $Selection $Snapshot $Context)) {
             if ($null -eq $item) { continue }
             if ($item.PSObject.TypeNames -contains 'FastPrepare.PlanWarning') {
-                $warnings.Add(('Section {0} : {1}' -f $step.Section, $item.Message))
+                $warnings.Add(('{0} : {1}' -f $step.Title, $item.Message))
             } elseif ($item.PSObject.TypeNames -contains 'FastPrepare.StepAction') {
                 $item.StepId = $step.Id
                 $item.StepNumber = $rank + 1
-                $item.Section = $step.Section
+                $item.StepTitle = $step.Title
                 $item.RealModeAvailable = [bool]$step.Invoke
                 $actions.Add($item)
             } else {

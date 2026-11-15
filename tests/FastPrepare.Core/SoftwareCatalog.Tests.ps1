@@ -124,9 +124,59 @@ Describe 'Format-SoftwareInstallCommand' {
 Describe 'Test-Selection — catalogue' {
     It 'logiciel coché absent du catalogue fourni : incohérence' {
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('7-zip')
+        $selection.Catalog.Ids = @('7-zip')
         $snapshot = New-TestSnapshot
         Test-Selection -Selection $selection -Config (Get-TestConfig) -Snapshot $snapshot | Should -Match "Logiciel inconnu"
         Test-Selection -Selection $selection -Config (Get-TestConfig) -Snapshot $snapshot -SoftwareCatalog @(New-Winget) | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Champs facultatifs d''une entrée (outils constructeurs, DEC25 et DEC26)' {
+    BeforeAll {
+        function New-Vendor([hashtable]$Change = @{}) {
+            $values = @{
+                Id = 'outil-marque'; Label = 'Outil de la marque'; DefaultChecked = $true; ManufacturerPattern = ' Marque|Autre '
+                Install = [pscustomobject]@{ Type = 'winget'; Id = 'Marque.Outil'; Source = 'winget' }
+                DotNet = @([pscustomobject]@{ ToolVersion = '5.7.0'; WingetId = 'Microsoft.DotNet.DesktopRuntime.8'; MinVersion = '8.0.8'; MaxVersion = '8.0.25' })
+                Update = [pscustomobject]@{ FilePath = '%ProgramFiles%\Marque\outil-cli.exe'; Arguments = '/maj'; SuccessExitCodes = @(0, 500); RebootExitCodes = @(1) }
+            }
+            foreach ($key in $Change.Keys) { $values[$key] = $Change[$key] }
+            ConvertTo-SoftwareEntry -InputObject ([pscustomobject]$values)
+        }
+    }
+
+    It 'entrée simple : champs présents et vides (aucun accès à une propriété absente)' {
+        $entry = New-Winget
+        $entry.ManufacturerPattern | Should -Be ''
+        @($entry.DotNet).Count | Should -Be 0
+        $entry.Update | Should -BeNullOrEmpty
+        @(Get-SoftwareEntryError -Entry $entry).Count | Should -Be 0
+    }
+
+    It 'entrée complète : normalisée et valide ; le libellé de la mise à jour vaut celui de l''entrée par défaut' {
+        $entry = New-Vendor
+        @(Get-SoftwareEntryError -Entry $entry).Count | Should -Be 0
+        $entry.ManufacturerPattern | Should -Be 'Marque|Autre'
+        $entry.DotNet[0].ToolVersion | Should -Be '5.7.0'
+        $entry.Update.Label | Should -Be 'Outil de la marque'
+        (@($entry.Update.SuccessExitCodes) -join ',') | Should -Be '0,500'
+    }
+
+    It 'refus : <Why>' -ForEach @(
+        @{ Why = 'motif de constructeur invalide'; Change = @{ ManufacturerPattern = 'HP(' }; Pattern = 'Constructeur : expression régulière invalide' }
+        @{ Why = 'version d''outil invalide'; Change = @{ DotNet = @([pscustomobject]@{ ToolVersion = 'x'; WingetId = 'A.B'; MinVersion = '8.0.8'; MaxVersion = '' }) }; Pattern = 'DotNet\[0\]\.ToolVersion' }
+        @{ Why = 'runtime sans identifiant'; Change = @{ DotNet = @([pscustomobject]@{ ToolVersion = '1.0'; WingetId = ''; MinVersion = '8.0.8'; MaxVersion = '' }) }; Pattern = 'DotNet\[0\]\.WingetId' }
+        @{ Why = 'version maximale invalide'; Change = @{ DotNet = @([pscustomobject]@{ ToolVersion = '1.0'; WingetId = 'A.B'; MinVersion = '8.0.8'; MaxVersion = 'dernière' }) }; Pattern = 'DotNet\[0\]\.MaxVersion' }
+        @{ Why = 'dépendance .NET sur un lien direct'; Change = @{ Install = [pscustomobject]@{ Type = 'download'; Url = 'https://telechargement.exemple.test/o.exe'; FileName = 'o.exe'; ExpectedSigner = 'Marque' } }; Pattern = 'DotNet : réservé aux paquets winget' }
+        @{ Why = 'mise à jour sans exécutable'; Change = @{ Update = [pscustomobject]@{ FilePath = ''; Arguments = ''; SuccessExitCodes = @(0) } }; Pattern = 'Update\.FilePath : vide' }
+        @{ Why = 'mise à jour sans code de succès'; Change = @{ Update = [pscustomobject]@{ FilePath = 'o.exe'; Arguments = '' } }; Pattern = 'Update\.SuccessExitCodes : au moins un' }
+        @{ Why = 'codes de redémarrage non entiers'; Change = @{ Update = [pscustomobject]@{ FilePath = 'o.exe'; Arguments = ''; SuccessExitCodes = @(0); RebootExitCodes = @('un') } }; Pattern = 'Update\.RebootExitCodes : entiers attendus' }
+    ) {
+        (Get-SoftwareEntryError -Entry (New-Vendor -Change $Change)) -join "`n" | Should -Match $Pattern
+    }
+
+    It 'forme écrite dans software.json : champs facultatifs vides omis, les autres conservés' {
+        @((ConvertTo-SoftwareDocumentEntry -Entry (New-Winget)).PSObject.Properties.Name) | Should -Be @('Id', 'Label', 'DefaultChecked', 'Install')
+        @((ConvertTo-SoftwareDocumentEntry -Entry (New-Vendor)).PSObject.Properties.Name) | Should -Be @('Id', 'Label', 'DefaultChecked', 'ManufacturerPattern', 'Install', 'DotNet', 'Update')
     }
 }

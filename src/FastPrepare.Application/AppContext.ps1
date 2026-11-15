@@ -43,7 +43,7 @@ function New-AppContext {
         Root       = $Root
         Version    = $version
         Config     = $Config
-        # Catalogue de la section 8 (software.json) ; remplacé quand l'onglet Réglages enregistre.
+        # Catalogue des logiciels (software.json) ; remplacé quand l'onglet Réglages enregistre.
         SoftwareCatalog = @()
         Mode       = $mode
         Stamp      = $stamp
@@ -54,7 +54,6 @@ function New-AppContext {
             # Dossier de l'outil (lecture seule possible) et dossier réellement utilisé pour la sortie.
             Tool      = $Root
             Output    = $log.Folder
-            Logos     = Join-Path $Root 'logos'
             # Dossier de travail local sur le poste : téléchargements et Office Deployment Tool,
             # supprimés en fin d'exécution réussie (DEC28).
             Work      = $workFolder

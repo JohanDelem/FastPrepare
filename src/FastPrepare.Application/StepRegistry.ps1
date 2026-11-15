@@ -18,7 +18,6 @@ function Register-Step {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Id,
-        [Parameter(Mandatory)][int]$Section,
         [Parameter(Mandatory)][string]$Title,
         [Parameter(Mandatory)][scriptblock]$Plan,
         [scriptblock]$Invoke
@@ -27,7 +26,6 @@ function Register-Step {
     $script:RegisteredSteps[$Id] = [pscustomobject]@{
         PSTypeName = 'FastPrepare.Step'
         Id         = $Id
-        Section    = $Section
         Title      = $Title
         Plan       = $Plan
         Invoke     = $Invoke
@@ -89,7 +87,7 @@ function New-StepAction {
         Interactive = [bool]$Interactive
         StepId      = $null
         StepNumber  = 0
-        Section     = 0
+        StepTitle   = ''
         Index       = 0
         RealModeAvailable = $false
     }

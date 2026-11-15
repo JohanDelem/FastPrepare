@@ -2,8 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource Section}">
   <StackPanel>
-    <TextBlock Style="{StaticResource H2}" Text="7 · MàJ"/>
+    <TextBlock Name="TxtTitle" Style="{StaticResource H2}" Text="Mises à jour"/>
+    <!-- Affichée seulement si un outil constructeur coché dans « Installations » sait mettre à jour pilotes et BIOS -->
+    <CheckBox Name="ChkDrivers" Visibility="Collapsed" Content="Mettre à jour les pilotes et le BIOS"/>
     <CheckBox Name="ChkWU" IsChecked="True" Content="Lancer Windows Update"/>
-    <CheckBox Name="ChkUtilUpdate" IsEnabled="False" Content="Lancer la MàJ de l'utilitaire constructeur (pilotes, BIOS)"/>
   </StackPanel>
 </Border>

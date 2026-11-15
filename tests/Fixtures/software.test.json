@@ -1,6 +1,144 @@
 {
-  "CatalogVersion": 1,
+  "CatalogVersion": 2,
   "Software": [
+    {
+      "Id": "dell-command-update",
+      "Label": "Dell Command Update",
+      "DefaultChecked": true,
+      "ManufacturerPattern": "Dell",
+      "Install": {
+        "Type": "winget",
+        "Id": "Dell.CommandUpdate.Universal",
+        "Source": "winget",
+        "Override": "",
+        "Scope": ""
+      },
+      "DotNet": [
+        {
+          "ToolVersion": "5.7.0",
+          "WingetId": "Microsoft.DotNet.DesktopRuntime.8",
+          "MinVersion": "8.0.8",
+          "MaxVersion": "8.0.25"
+        },
+        {
+          "ToolVersion": "5.7.1",
+          "WingetId": "Microsoft.DotNet.DesktopRuntime.10",
+          "MinVersion": "10.0.8",
+          "MaxVersion": ""
+        }
+      ],
+      "Update": {
+        "Label": "Dell Command Update",
+        "FilePath": "%ProgramFiles%\\Dell\\CommandUpdate\\dcu-cli.exe",
+        "Arguments": "/applyUpdates -reboot=disable",
+        "SuccessExitCodes": [
+          0,
+          500
+        ],
+        "RebootExitCodes": [
+          1,
+          5
+        ]
+      }
+    },
+    {
+      "Id": "hp-image-assistant",
+      "Label": "HP Image Assistant",
+      "DefaultChecked": true,
+      "ManufacturerPattern": "HP|Hewlett",
+      "Install": {
+        "Type": "winget",
+        "Id": "HP.ImageAssistant",
+        "Source": "winget",
+        "Override": "",
+        "Scope": ""
+      },
+      "Update": {
+        "Label": "HP Image Assistant",
+        "FilePath": "HPImageAssistant.exe",
+        "Arguments": "/Operation:Analyze /Action:Install /Silent",
+        "SuccessExitCodes": [
+          0,
+          256,
+          257
+        ],
+        "RebootExitCodes": [
+          3010
+        ]
+      }
+    },
+    {
+      "Id": "lenovo-commercial-vantage",
+      "Label": "Lenovo Commercial Vantage",
+      "DefaultChecked": true,
+      "ManufacturerPattern": "Lenovo",
+      "Install": {
+        "Type": "winget",
+        "Id": "9NR5B8GVVM13",
+        "Source": "msstore",
+        "Override": "",
+        "Scope": ""
+      }
+    },
+    {
+      "Id": "lenovo-thin-installer",
+      "Label": "Lenovo Thin Installer",
+      "DefaultChecked": true,
+      "ManufacturerPattern": "Lenovo",
+      "Install": {
+        "Type": "winget",
+        "Id": "Lenovo.ThinInstaller",
+        "Source": "winget",
+        "Override": "",
+        "Scope": ""
+      },
+      "Update": {
+        "Label": "Lenovo Thin Installer",
+        "FilePath": "%ProgramFiles(x86)%\\Lenovo\\ThinInstaller\\ThinInstaller.exe",
+        "Arguments": "/CM -search A -action INSTALL -noicon -includerebootpackages 1,3,4 -noreboot",
+        "SuccessExitCodes": [
+          0
+        ],
+        "RebootExitCodes": [
+          3010
+        ]
+      }
+    },
+    {
+      "Id": "fujitsu-deskupdate",
+      "Label": "Fujitsu DeskUpdate",
+      "DefaultChecked": true,
+      "ManufacturerPattern": "Fujitsu",
+      "Install": {
+        "Type": "winget",
+        "Id": "FujitsuClientComputingLimited.DeskUpdate",
+        "Source": "winget",
+        "Override": "",
+        "Scope": ""
+      },
+      "Update": {
+        "Label": "Fujitsu DeskUpdate",
+        "FilePath": "ducmd.exe",
+        "Arguments": "/WEB /DRV /BIOS",
+        "SuccessExitCodes": [
+          0
+        ]
+      }
+    },
+    {
+      "Id": "lenovo-outil-direct",
+      "Label": "Outil Lenovo (lien direct)",
+      "DefaultChecked": false,
+      "ManufacturerPattern": "Lenovo",
+      "Install": {
+        "Type": "download",
+        "Url": "https://download.exemple.test/outil/OutilSetup.exe",
+        "FileName": "OutilSetup.exe",
+        "Arguments": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
+        "Sha256": "",
+        "ExpectedSigner": "Lenovo"
+      }
+    },
     {
       "Id": "adobe-reader",
       "Label": "Adobe Acrobat Reader (64 bits)",

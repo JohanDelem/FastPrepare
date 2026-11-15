@@ -8,6 +8,9 @@ $ErrorActionPreference = 'Stop'
 foreach ($file in (Get-ChildItem -Path $PSScriptRoot -Filter '*.ps1' | Sort-Object -Property Name)) {
     . $file.FullName
 }
+foreach ($file in (Get-ChildItem -Path (Join-Path $PSScriptRoot 'Install') -Filter '*.ps1' | Sort-Object -Property Name)) {
+    . $file.FullName
+}
 foreach ($file in (Get-ChildItem -Path (Join-Path $PSScriptRoot 'Steps') -Filter '*.step.ps1' | Sort-Object -Property Name)) {
     . $file.FullName
 }

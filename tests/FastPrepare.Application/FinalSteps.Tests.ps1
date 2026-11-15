@@ -92,3 +92,65 @@ Describe 'Rappels des actions manuelles (facultatifs)' {
         ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'À faire à la main : '
     }
 }
+
+Describe 'Nettoyage du dossier de travail en fin d''exécution (DEC28)' {
+    BeforeEach {
+        $m = @{ ModuleName = 'FastPrepare.Application' }
+        Mock @m Set-PowerTimeout { }
+        Mock @m Assert-WingetAvailable { }
+        function New-WorkContext([string]$Name, [string]$Mode) {
+            # Dossier de travail de test : <dossier>\cache et <dossier>\odt, comme sur un poste.
+            $work = Join-Path $TestDrive $Name
+            $context = New-TestContext -Folder $work -Mode $Mode
+            $context.Paths.Odt = Join-Path $work 'odt'
+            foreach ($folder in $context.Paths.Cache, $context.Paths.Odt) {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $folder 'fichier.bin') -Value 'x'
+            }
+            return $context
+        }
+        function Invoke-Run($Context, [string[]]$Catalog = @()) {
+            $selection = New-Selection
+            $selection.SystemSettings.Power = $true
+            $selection.Catalog.Ids = $Catalog
+            $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $Context
+            return (Invoke-ExecutionPlan -Plan $plan -Context $Context)
+        }
+    }
+
+    It 'exécution réelle sans échec d''installation : téléchargements et dossier ODT supprimés, journal conservé' {
+        Mock @m Install-WingetPackage { [pscustomobject]@{ RebootRequired = $false; AlreadyInstalled = $false } }
+        $context = New-WorkContext 'w1' 'Real'
+        [void](Invoke-Run $context 'adobe-reader')
+        $context.Paths.Cache | Should -Not -Exist
+        $context.Paths.Odt | Should -Not -Exist
+        $context.Log.FilePath | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log).Line -join "`n") | Should -Match 'Fichiers de travail supprimés'
+    }
+
+    It 'une installation a échoué : fichiers conservés pour le diagnostic, et signalés' {
+        Mock @m Install-WingetPackage { throw 'code de sortie 1603' }
+        $context = New-WorkContext 'w2' 'Real'
+        [void](Invoke-Run $context 'adobe-reader')
+        $context.Paths.Cache | Should -Exist
+        $context.Paths.Odt | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'Fichiers de travail conservés pour le diagnostic'
+    }
+
+    It 'simulation : rien n''est supprimé (aucune modification du poste)' {
+        $context = New-WorkContext 'w3' 'Simulation'
+        [void](Invoke-Run $context)
+        $context.Paths.Cache | Should -Exist
+        $context.Paths.Odt | Should -Exist
+    }
+
+    It 'dossier hors du dossier de travail : suppression refusée par la garde de chemin, signalée' {
+        $context = New-WorkContext 'w4' 'Real'
+        $outside = Join-Path $TestDrive 'ailleurs'
+        New-Item -ItemType Directory -Path $outside -Force | Out-Null
+        $context.Paths.Odt = $outside
+        [void](Invoke-Run $context)
+        $outside | Should -Exist
+        ((Receive-RunLogEntry -Log $context.Log) | Where-Object Level -EQ 'ATTN').Line -join "`n" | Should -Match 'Fichiers de travail non supprimés'
+    }
+}

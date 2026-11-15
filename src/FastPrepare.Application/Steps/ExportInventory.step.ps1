@@ -1,10 +1,10 @@
 ﻿<#
-    Étape 1 — Relevé et export des N/S et MAC (section 10).
+    Étape 1 — Relevé et export des N/S et MAC.
     L'inventaire est exporté au démarrage (décision DEC10) : l'étape ne produit une action que
     si cet export a échoué (dossier de sortie momentanément inaccessible, par exemple).
 #>
 
-Register-Step -Id 'export-inventory' -Section 10 -Title 'Export de l''inventaire N/S + MAC' -Plan {
+Register-Step -Id 'export-inventory' -Title 'Export de l''inventaire N/S + MAC' -Plan {
     param($Selection, $Snapshot, $Context)
     $export = $Snapshot.InventoryExport
     if ($export -and $export.Path) { return }

@@ -1,5 +1,5 @@
 ﻿<#
-    Modification et test du catalogue des logiciels de la section 8 (itération 9, DEC17 à DEC19).
+    Modification et test du catalogue des logiciels (DEC17 à DEC19 ; outils constructeurs : DEC25, DEC26).
     Aucun type WPF : l'onglet Réglages n'en est que l'affichage. Les règles d'une entrée sont dans
     FastPrepare.Core (SoftwareCatalog.ps1), l'écriture du fichier dans FastPrepare.Infrastructure.
 #>

@@ -19,6 +19,35 @@ Describe 'Read-SoftwareCatalog' {
         @($catalog.Entries).Count | Should -BeGreaterThan 0
         $catalog.Entries[0].Install.Type | Should -Be 'winget'
     }
+    It 'software.json du dépôt : un outil par constructeur pris en charge, aucun lien à renseigner' {
+        $entries = @((Read-SoftwareCatalog -Path (Join-Path (Get-RepoRoot) 'software.json')).Entries)
+        foreach ($manufacturer in 'Dell Inc.', 'HP', 'LENOVO', 'FUJITSU') {
+            $vendor = @(Select-ApplicableSoftware -Catalog $entries -Manufacturer $manufacturer | Where-Object { $_.ManufacturerPattern })
+            $vendor.Count | Should -BeGreaterThan 0
+            # Chaque constructeur a une commande de mise à jour des pilotes et du BIOS.
+            @($vendor | Where-Object { $_.Update }).Count | Should -Be 1
+        }
+        @($entries | Where-Object { $_.Install.Type -eq 'download' -and -not $_.Install.Url }).Count | Should -Be 0
+    }
+    It 'format 1 (avant l''itération 13) : lu tel quel, réécrit au format 2' {
+        $path = Join-Path $TestDrive 'format1.json'
+        Write-Catalog $path '{ "CatalogVersion": 1, "Software": [ { "Id": "a", "Label": "A", "DefaultChecked": true, "Install": { "Type": "winget", "Id": "x.y", "Source": "winget", "Override": "" } } ] }'
+        $entries = @((Read-SoftwareCatalog -Path $path).Entries)
+        $entries[0].Id | Should -Be 'a'
+        $entries[0].ManufacturerPattern | Should -Be ''
+        [void](Save-SoftwareCatalog -Path $path -Entries $entries)
+        ([System.IO.File]::ReadAllText($path) | ConvertFrom-Json).CatalogVersion | Should -Be 2
+    }
+    It 'champs facultatifs : relus à l''identique après écriture, omis s''ils sont vides' {
+        $path = Join-Path $TestDrive 'facultatifs.json'
+        $source = @((Read-SoftwareCatalog -Path (Join-Path (Get-RepoRoot) 'tests\Fixtures\software.test.json')).Entries)
+        [void](Save-SoftwareCatalog -Path $path -Entries $source)
+        $read = @((Read-SoftwareCatalog -Path $path).Entries)
+        ($read | ConvertTo-Json -Depth 8) | Should -Be ($source | ConvertTo-Json -Depth 8)
+        $text = [System.IO.File]::ReadAllText($path)
+        ([regex]::Matches($text, '"ManufacturerPattern"')).Count | Should -Be @($source | Where-Object { $_.ManufacturerPattern }).Count
+        ([regex]::Matches($text, '"Update"')).Count | Should -Be @($source | Where-Object { $_.Update }).Count
+    }
     It 'fichier absent : catalogue vide et avertissement' {
         $catalog = Read-SoftwareCatalog -Path (Join-Path $TestDrive 'absent.json')
         @($catalog.Entries).Count | Should -Be 0
@@ -26,7 +55,7 @@ Describe 'Read-SoftwareCatalog' {
     }
     It 'refus : <Why>' -ForEach @(
         @{ Why = 'JSON invalide'; Json = '{ "CatalogVersion": 1, '; Pattern = "n'est pas un JSON valide" }
-        @{ Why = 'version inconnue'; Json = '{ "CatalogVersion": 2, "Software": [] }'; Pattern = 'CatalogVersion 1 attendue' }
+        @{ Why = 'version inconnue'; Json = '{ "CatalogVersion": 3, "Software": [] }'; Pattern = 'CatalogVersion 2 attendue' }
         @{ Why = 'liste absente'; Json = '{ "CatalogVersion": 1 }'; Pattern = 'Software' }
         @{ Why = 'doublon'; Json = '{ "CatalogVersion": 1, "Software": [ { "Id": "a", "Label": "A", "Install": { "Type": "winget", "Id": "x.y", "Source": "winget" } }, { "Id": "a", "Label": "B", "Install": { "Type": "winget", "Id": "x.z", "Source": "winget" } } ] }'; Pattern = 'Software\[1\] \(B\) — Identifiant interne' }
         @{ Why = 'lien http'; Json = '{ "CatalogVersion": 1, "Software": [ { "Id": "a", "Label": "A", "Install": { "Type": "download", "Url": "http://x.test/a.exe", "FileName": "a.exe", "ExpectedSigner": "E" } } ] }'; Pattern = 'https' }
@@ -61,7 +90,7 @@ Describe 'Save-SoftwareCatalog' {
         $bytes = [System.IO.File]::ReadAllBytes($path)
         $bytes[0] | Should -Be ([byte][char]'{')
         $text = [System.IO.File]::ReadAllText($path)
-        $text | Should -Match '(?m)^  "CatalogVersion": 1,\r?$'
+        $text | Should -Match '(?m)^  "CatalogVersion": 2,\r?$'
         $text | Should -Match '(?m)^      "Label": "7-Zip",\r?$'
     }
     It 'un seul logiciel reste une liste ; catalogue vide écrit « [] »' {

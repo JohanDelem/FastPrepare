@@ -1,11 +1,11 @@
 ﻿<#
-    Étape 14 — Création d'une session locale (section 11, fonctionnalité ajoutée après le cahier,
+    Étape 12 — Création d'une session locale (fonctionnalité ajoutée après le cahier,
     décisions DEC14 à DEC16 du plan d'architecture).
     Le mot de passe voyage en SecureString dans Parameters, que le moteur ne journalise jamais ;
     le libellé est construit sans lui (Format-LocalAccountSummary ne le reçoit pas).
 #>
 
-Register-Step -Id 'create-local-account' -Section 11 -Title 'Création d''une session locale' -Plan {
+Register-Step -Id 'create-local-account' -Title 'Création d''une session locale' -Plan {
     param($Selection, $Snapshot, $Context)
     $account = $Selection.NewLocalAccount
     if (-not $account -or -not $account.Enabled) { return }

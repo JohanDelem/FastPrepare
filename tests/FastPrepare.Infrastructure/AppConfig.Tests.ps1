@@ -12,9 +12,14 @@ Describe 'Assert-AppConfig' {
         { Assert-AppConfig -Config (Get-TestConfig) } | Should -Not -Throw
     }
 
-    It 'lien Thin Installer vide : avertissement, pas une erreur' {
-        $warnings = Assert-AppConfig -Config (Get-TestConfig)
-        $warnings | Should -Contain 'Utilities.lenovo.Install[1].Url : lien à renseigner avant la première installation réelle'
+    It 'aucun avertissement : la configuration livrée est complète' {
+        @(Assert-AppConfig -Config (Get-TestConfig)).Count | Should -Be 0
+    }
+
+    It 'bloc Utilities resté dans config.json : erreur qui renvoie vers software.json (DEC26)' {
+        $config = Get-TestConfig
+        $config | Add-Member -NotePropertyName Utilities -NotePropertyValue ([pscustomobject]@{ dell = [pscustomobject]@{ Label = 'Dell' } })
+        Get-ConfigError $config | Should -Match 'Utilities : les outils constructeurs sont désormais des entrées de software.json'
     }
 
     It 'ancienne configuration (sans ConfigVersion) : refus explicite' {
@@ -101,7 +106,6 @@ Describe 'Assert-AppConfig' {
 
     It 'clé obligatoire absente : erreur qui cite son chemin (<Path>)' -ForEach @(
         @{ Path = 'Connectivity.TestUrl'; Remove = { param($c) $c.Connectivity.PSObject.Properties.Remove('TestUrl') } }
-        @{ Path = 'Utilities.dell.Update'; Remove = { param($c) $c.Utilities.dell.PSObject.Properties.Remove('Update') } }
         @{ Path = 'Office.Editions[1].ProductId'; Remove = { param($c) $c.Office.Editions[1].PSObject.Properties.Remove('ProductId') } }
         @{ Path = 'Power.ApplyOnBattery'; Remove = { param($c) $c.Power.PSObject.Properties.Remove('ApplyOnBattery') } }
     ) {
@@ -119,28 +123,10 @@ Describe 'Assert-AppConfig' {
         $message | Should -Match 'Power.MonitorTimeoutMinutes'
     }
 
-    It 'lien de téléchargement non https : erreur' {
-        $config = Get-TestConfig
-        $config.Utilities.lenovo.Install[1].Url = 'http://exemple.test/ThinInstaller.exe'
-        Get-ConfigError $config | Should -Match 'https://'
-    }
-
     It 'clé d''édition Office en double : erreur' {
         $config = Get-TestConfig
         $config.Office.Editions[1].Key = 'O365'
         Get-ConfigError $config | Should -Match 'en double'
-    }
-
-    It 'codes de redémarrage non entiers : erreur' {
-        $config = Get-TestConfig
-        $config.Utilities.dell.Update.RebootExitCodes = @('un')
-        Get-ConfigError $config | Should -Match 'RebootExitCodes : entiers attendus'
-    }
-
-    It 'motif de constructeur invalide : erreur' {
-        $config = Get-TestConfig
-        $config.Utilities.hp.ManufacturerPattern = 'HP('
-        Get-ConfigError $config | Should -Match 'expression régulière invalide'
     }
 
     It 'bloc NewLocalAccount absent : accepté (valeurs par défaut de l''outil)' {

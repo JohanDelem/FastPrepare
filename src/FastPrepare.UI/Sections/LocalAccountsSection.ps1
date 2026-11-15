@@ -1,9 +1,9 @@
 ﻿<#
-    Section 4 — Suppression des sessions locales.
+    Section « Suppression des sessions locales ».
     Les comptes protégés sont écartés par FastPrepare.Core (Split-LocalAccount) et listés à part.
 #>
 
-Register-UiSection -Id 'local-accounts' -Number 4 -Column Left -XamlFile 'Sections\LocalAccounts.xaml' -Initialize {
+Register-UiSection -Id 'local-accounts' -Number 2 -Column Left -XamlFile 'Sections\LocalAccounts.xaml' -Initialize {
     param($Section, $Context)
     $Section.State.Checks = New-Object System.Collections.Generic.List[object]
 } -OnSnapshot {

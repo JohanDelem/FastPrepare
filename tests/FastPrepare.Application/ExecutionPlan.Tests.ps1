@@ -11,10 +11,9 @@
         )
         foreach ($p in 'OfficeClickToRun', 'OfficeMsi', 'OutlookClassic', 'OutlookNew', 'OneNote', 'Teams', 'OneDrive', 'OneDriveFolder') { $s.MicrosoftApps.$p = $true }
         $s.LocalAccounts.Items = @((New-TestSnapshot).LocalAccounts.Removable)
-        $s.VendorUtility.Key = 'dell'
+        $s.Catalog.Ids = @('dell-command-update', 'adobe-reader')
         $s.Office.EditionKey = 'O365'; $s.Office.IncludedApps = @('OutlookForWindows', 'Outlook', 'OneDrive')
-        $s.Updates.WindowsUpdate = $true; $s.Updates.VendorUtility = $true
-        $s.ExtraSoftware.Ids = @('adobe-reader')
+        $s.Updates.WindowsUpdate = $true; $s.Updates.Drivers = $true
         $s.SystemSettings.Ipv6Adapters = @((New-TestSnapshot).Adapters)
         $s.SystemSettings.Power = $true
         return $s
@@ -24,13 +23,13 @@
 Describe 'New-ExecutionPlan' {
     BeforeEach { $context = New-TestContext -Folder $TestDrive }
 
-    It 'sélection vide : plan vide, 14 étapes connues' {
+    It 'sélection vide : plan vide, 12 étapes connues' {
         $plan = New-ExecutionPlan -Selection (New-Selection) -Snapshot (New-TestSnapshot) -Context $context
         @($plan.Actions).Count | Should -Be 0
-        $plan.StepCount | Should -Be 14
+        $plan.StepCount | Should -Be 12
     }
 
-    It 'actions dans l''ordre du cahier, quel que soit l''ordre des sections, numérotées 1..N' {
+    It 'actions dans l''ordre d''exécution, quel que soit l''ordre des sections, numérotées 1..N' {
         $plan = New-ExecutionPlan -Selection (New-FullSelection) -Snapshot (New-TestSnapshot) -Context $context
         $numbers = @($plan.Actions | ForEach-Object StepNumber)
         ($numbers -join ',') | Should -Be (($numbers | Sort-Object) -join ',')
@@ -46,12 +45,10 @@ Describe 'New-ExecutionPlan' {
         $byStep['remove-microsoft-apps'].Count | Should -Be 7     # ODT + nouvel Outlook + OneNote + 4 Teams
         $byStep['remove-onedrive'].Count | Should -Be 3
         $byStep['uninstall-software'].Count | Should -Be 2
-        $byStep['install-vendor-utility'].Count | Should -Be 2    # .NET + DCU
-        $byStep['install-office'].Count | Should -Be 1
-        $byStep['install-software'].Count | Should -Be 1
+        $byStep['install'].Count | Should -Be 4                   # .NET + DCU, Adobe Reader, Office
         $byStep['disable-ipv6'].Count | Should -Be 1              # le Wi-Fi a déjà IPv6 désactivé
         $byStep['set-power-plan'].Count | Should -Be 1
-        $byStep['update-vendor-utility'].Count | Should -Be 1
+        $byStep['update-drivers'].Count | Should -Be 1
         $byStep['run-windows-update'].Count | Should -Be 1
         $byStep['rename-computer'].Count | Should -Be 1
         $byStep.ContainsKey('export-inventory') | Should -BeFalse  # exporté au démarrage
@@ -73,8 +70,35 @@ Describe 'New-ExecutionPlan' {
         @($remove).Count | Should -Be 1
         ($remove.Details -join "`n") | Should -Match 'Remove All="TRUE"'
         ($remove.Details -join "`n") | Should -Match 'RemoveMSI'
-        $install = $plan.Actions | Where-Object StepId -EQ 'install-office'
+        $install = $plan.Actions | Where-Object { $_.Parameters.Kind -eq 'OdtInstall' }
         $install.Parameters.Xml | Should -Match 'O365BusinessEEANoTeamsRetail'
+    }
+
+    It 'étape install : catalogue dans l''ordre du fichier (dépendance .NET juste avant son outil), Office en dernier' {
+        $plan = New-ExecutionPlan -Selection (New-FullSelection) -Snapshot (New-TestSnapshot) -Context $context
+        $install = @($plan.Actions | Where-Object StepId -EQ 'install')
+        @($install | ForEach-Object { $_.Parameters.Kind }) | Should -Be @('DotNetDependency', 'CatalogInstall', 'CatalogInstall', 'OdtInstall')
+        $install[0].Parameters.Software.Id | Should -Be 'dell-command-update'
+        $install[1].Parameters.Software.Id | Should -Be 'dell-command-update'
+        $install[2].Parameters.Software.Id | Should -Be 'adobe-reader'
+        @($install | ForEach-Object StepNumber | Sort-Object -Unique) | Should -Be @(6)
+    }
+
+    It 'outil d''un autre constructeur : plan refusé (DEC25)' {
+        $selection = New-Selection
+        $selection.Catalog.Ids = @('hp-image-assistant')
+        { New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context } | Should -Throw '*réservé à un autre constructeur*'
+    }
+
+    It 'pilotes et BIOS : une action par outil coché qui porte une commande Update' {
+        $selection = New-Selection
+        $selection.Catalog.Ids = @('lenovo-commercial-vantage', 'lenovo-thin-installer')
+        $selection.Updates.Drivers = $true
+        $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot -Manufacturer 'LENOVO') -Context $context
+        $update = @($plan.Actions | Where-Object StepId -EQ 'update-drivers')
+        $update.Count | Should -Be 1
+        $update[0].Label | Should -Match 'Lenovo Thin Installer'
+        $update[0].StepNumber | Should -Be 9
     }
 
     It 'avertissements : Outlook classique seul, OneNote sans Click-to-Run' {
@@ -115,7 +139,7 @@ Describe 'New-ExecutionPlan' {
 
     It 'sélection incohérente : plan refusé' {
         $selection = New-Selection
-        $selection.Updates.VendorUtility = $true
+        $selection.Updates.Drivers = $true
         { New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context } | Should -Throw '*incohérente*'
     }
 

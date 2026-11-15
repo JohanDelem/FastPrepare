@@ -1,7 +1,7 @@
 ﻿BeforeAll {
     . (Join-Path $PSScriptRoot '..\TestHelpers.ps1')
     Import-FastPrepareModule Core
-    $requirements = @((Get-TestConfig).Utilities.dell.DotNet)
+    $requirements = @((Get-TestCatalogEntry | Where-Object Id -EQ 'dell-command-update').DotNet)
 }
 
 Describe 'Test-VersionInRange (bornes incluses, borne vide = ouverte)' {
@@ -39,7 +39,7 @@ Describe 'Select-DotNetRequirement (cahier, « Dell et .NET »)' {
     It 'version inconnue plus récente : entrée la plus proche en dessous, signalée comme approchée' {
         $result = Select-DotNetRequirement -ToolVersion '5.8.0' -Requirement $requirements
         $result.IsExactMatch | Should -BeFalse
-        $result.Requirement.DcuVersion | Should -Be '5.7.1'
+        $result.Requirement.ToolVersion | Should -Be '5.7.1'
     }
     It 'version plus ancienne que toutes les entrées : aucune' {
         Select-DotNetRequirement -ToolVersion '5.6.0' -Requirement $requirements | Should -BeNullOrEmpty

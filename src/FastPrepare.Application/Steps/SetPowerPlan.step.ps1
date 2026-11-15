@@ -1,8 +1,8 @@
 ﻿<#
-    Étape 10 — Mode d'alimentation (section 9). Durées et batterie issues de config.Power.
+    Étape 8 — Mode d'alimentation. Durées et batterie issues de config.Power.
 #>
 
-Register-Step -Id 'set-power-plan' -Section 9 -Title 'Mode d''alimentation' -Plan {
+Register-Step -Id 'set-power-plan' -Title 'Mode d''alimentation' -Plan {
     param($Selection, $Snapshot, $Context)
     if (-not $Selection.SystemSettings.Power) { return }
     $power = $Context.Config.Power

@@ -23,7 +23,7 @@ Describe 'Mode réel — étapes de l''itération 3' {
         $selection = New-Selection
         $selection.SystemSettings.Power = $true
         $selection.SystemSettings.Ipv6Adapters = @((New-TestSnapshot).Adapters)
-        $selection.ExtraSoftware.Ids = @('adobe-reader')
+        $selection.Catalog.Ids = @('adobe-reader')
         $selection.HostName.Enabled = $true; $selection.HostName.Name = 'PC-0042'
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context
@@ -55,7 +55,7 @@ Describe 'Mode réel — étapes de l''itération 3' {
     It 'un échec (winget) n''empêche pas les actions suivantes' {
         Mock @m Install-WingetPackage { throw '« winget.exe » : code de sortie 1603' }
         $selection = New-Selection
-        $selection.ExtraSoftware.Ids = @('adobe-reader')
+        $selection.Catalog.Ids = @('adobe-reader')
         $selection.SystemSettings.Power = $true
         $plan = New-ExecutionPlan -Selection $selection -Snapshot (New-TestSnapshot) -Context $context
         $results = Invoke-ExecutionPlan -Plan $plan -Context $context

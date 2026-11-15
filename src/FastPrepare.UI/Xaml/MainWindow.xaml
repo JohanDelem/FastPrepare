@@ -10,7 +10,7 @@
       ColSettings par MainWindow.ps1 selon leur enregistrement (SectionRegistry.ps1).
   -->
   <DockPanel>
-    <!-- En-tête : connexion internet (section 0) + poste détecté -->
+    <!-- En-tête : connexion internet + poste détecté -->
     <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
       <DockPanel>
         <Border Name="BdReal" DockPanel.Dock="Right" Background="{StaticResource ErrorLightBrush}" BorderBrush="{StaticResource ErrorBrush}" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center" Visibility="Collapsed">

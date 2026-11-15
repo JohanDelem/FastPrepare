@@ -1,9 +1,9 @@
 ﻿<#
-    Étape 9 — Désactivation d'IPv6 sur les cartes cochées (section 9).
+    Étape 7 — Désactivation d'IPv6 sur les cartes cochées.
     Une carte dont IPv6 est déjà désactivé ne produit pas d'action.
 #>
 
-Register-Step -Id 'disable-ipv6' -Section 9 -Title 'Désactivation d''IPv6' -Plan {
+Register-Step -Id 'disable-ipv6' -Title 'Désactivation d''IPv6' -Plan {
     param($Selection, $Snapshot, $Context)
     foreach ($adapter in @($Selection.SystemSettings.Ipv6Adapters)) {
         if (-not $adapter.Ipv6Enabled) { continue }

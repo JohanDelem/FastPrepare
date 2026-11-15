@@ -1,10 +1,10 @@
 ﻿<#
-    Étape 4 — OneDrive, puis son dossier (section 3).
+    Étape 4 — OneDrive, puis son dossier.
     Le dossier n'est proposé à la suppression que s'il passe la garde de chemin (FastPrepare.Core,
     Test-SafeProfilePath -AllowInsideProfile) : jamais le profil entier, jamais Default ou Public.
 #>
 
-Register-Step -Id 'remove-onedrive' -Section 3 -Title 'Désinstallation de OneDrive' -Plan {
+Register-Step -Id 'remove-onedrive' -Title 'Désinstallation de OneDrive' -Plan {
     param($Selection, $Snapshot, $Context)
     $ms = $Selection.MicrosoftApps
     if (-not $ms.OneDrive) { return }

@@ -9,10 +9,18 @@ BeforeAll {
 }
 
 Describe 'Catalogue des étapes' {
-    It 'ordre du cahier et fonctionnalités ajoutées : 14 étapes, sans doublon' {
+    It 'ordre d''exécution (DEC27) : 12 étapes, sans doublon' {
         $order = @(Get-StepOrder)
-        $order.Count | Should -Be 14
-        @($order | Sort-Object -Unique).Count | Should -Be 14
+        $order.Count | Should -Be 12
+        @($order | Sort-Object -Unique).Count | Should -Be 12
+    }
+
+    It 'une seule étape d''installation, avant les réglages et les mises à jour (DEC26)' {
+        $order = @(Get-StepOrder)
+        @($order | Where-Object { $_ -like 'install*' }) | Should -Be @('install')
+        [array]::IndexOf($order, 'install') | Should -Be 5
+        [array]::IndexOf($order, 'update-drivers') | Should -BeGreaterThan ([array]::IndexOf($order, 'install'))
+        [array]::IndexOf($order, 'create-local-account') | Should -Be 11
     }
 
     It 'chaque étape de l''ordre est enregistrée, et réciproquement' {
@@ -27,10 +35,7 @@ Describe 'Catalogue des étapes' {
         $calls.Count | Should -Be 1
     }
 
-    It 'section de l''interface renseignée pour chaque étape (1 à 11)' {
-        foreach ($step in (Get-RegisteredStep).Values) {
-            $step.Section | Should -BeGreaterOrEqual 1
-            $step.Section | Should -BeLessOrEqual 11
-        }
+    It 'titre renseigné pour chaque étape (préfixe des avertissements du plan)' {
+        foreach ($step in (Get-RegisteredStep).Values) { $step.Title | Should -Not -BeNullOrEmpty }
     }
 }

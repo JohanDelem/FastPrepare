@@ -11,8 +11,11 @@
       Validate    param($Section)                      $null, ou le motif qui bloque le bouton Lancer
       OnSettingsChanged param($Section, $Context)      un réglage enregistré a changé ce que la section affiche
       Dispose     param($Section)                      libère ses ressources à la fermeture
-    Colonne Settings : page de l'onglet « Réglages » (numérotée à partir de 100) ; elle ne
-    contribue pas à la Selection et ne bloque jamais Lancer.
+    -Number : ordre d'affichage, qui suit l'ordre d'exécution. Le numéro affiché dans le titre
+    (« 5 · Installations ») est la position de la section dans l'onglet Préparation, calculée par
+    Get-UiSectionDisplayNumber : il n'est jamais écrit dans le XAML (élément nommé TxtTitle).
+    Colonne Settings : page de l'onglet « Réglages » (numérotée à partir de 100, sans numéro
+    affiché) ; elle ne contribue pas à la Selection et ne bloque jamais Lancer.
     Chaque section reçoit .Controls (ses éléments nommés) et .State (son état propre).
 #>
 
@@ -83,4 +86,18 @@ function Invoke-UiSectionCallback {
     $callback = $Section.$Name
     if (-not $callback) { return $null }
     return (& $callback $Section @Arguments)
+}
+
+function Get-UiSectionDisplayNumber {
+    <# Position de la section parmi celles de l'onglet Préparation (colonnes Left et Right) ; 0 pour les autres. #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param([Parameter(Mandatory)]$Section)
+    $position = 0
+    foreach ($candidate in (Get-UiSection)) {
+        if (@('Left', 'Right') -notcontains $candidate.Column) { continue }
+        $position++
+        if ($candidate.Id -eq $Section.Id) { return $position }
+    }
+    return 0
 }

@@ -44,6 +44,7 @@
         'Invoke-CmdLine',
         'Get-ProfileLocation',
         'Remove-GuardedFolder',
+        'Remove-WorkSubfolder',
         'Stop-ProcessByName',
         'Remove-LocalAccountWithProfile',
         'New-LocalAccount',

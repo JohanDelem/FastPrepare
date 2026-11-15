@@ -50,7 +50,7 @@ function Assert-AppConfig {
     if ($Config.ConfigVersion -eq 3) {
         throw ("config.json : ConfigVersion 3 n'est plus prise en charge. Passez 'ConfigVersion' à 4, " +
             "remplacez 'Logging' par 'Output' (dossier de sortie), 'Execution.CacheFolder' par 'Execution.WorkFolder' " +
-            "et retirez 'Office.OdtFolder' (format : docs/architecture_plan.md, C12 à C15).")
+            "retirez 'Office.OdtFolder' et déplacez 'Utilities' dans software.json (format : docs/architecture_plan.md, C12 à C15).")
     }
     if ($Config.ConfigVersion -ne $script:SupportedConfigVersion) {
         throw ("config.json : ConfigVersion $($Config.ConfigVersion) non prise en charge, " +
@@ -93,13 +93,9 @@ function Assert-AppConfig {
         }
     }
 
-    # Utilities
-    if (Test-ConfigField $report $Config 'Utilities' '' Object) {
-        $keys = @($Config.Utilities.PSObject.Properties | ForEach-Object { $_.Name })
-        if ($keys.Count -eq 0) { $report.Errors.Add('Utilities : au moins un utilitaire constructeur attendu') }
-        foreach ($key in $keys) {
-            Test-UtilityConfig -Report $report -Utility $Config.Utilities.$key -Path "Utilities.$key"
-        }
+    # Outils constructeurs : entrées de software.json depuis l'itération 13 (DEC26).
+    if ($Config.PSObject.Properties['Utilities']) {
+        $report.Errors.Add("Utilities : les outils constructeurs sont désormais des entrées de software.json (champ 'ManufacturerPattern' ; format : docs/architecture_plan.md, C13)")
     }
 
     # Office
@@ -107,7 +103,7 @@ function Assert-AppConfig {
         Test-OfficeConfig -Report $report -Office $Config.Office
     }
 
-    # Catalogue des logiciels de la section 8 : fichier à part (itération 9, DEC17).
+    # Catalogue des logiciels : fichier à part (DEC17).
     [void](Test-ConfigField $report $Config 'SoftwareCatalog' '' NonEmptyString)
     if ($Config.PSObject.Properties['Software']) {
         $report.Errors.Add("Software : la liste des logiciels est désormais dans le fichier désigné par 'SoftwareCatalog' (software.json)")
@@ -144,76 +140,6 @@ function Assert-AppConfig {
         throw ("config.json invalide :`n- " + ($report.Errors -join "`n- "))
     }
     return $report.Warnings.ToArray()
-}
-
-function Test-UtilityConfig {
-    param($Report, $Utility, [string]$Path)
-
-    if (-not ($Utility -is [System.Management.Automation.PSCustomObject])) {
-        $Report.Errors.Add("$Path : objet attendu")
-        return
-    }
-    foreach ($name in 'Label', 'Subtitle', 'Tool') {
-        [void](Test-ConfigField $Report $Utility $name $Path NonEmptyString)
-    }
-    [void](Test-ConfigField $Report $Utility 'Logo' $Path String)
-    [void](Test-ConfigField $Report $Utility 'ManufacturerPattern' $Path Regex)
-
-    if (Test-ConfigField $Report $Utility 'Install' $Path Array) {
-        if (@($Utility.Install).Count -eq 0) { $Report.Errors.Add("$Path.Install : au moins un élément attendu") }
-        $i = 0
-        foreach ($item in @($Utility.Install)) {
-            $itemPath = "$Path.Install[$i]"
-            if (Test-ConfigField $Report $item 'Type' $itemPath NonEmptyString) {
-                switch ($item.Type) {
-                    'winget' {
-                        [void](Test-ConfigField $Report $item 'Id' $itemPath NonEmptyString)
-                        [void](Test-ConfigField $Report $item 'Source' $itemPath NonEmptyString)
-                    }
-                    'download' {
-                        [void](Test-ConfigField $Report $item 'FileName' $itemPath NonEmptyString)
-                        [void](Test-ConfigField $Report $item 'Arguments' $itemPath String)
-                        [void](Test-ConfigField $Report $item 'Sha256' $itemPath String -Optional)
-                        [void](Test-ConfigField $Report $item 'ExpectedSigner' $itemPath String -Optional)
-                        if (Test-ConfigField $Report $item 'Url' $itemPath String) {
-                            if (-not $item.Url) { $Report.Warnings.Add("$itemPath.Url : lien à renseigner avant la première installation réelle") }
-                            elseif ($item.Url -notmatch '^https://') { $Report.Errors.Add("$itemPath.Url : lien https:// attendu") }
-                        }
-                    }
-                    default { $Report.Errors.Add("$itemPath.Type : 'winget' ou 'download' attendu") }
-                }
-            }
-            $i++
-        }
-    }
-
-    if (Test-ConfigField $Report $Utility 'Update' $Path Object) {
-        [void](Test-ConfigField $Report $Utility.Update 'FilePath' "$Path.Update" NonEmptyString)
-        [void](Test-ConfigField $Report $Utility.Update 'Arguments' "$Path.Update" String)
-        foreach ($codes in @(@{ Name = 'SuccessExitCodes'; Optional = $false }, @{ Name = 'RebootExitCodes'; Optional = $true })) {
-            if (Test-ConfigField $Report $Utility.Update $codes.Name "$Path.Update" Array -Optional:$codes.Optional) {
-                foreach ($code in @($Utility.Update.($codes.Name))) {
-                    if (-not (($code -is [int]) -or ($code -is [long]))) { $Report.Errors.Add("$Path.Update.$($codes.Name) : entiers attendus") }
-                }
-            }
-        }
-    }
-
-    if (Test-ConfigField $Report $Utility 'DotNet' $Path Array -Optional) {
-        $i = 0
-        foreach ($requirement in @($Utility.DotNet)) {
-            $reqPath = "$Path.DotNet[$i]"
-            [void](Test-ConfigField $Report $requirement 'DcuVersion' $reqPath Version)
-            [void](Test-ConfigField $Report $requirement 'WingetId' $reqPath NonEmptyString)
-            [void](Test-ConfigField $Report $requirement 'MinVersion' $reqPath Version)
-            if (Test-ConfigField $Report $requirement 'MaxVersion' $reqPath String) {
-                if ($requirement.MaxVersion -and -not ($requirement.MaxVersion -as [version])) {
-                    $Report.Errors.Add("$reqPath.MaxVersion : numéro de version ou chaîne vide attendu")
-                }
-            }
-            $i++
-        }
-    }
 }
 
 function Test-OfficeConfig {
