@@ -2,7 +2,7 @@
 
 ## Environnement
 
-- **Cible d'exécution** : Windows 11, Windows PowerShell **5.1** uniquement, aucun module tiers sur la clé.
+- **Cible d'exécution** : Windows 11, Windows PowerShell **5.1** uniquement, aucun module tiers dans le livrable.
 - **Poste de développement** : Windows PowerShell 5.1, plus deux modules de développement :
   - [Pester](https://pester.dev) **5.5 ou plus** : `Install-Module Pester -Scope CurrentUser -MinimumVersion 5.5 -SkipPublisherCheck`
     (Windows 11 n'embarque que Pester 3.4, incompatible). Sans installation : télécharger le paquet
@@ -15,7 +15,7 @@
 |---|---|
 | `tools\Invoke-Tests.ps1 [-PesterPath <chemin>] [-Coverage]` | Tests Pester (`tests\`) |
 | `tools\Invoke-Lint.ps1` | PSScriptAnalyzer + contrôle des encodages ; échoue au premier avertissement |
-| `tools\Build-Usb.ps1 -Destination <dossier>` | Lint + tests, puis copie du seul nécessaire sur la clé |
+| `tools\Build-Release.ps1 -Destination <dossier> [-Zip]` | Lint + tests, puis dossier (et archive) `FastPrepare-<version>` avec le seul nécessaire |
 | `Lancer.cmd -Simulation` | Lancer l'outil sans rien modifier sur le poste |
 
 Avant chaque commit : `Invoke-Lint.ps1` et `Invoke-Tests.ps1` verts.
@@ -30,13 +30,19 @@ Avant chaque commit : `Invoke-Lint.ps1` et `Invoke-Tests.ps1` verts.
   - `FastPrepare.Infrastructure` : seul endroit qui touche au système.
   - `FastPrepare.Application` : cas d'usage ; aucun type WPF.
   - `FastPrepare.UI` : WPF uniquement ; n'appelle jamais `Infrastructure\System\*` directement.
-- **Jamais** d'`Invoke-Expression`, de `Restart-Computer` ni de lien `http(s)://` dans `src\` (les liens vivent dans `config.json`).
+- **Jamais** d'`Invoke-Expression`, de `Restart-Computer` ni de lien `http(s)://` dans `src\` (les liens vivent dans `config.json` et `software.json`).
+- **Aucune hypothèse sur le support** (DEC23) : le dossier de l'outil peut être en lecture seule, sur un partage ou sur le disque du poste. Ce qui doit être écrit va dans le dossier de sortie (`Context.Paths.Output`) ou dans le dossier de travail local (`Context.Paths.Work`) ; jamais `$env:TEMP`, jamais « la clé » dans un message.
+- **Numérotation** : le rang d'une étape vient de `StepOrder.ps1`, le numéro d'une section de son ordre d'enregistrement ; aucun des deux ne s'écrit dans un libellé ou un fragment XAML (DEC27).
 - **Une fonction exportée** = une entrée dans `FunctionsToExport` du manifeste du module.
 - **Une règle métier = un propriétaire** (tableau §6 du plan d'architecture) : on l'appelle, on ne la réécrit pas. Toucher une règle, c'est mettre à jour son test.
 
 ## Ajouter une fonctionnalité
 
-Voir les recettes du plan d'architecture, §10 (étape d'exécution, marque, logiciel, édition Office, section d'interface).
+Voir les recettes du plan d'architecture, §10 (étape d'exécution, marque, logiciel, édition Office, section d'interface). Une évolution qui change le contrat (ordre d'exécution, schéma de `config.json` ou de `software.json`, format du journal) se décide d'abord dans le plan (§10.7, §11).
+
+## Version
+
+Le fichier `VERSION` (`majeur.itération.correctif`) est mis à jour à chaque itération livrée ; `Build-Release.ps1` nomme le livrable d'après lui.
 
 ## Commits
 

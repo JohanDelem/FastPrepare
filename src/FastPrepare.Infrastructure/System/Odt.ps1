@@ -1,5 +1,7 @@
 ﻿<#
-    Office Deployment Tool, partagé par la suppression (étape 3) et l'installation (étape 7).
+    Office Deployment Tool, partagé par la suppression (étape 3) et l'installation (étape 6).
+    Son dossier est dans le dossier de travail de l'outil (<WorkFolder>\odt), supprimé en fin
+    d'exécution réussie.
     setup.exe est téléchargé depuis le lien de config.json et sa signature Microsoft vérifiée
     avant chaque utilisation.
 #>

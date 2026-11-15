@@ -1,6 +1,6 @@
 ﻿<#
-    Garde avant toute suppression récursive (profils supprimés en section 4, dossier OneDrive
-    en section 3, cache, C:\ODT). Fonctions pures : elles raisonnent sur des chemins absolus,
+    Garde avant toute suppression récursive (profils des sessions supprimées, dossier OneDrive,
+    téléchargements et dossier ODT du dossier de travail). Fonctions pures : elles raisonnent sur des chemins absolus,
     sans lire le disque.
 #>
 

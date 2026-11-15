@@ -116,7 +116,7 @@ function Assert-AppConfig {
         [void](Test-ConfigField $report $Config.Power 'ApplyOnBattery' 'Power' Bool)
     }
 
-    # NewLocalAccount (facultatif, itération 8) : valeurs par défaut des cases de la section 11.
+    # NewLocalAccount (facultatif, itération 8) : valeurs par défaut des cases de la session à créer.
     if (Test-ConfigField $report $Config 'NewLocalAccount' '' Object -Optional) {
         $account = $Config.NewLocalAccount
         $neverExpires = Test-ConfigField $report $account 'PasswordNeverExpires' 'NewLocalAccount' Bool -Optional
