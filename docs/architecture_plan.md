@@ -3,7 +3,7 @@
 - **Version** : 1.3 — itérations 0 à 7 livrées (toutes les étapes du cahier en mode réel) ; itération 8 : création d'une session locale ; itération 9 : catalogue des logiciels modifiable depuis l'onglet « Réglages », avec test sans téléchargement ; itération 10 : source winget vérifiée au démarrage et réparée une fois automatiquement ; itération 11 : réparation complète de la source winget, sans intervention (installation de son paquet de données) ; itération 12 : portée d'installation winget (pour tous les utilisateurs) dans le catalogue ; itération 13 : outil indépendant du support, installations unifiées par le catalogue, utilitaire limité au constructeur détecté ; recette sur postes de test en attente
 - **Date** : 2026-11-15
 - **Portée** : tout le dépôt (`Lancer.cmd`, `Preparation.ps1`, `VERSION`, `config.json`, `software.json`, `src/`, `tools/`, `tests/`)
-- **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · `Cahier_des_charges__Outil_de_preparation_de_poste.pdf` (9 novembre 2026, maquette validée le 10 novembre 2026) · journaux d'exécution réels dans `logs/`
+- **Sources** : [`Preparation.ps1`](../Preparation.ps1) (état « Étape 1 : interface + détections, bouton Lancer en simulation ») · [`config.json`](../config.json) · [`Lancer.cmd`](../Lancer.cmd) · cahier des charges d'origine du 9 novembre 2026 (maquette validée le 10 novembre 2026 ; document retiré du dossier le 2026-11-15 car dépassé : ce plan est la référence du contrat depuis l'itération 13, DEC27) · journaux d'exécution réels dans `logs/`
 
 > **État au 2026-11-15** : les itérations du cahier (0 à 7) sont livrées ; l'itération 8 ajoute la création d'une session locale (§3.3, DEC14 à DEC16), l'itération 9 le catalogue des logiciels modifiable depuis l'interface (DEC17 à DEC19) ; chaque itération du §9 se termine par un paragraphe « État » qui décrit le code réellement livré et ses écarts avec la cible. Les §4 à §8 restent la description de référence ; ils sont à jour de l'itération 13, qui a révisé le contrat hérité du cahier des charges (ordre d'exécution à 12 rangs, 9 sections, `ConfigVersion` 4, `CatalogVersion` 2 : DEC23 à DEC29). Les §2, §3.1 et les itérations 0 à 12 du §9 sont conservés tels quels : ils décrivent l'historique, avec la numérotation de leur époque.
 
@@ -158,8 +158,7 @@ Chaque fichier de `Core` et chaque étape a son `*.Tests.ps1` dans `tests/`, en 
  ┣ 📂docs 🆕
  ┃ ┣ 📜architecture_plan.md 🆕 (ce document)
  ┃ ┣ 📜CONTRIBUTING.md 🆕
- ┃ ┣ 📜recette.md 🆕
- ┃ ┗ 📜Cahier_des_charges__Outil_de_preparation_de_poste.pdf (local, non versionné : *.pdf ignoré par Git)
+ ┃ ┗ 📜recette.md 🆕
  ┣ 📂src 🆕
  ┃ ┣ 📂FastPrepare.Core                      (pur : ni système, ni WPF)
  ┃ ┃ ┣ 📂Public
